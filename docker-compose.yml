@@ -1,0 +1,16 @@
+services:
+  db:
+    image: postgres:13-alpine
+    volumes:
+      - dev-db-data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASS}
+      # - POSTGRES_DB=lms_db
+      # - POSTGRES_USER=devuser
+      # - POSTGRES_PASSWORD=password
+
+
+volumes:
+  dev-db-data:
