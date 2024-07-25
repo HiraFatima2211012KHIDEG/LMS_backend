@@ -5,6 +5,7 @@ from django.contrib.auth.models import (
     BaseUserManager,
     PermissionsMixin
 )
+from django.core.validators import EmailValidator
 
 
 class UserManager(BaseUserManager):
@@ -19,19 +20,20 @@ class UserManager(BaseUserManager):
         user.save(using=self._db)
         return user
 
-    def create_superuser(self, email, password=None):
-        """Create and save new superuser"""
+    def create_superuser(self, email, password):
+        """ Create and save new superuser."""
         user = self.create_user(email, password)
-        user.is_superuser = True
         user.is_staff = True
+        user.is_superuser = True
+        user.save(using=self._db)
         return user
 
-    def create_admin(self, email, password=None):
-        """Create and save new admin"""
-        user = self.create_user(email, password)
-        user.is_admin = True
-        user.is_staff = True
-        return user
+    # def create_admin(self, email, password=None):
+    #     """Create and save new admin"""
+    #     user = self.create_user(email, password)
+    #     user.is_admin = True
+    #     user.is_staff = True
+    #     return user
 
 
 class User(AbstractBaseUser, PermissionsMixin):
@@ -42,13 +44,16 @@ class User(AbstractBaseUser, PermissionsMixin):
     last_name = models.CharField(max_length=20, null=True, blank=True)
     contact = models.CharField(max_length=12, null=True, blank=True)
     city = models.CharField(max_length=50, null=True, blank=True)
+    # is_admin = models.BooleanField(default=False)
+    is_staff = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=True)
 
     USERNAME_FIELD = 'email'
 
     objects = UserManager()
 
     def __str__(self):
-        return self.username
+        return self.email
 
 
 class Applications(models.Model):
