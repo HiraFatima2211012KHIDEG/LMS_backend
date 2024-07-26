@@ -6,7 +6,9 @@ class Program(models.Model):
     short_name = models.CharField(max_length=50)
     description = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    # created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    created_by = models.CharField(max_length=100)
+
     is_active = models.BooleanField(default=False)
 
     def __str__(self):
@@ -17,7 +19,8 @@ class Course(models.Model):
     name = models.CharField(max_length=100)
     description = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    # created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    created_by = models.CharField(max_length=100)
     is_active = models.BooleanField(default=False)
     credit_hours = models.IntegerField()
 
@@ -29,7 +32,8 @@ class Module(models.Model):
     name = models.CharField(max_length=100)
     description = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    # created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    created_by = models.CharField(max_length=100)
     is_active = models.BooleanField(default=False)
 
     def __str__(self):

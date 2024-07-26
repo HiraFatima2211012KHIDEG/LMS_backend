@@ -7,11 +7,13 @@ class ProgramSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class CourseSerializer(serializers.ModelSerializer):
+    program = ProgramSerializer(read_only=True)
     class Meta:
         model = Course
         fields = '__all__'
 
 class ModuleSerializer(serializers.ModelSerializer):
+    course=CourseSerializer(read_only=True)
     class Meta:
         model = Module
         fields = '__all__'

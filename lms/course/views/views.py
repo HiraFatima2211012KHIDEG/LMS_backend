@@ -18,6 +18,7 @@ class ProgramListCreateAPIView(APIView):
 
     def get(self, request, format=None):
         programs = Program.objects.all()
+        print(programs)
         serializer = ProgramSerializer(programs, many=True)
         logger.info("Retrieved all programs")
         return Response({
@@ -128,6 +129,8 @@ class CourseDetailAPIView(APIView):
             'message': 'Course retrieved successfully',
             'response': serializer.data
         })
+
+
 
     def put(self, request, pk, format=None):
         course = get_object_or_404(Course, pk=pk)
