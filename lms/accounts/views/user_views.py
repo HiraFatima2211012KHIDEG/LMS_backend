@@ -15,6 +15,7 @@ from ..serializers.user_serializers import (
 from drf_spectacular.utils import extend_schema
 from ..models.models_ import AccessControl
 import constants
+from django.contrib.auth.models import Group
 
 
 def get_group_permissions(group_id):
@@ -62,6 +63,8 @@ class LoginView(views.APIView):
         serializer = AuthTokenSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.validated_data['user']
+            group = user.groups.get()
+            print(f'group: ', group.id)
             auth_login(request, user)
             temp = get_group_permissions(3)
             print (temp)
