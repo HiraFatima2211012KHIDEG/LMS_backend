@@ -35,8 +35,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'rest_framework.authtoken',
-    "rest_framework_simplejwt.token_blacklist",
-    "corsheaders",
+    # "rest_framework_simplejwt.token_blacklist",
+    # "corsheaders",
     'drf_spectacular',
     'accounts',
     'core'
@@ -160,6 +160,16 @@ SIMPLE_JWT = {
     "ALGORITHM": "HS256",
     "SIGNING_KEY": SECRET_KEY,
 }
+
+MAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'maazjavaidsiddique10@gmail.com'
+EMAIL_HOST_PASSWORD = 'hmsp qgbw pvvo twrc'
+EMAIL_FROM_ADDRESS = 'maazjavaidsiddique10@gmail.com'
+EMAIL_DEBUG = True
+
 
 PASSWORD_RESET_TIMEOUT = 600  # 600Sec = 10 Min
 

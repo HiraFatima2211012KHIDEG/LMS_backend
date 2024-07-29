@@ -4,23 +4,19 @@ from rest_framework import (
     generics,
     permissions
     )
-from rest_framework.authtoken.views import ObtainAuthToken
-from rest_framework.settings import api_settings
 from rest_framework.response import Response
-from django.contrib.auth import login as auth_login, logout as auth_logout
 from ..serializers.user_serializers import *
-# (
-#     UserSerializer,
-#     UserLoginSerializer,
-#     UserProfileSerializer
-#     # AuthTokenSerializer
-# )
-# from drf_yasg.utils import swagger_auto_schema
-# from drf_yasg import openapi
-# from drf_spectacular.utils import extend_schema
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 from accounts.models import User
+from django.contrib.auth.models import Group
+
+from ..serializers.user_serializers import (
+    UserSerializer,
+)
+from ..models.models_ import AccessControl
+import constants
+
 
 
 
@@ -65,7 +61,6 @@ class UserLoginView(views.APIView):
     View to handle user login and generate authentication tokens.
     """
 
-    # @swagger_auto_schema(request_body=UserLoginSerializer)
     def post(self, request):
         """
         Handle POST requests for user login.
@@ -91,7 +86,16 @@ class UserLoginView(views.APIView):
             )
             if user is not None:
                 tokens = self.get_tokens_for_user(user)
-                return Response(tokens, status=status.HTTP_200_OK)
+                user_group_id = Group.objects.get(user_id = user.id).id 
+                permission = self.get_group_permissions(user_group_id)
+                return Response({
+                        'status_code' : status.HTTP_200_OK,
+                        'message': 'Login Successful.',
+                        'response' : {
+                            'token' : tokens,
+                            'permissions' : permission
+                        } 
+                        })
             else:
                 return Response({
                         'status_code' : status.HTTP_401_UNAUTHORIZED,
@@ -123,6 +127,28 @@ class UserLoginView(views.APIView):
             }
         except Exception as e:
             raise Exception(f"Error generating tokens: {str(e)}")
+
+    def get_group_permissions(group_id):
+        """Retrieve all the permissions related to a user group"""
+        permissions_dict = {}
+        access_controls = AccessControl.objects.filter(group_id=group_id)
+
+        for access_control in access_controls:
+            model_name = access_control.model
+            permissions_value = ''
+
+            if access_control.create:
+                permissions_value += constants.CREATE
+            if access_control.read:
+                permissions_value += constants.READ
+            if access_control.update:
+                permissions_value += constants.UPDATE
+            if access_control.delete:
+                permissions_value += constants.DELETE
+
+            permissions_dict[model_name] = permissions_value
+
+        return permissions_dict
 
 
 
