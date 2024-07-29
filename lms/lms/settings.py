@@ -31,8 +31,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'rest_framework.authtoken',
-    "rest_framework_simplejwt.token_blacklist",
-    "corsheaders",
+    # "rest_framework_simplejwt.token_blacklist",
+    # "corsheaders",
     'drf_spectacular',
     'accounts',
     'core'
@@ -76,10 +76,14 @@ WSGI_APPLICATION = 'lms.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'HOST': os.environ.get('DB_HOST'),
-        'NAME': os.environ.get('DB_NAME'),
-        'USER': os.environ.get('DB_USER'),
-        'PASSWORD': os.environ.get('DB_PASS')
+        # 'HOST': os.environ.get('DB_HOST'),
+        # 'NAME': os.environ.get('DB_NAME'),
+        # 'USER': os.environ.get('DB_USER'),
+        # 'PASSWORD': os.environ.get('DB_PASS')
+        'HOST': 'localhost',
+        'NAME': 'lms_db',
+        'USER': 'postgres',
+        'PASSWORD': 'password'
     }
 }
 

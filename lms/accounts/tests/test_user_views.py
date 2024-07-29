@@ -3,6 +3,11 @@ Tests for Models
 """
 from django.test import TestCase
 from django.contrib.auth import get_user_model
+from django.test import TestCase
+from django.contrib.auth.models import Group
+from ..models.models_ import AccessControl
+import constants
+from ..views import get_group_permissions
 
 
 def create_user(email='user@example.com', password='testpass'):
@@ -49,3 +54,74 @@ class ModelTests(TestCase):
         )
         self.assertTrue(user.is_superuser)
         self.assertTrue(user.is_staff)
+
+
+class GetGroupPermissionsTestCase(TestCase):
+
+    def setUp(self):
+        self.group = Group.objects.create(name='Test Group')
+
+        self.access_control1 = AccessControl.objects.create(
+            group=self.group,
+            model='applications',
+            create=True,
+            read=False,
+            update=True,
+            delete=False
+        )
+
+        self.access_control2 = AccessControl.objects.create(
+            group=self.group,
+            model='other_model',
+            create=False,
+            read=True,
+            update=False,
+            delete=True
+        )
+
+    def test_get_group_permissions(self):
+        """test retrieving the permissions related to group id."""
+        permissions = get_group_permissions(self.group.id)
+
+        self.assertEqual(permissions['applications'], f"{constants.CREATE}{constants.UPDATE}")
+        self.assertEqual(permissions['other_model'], f"{constants.READ}{constants.DELETE}")
+
+    def test_get_group_permissions_no_access_controls(self):
+        """Test no permissions for newly created group without permissions."""
+        new_group = Group.objects.create(name='New Group')
+        permissions = get_group_permissions(new_group.id)
+        self.assertEqual(permissions, {})
+
+    def test_get_group_permissions_no_permissions_set(self):
+        """Test no access permissions are assigned to a group."""
+        AccessControl.objects.create(
+            group=self.group,
+            model='empty_model',
+            create=False,
+            read=False,
+            update=False,
+            delete=False
+        )
+
+        permissions = get_group_permissions(self.group.id)
+        self.assertEqual(permissions['empty_model'], '')
+
+    def test_get_group_permissions_multiple_entries_same_model(self):
+        """Test getting all the permission related to model."""
+        AccessControl.objects.create(
+            group=self.group,
+            model='applications',
+            create=False,
+            read=True,
+            update=False,
+            delete=True
+        )
+
+        permissions = get_group_permissions(self.group.id)
+        expected_permissions = f"{constants.READ}{constants.DELETE}"
+        self.assertEqual(permissions['applications'], expected_permissions)
+
+
+    def tearDown(self):
+        self.group.delete()
+        AccessControl.objects.all().delete()

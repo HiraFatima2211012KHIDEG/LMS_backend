@@ -13,6 +13,32 @@ from ..serializers.user_serializers import (
     AuthTokenSerializer
 )
 from drf_spectacular.utils import extend_schema
+from ..models.models_ import AccessControl
+import constants
+
+
+def get_group_permissions(group_id):
+    """Retrieve all the permissions related to a user group"""
+    permissions_dict = {}
+    access_controls = AccessControl.objects.filter(group_id=group_id)
+
+    for access_control in access_controls:
+        model_name = access_control.model
+        permissions_value = ''
+
+        if access_control.create:
+            permissions_value += constants.CREATE
+        if access_control.read:
+            permissions_value += constants.READ
+        if access_control.update:
+            permissions_value += constants.UPDATE
+        if access_control.delete:
+            permissions_value += constants.DELETE
+
+        permissions_dict[model_name] = permissions_value
+
+    return permissions_dict
+
 
 
 class CreateUserView(generics.CreateAPIView):
@@ -37,7 +63,9 @@ class LoginView(views.APIView):
         if serializer.is_valid():
             user = serializer.validated_data['user']
             auth_login(request, user)
-            return Response({'message': 'Login successful', 'user_id': user.id})
+            temp = get_group_permissions(3)
+            print (temp)
+            return Response({'message': 'Login successful', 'user_id': user.id, 'response': temp})
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 

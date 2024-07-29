@@ -1,11 +1,10 @@
-from typing import Any
 from django.db import models
 from django.contrib.auth.models import (
     AbstractBaseUser,
     BaseUserManager,
-    PermissionsMixin
+    PermissionsMixin,
+    Group
 )
-from django.core.validators import EmailValidator
 
 
 class UserManager(BaseUserManager):
@@ -27,13 +26,6 @@ class UserManager(BaseUserManager):
         user.is_superuser = True
         user.save(using=self._db)
         return user
-
-    # def create_admin(self, email, password=None):
-    #     """Create and save new admin"""
-    #     user = self.create_user(email, password)
-    #     user.is_admin = True
-    #     user.is_staff = True
-    #     return user
 
 
 class User(AbstractBaseUser, PermissionsMixin):
@@ -63,3 +55,13 @@ class Applications(models.Model):
     last_name = models.CharField(max_length=20, null=True, blank=True)
     contact = models.CharField(max_length=12, null=True, blank=True)
     city = models.CharField(max_length=50, null=True, blank=True)
+
+
+class AccessControl(models.Model):
+    """access privileges of user groups in the system."""
+    model = models.CharField(max_length=50)
+    create = models.BooleanField(default=False)
+    read = models.BooleanField(default=False)
+    update = models.BooleanField(default=False)
+    delete = models.BooleanField(default=False)
+    group = models.ForeignKey(Group, on_delete=models.CASCADE, null=True, blank=True)
