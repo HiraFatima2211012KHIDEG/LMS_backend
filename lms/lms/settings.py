@@ -2,6 +2,10 @@
 from pathlib import Path
 import os
 import datetime
+
+# Load environment variables from .env file
+
+
 # from dotenv import read_env
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -76,10 +80,19 @@ WSGI_APPLICATION = 'lms.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'HOST': os.environ.get('DB_HOST'),
-        'NAME': os.environ.get('DB_NAME'),
-        'USER': os.environ.get('DB_USER'),
-        'PASSWORD': os.environ.get('DB_PASS')
+        # 'HOST': os.environ.get('DB_HOST'),
+        # 'NAME': os.environ.get('DB_NAME'),
+        # 'USER': os.environ.get('DB_USER'),
+        # 'PASSWORD': os.environ.get('DB_PASSWORD'),
+        'PORT' : 5432,
+        'HOST': 'localhost',
+        'NAME': 'lms_db',
+        'USER': 'postgres',
+        'PASSWORD': 'postgres',
+
+
+
+
     }
 }
 
@@ -148,6 +161,7 @@ SIMPLE_JWT = {
     "SIGNING_KEY": SECRET_KEY,
 }
 
+PASSWORD_RESET_TIMEOUT = 600  # 600Sec = 10 Min
 
 
 # Static files (CSS, JavaScript, Images)
