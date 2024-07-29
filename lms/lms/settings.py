@@ -3,10 +3,11 @@ from pathlib import Path
 import os
 import datetime
 
+
+from dotenv import load_dotenv
+
 # Load environment variables from .env file
-
-
-# from dotenv import read_env
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -36,7 +37,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework.authtoken',
     # "rest_framework_simplejwt.token_blacklist",
-    # "corsheaders",
+    "corsheaders",
     'drf_spectacular',
     'accounts',
     'core'
@@ -80,15 +81,15 @@ WSGI_APPLICATION = 'lms.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        # 'HOST': os.environ.get('DB_HOST'),
-        # 'NAME': os.environ.get('DB_NAME'),
-        # 'USER': os.environ.get('DB_USER'),
-        # 'PASSWORD': os.environ.get('DB_PASSWORD'),
-        'PORT' : 5432,
-        'HOST': 'localhost',
-        'NAME': 'lms_db',
-        'USER': 'postgres',
-        'PASSWORD': 'postgres',
+        'HOST': os.environ.get('DB_HOST'),
+        'NAME': os.environ.get('DB_NAME'),
+        'USER': os.environ.get('DB_USER'),
+        'PASSWORD': os.environ.get('DB_PASSWORD'),
+        # 'PORT' : 5432,
+        # 'HOST': 'localhost',
+        # 'NAME': 'lms_db',
+        # 'USER': 'postgres',
+        # 'PASSWORD': 'postgres',
 
 
 
@@ -123,7 +124,7 @@ CORS_ORIGIN_WHITELIST = [
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
-    "http://localhost:3001"
+    "http://127.0.0.1:3000",
 ]
 
 
@@ -155,7 +156,7 @@ SPECTACULAR_SETTINGS = {
 }
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": datetime.timedelta(days=1),
+    "ACCESS_TOKEN_LIFETIME": datetime.timedelta(hours=2),
     "REFRESH_TOKEN_LIFETIME": datetime.timedelta(days=1),
     "ALGORITHM": "HS256",
     "SIGNING_KEY": SECRET_KEY,
@@ -165,9 +166,9 @@ MAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'maazjavaidsiddique10@gmail.com'
-EMAIL_HOST_PASSWORD = 'hmsp qgbw pvvo twrc'
-EMAIL_FROM_ADDRESS = 'maazjavaidsiddique10@gmail.com'
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD")
+EMAIL_FROM_ADDRESS = os.environ.get("EMAIL_HOST_USER")
 EMAIL_DEBUG = True
 
 

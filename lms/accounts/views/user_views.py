@@ -78,36 +78,43 @@ class UserLoginView(views.APIView):
         data = request.data
         if 'email' not in data: return Response({'status_code' : status.HTTP_400_BAD_REQUEST, 'message' : 'Email is not provided.'})
         if 'password' not in data: return Response({'status_code' : status.HTTP_400_BAD_REQUEST, 'message' : 'Password is not provided.'})
-        data['email'] = data.get('email', '').lower()
         serializer = UserLoginSerializer(data=data)
-        if serializer.is_valid(raise_exception=True):
-            user = authenticate(
-                email=serializer.data["email"], password=serializer.data["password"]
-            )
-            if user is not None:
-                tokens = self.get_tokens_for_user(user)
-                user_group_id = Group.objects.get(user_id = user.id).id 
-                permission = self.get_group_permissions(user_group_id)
-                return Response({
-                        'status_code' : status.HTTP_200_OK,
-                        'message': 'Login Successful.',
-                        'response' : {
-                            'token' : tokens,
-                            'permissions' : permission
-                        } 
-                        })
-            else:
-                return Response({
-                        'status_code' : status.HTTP_401_UNAUTHORIZED,
-                        'message': 'Invalid credentials.'
-                        },
+        try:
+            if serializer.is_valid(raise_exception=True):
+                user = authenticate(
+                    email=serializer.validated_data["email"], password=serializer.validated_data["password"]
                 )
-        return Response({
-                        'status_code' : status.HTTP_400_BAD_REQUEST,
-                        'message': 'Unable to login.',
-                        'response' : serializer.errors
+                if user is not None:
+                    tokens = self.get_tokens_for_user(user)
+                    group = user.groups.get()
+                    permission = self.get_group_permissions(group.id)
+                    permissions = dict((k, v) for k, v in permission.items() if v)
+                    return Response({
+                            'status_code' : status.HTTP_200_OK,
+                            'message': 'Login Successful.',
+                            'response' : {
+                                'token' : tokens,
+                                'role' : group.name,
+                                'permissions' : permissions
+                            }
+                            })
+                else:
+                    return Response({
+                            'status_code' : status.HTTP_401_UNAUTHORIZED,
+                            'message': 'Invalid credentials.'
+                            },
+                    )
+            return Response({
+                            'status_code' : status.HTTP_400_BAD_REQUEST,
+                            'message': 'Unable to login.',
+                            'response' : serializer.errors
 
-        })
+            })
+        except Group.DoesNotExist:
+            return Response({
+                        'status_code' : status.HTTP_404_NOT_FOUND,
+                        'message': 'Group not found.',
+            }) 
     
     def get_tokens_for_user(self, user):
         """
@@ -128,7 +135,7 @@ class UserLoginView(views.APIView):
         except Exception as e:
             raise Exception(f"Error generating tokens: {str(e)}")
 
-    def get_group_permissions(group_id):
+    def get_group_permissions(self, group_id):
         """Retrieve all the permissions related to a user group"""
         permissions_dict = {}
         access_controls = AccessControl.objects.filter(group_id=group_id)
@@ -173,20 +180,49 @@ class UserProfileView(views.APIView):
                       or error details if an exception occurs.
         """
         user = request.user
-        try:
-            user_profile = User.objects.get(id=user.id)
-            serializer = UserProfileSerializer(user_profile)
-            return Response({
-                        'status_code' : status.HTTP_200_OK,
-                        'message': 'User profile fetched.',
-                        'response' : serializer.data
-
+        serializer = UserProfileSerializer(user)
+        return Response({
+            'status_code': status.HTTP_200_OK,
+            'message': 'User profile fetched successfully.',
+            'response': serializer.data
         })
-        except User.DoesNotExist:
+        
+class UserProfileUpdateView(views.APIView):
+    """
+    View to handle updating the authenticated user's profile.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def patch(self, request):
+        """
+        Handle PATCH requests to update user profile.
+
+        Args:
+            request (Request): The HTTP request object containing user data.
+
+        Returns:
+            Response: A Response object with the updated user profile data if successful,
+                      or error details if validation fails.
+        """
+        user = request.user
+        serializer = UserProfileUpdateSerializer(user, data=request.data, partial=True)
+        
+        if serializer.is_valid(raise_exception=True):
+            serializer.save()
             return Response({
-                        'status_code' : status.HTTP_404_NOT_FOUND,
-                        'message': 'User not found.',
+                'status_code': status.HTTP_200_OK,
+                'message': 'User profile updated successfully.',
+                'response': serializer.data
             })
+        
+        return Response({
+            'status_code': status.HTTP_400_BAD_REQUEST,
+            'message': 'Unable to update user profile.',
+            'response': serializer.errors
+        })
+
+
         
 
 class ChangePasswordView(views.APIView):
@@ -222,7 +258,7 @@ class ChangePasswordView(views.APIView):
             return Response({
                         'status_code' : status.HTTP_200_OK,
                         'message': 'Password changed successfully.',
-                        'response' : serializer.data
+                        # 'response' : serializer.data
 
         }, status=status.HTTP_200_OK)
         else:
@@ -282,8 +318,6 @@ class ResetPasswordView(views.APIView):
         data = request.data
         if 'email' not in data: return Response({'status_code' : status.HTTP_400_BAD_REQUEST, 'message' : 'Email is not provided.'})
 
-        email = data.get('email', '').lower()
-        data['email'] = email
 
         serializer = ResetPasswordSerializer(data=data)
         if serializer.is_valid(raise_exception=True):
