@@ -14,7 +14,8 @@ logger = logging.getLogger(__name__)
 
 
 class ProgramListCreateAPIView(APIView):
-    permission_classes = (permissions.AllowAny,)
+    # permission_classes = (permissions.IsAuthenticated,)
+
 
     def get(self, request, format=None):
         programs = Program.objects.all()
@@ -47,7 +48,8 @@ class ProgramListCreateAPIView(APIView):
 
 
 class ProgramDetailAPIView(APIView):
-    permission_classes = (permissions.AllowAny,)
+    # permission_classes = (permissions.IsAuthenticated,)
+
 
     def get(self, request, pk, format=None):
         program = get_object_or_404(Program, pk=pk)
@@ -88,7 +90,8 @@ class ProgramDetailAPIView(APIView):
         }, status=status.HTTP_204_NO_CONTENT)
 
 class CourseListCreateAPIView(APIView):
-    permission_classes = (permissions.AllowAny,)
+    # permission_classes = (permissions.IsAuthenticated,)
+
 
     def get(self, request, format=None):
         courses = Course.objects.all()
@@ -118,7 +121,8 @@ class CourseListCreateAPIView(APIView):
         }, status=status.HTTP_400_BAD_REQUEST)
 
 class CourseDetailAPIView(APIView):
-    permission_classes = (permissions.AllowAny,)
+    # permission_classes = (permissions.IsAuthenticated,)
+
 
     def get(self, request, pk, format=None):
         course = get_object_or_404(Course, pk=pk)
@@ -161,7 +165,8 @@ class CourseDetailAPIView(APIView):
         }, status=status.HTTP_204_NO_CONTENT)
 
 class ModuleListCreateAPIView(APIView):
-    permission_classes = (permissions.AllowAny,)
+    # permission_classes = (permissions.IsAuthenticated,)
+
 
     def get(self, request, format=None):
         modules = Module.objects.all()
@@ -174,8 +179,12 @@ class ModuleListCreateAPIView(APIView):
         })
 
     def post(self, request, format=None):
-        serializer = ModuleSerializer(data=request.data)
+        data = request.data
+        print("Request Data:", data)
+        serializer = ModuleSerializer(data=data)
         if serializer.is_valid():
+            print("Validated Data:", serializer.validated_data)
+        
             serializer.save()
             logger.info("Created a new module")
             return Response({
@@ -191,7 +200,8 @@ class ModuleListCreateAPIView(APIView):
         },status=status.HTTP_400_BAD_REQUEST)
 
 class ModuleDetailAPIView(APIView):
-    permission_classes = (permissions.AllowAny,)
+    # permission_classes = (permissions.IsAuthenticated,)
+
 
     def get(self, request, pk, format=None):
         module = get_object_or_404(Module, pk=pk)
@@ -233,7 +243,8 @@ class ModuleDetailAPIView(APIView):
 
 
 class ToggleActiveStatusAPIView(APIView):
-    permission_classes = (permissions.AllowAny,)
+    # permission_classes = (permissions.IsAuthenticated,)
+
 
     def patch(self, request, model_name, pk, format=None):
         model = None
