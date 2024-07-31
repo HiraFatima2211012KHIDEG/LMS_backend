@@ -25,13 +25,16 @@ def update_access_control(sender, instance, action, reverse, pk_set, **kwargs):
                     'add': 'create',
                     'view': 'read',
                     'change': 'update',
-                    'delete': 'delete'
+                    'delete': 'remove'
                 }
                 for perm_prefix, access_field in perm_map.items():
                     if permission.codename.startswith(f'{perm_prefix}_'):
                         setattr(access_control, access_field, (action == 'post_add'))
                         break
                 access_control.save()
+
+                if not (access_control.create or access_control.read or access_control.update or access_control.remove):
+                    access_control.delete()
 
             except Permission.DoesNotExist:
                 print(f"Permission with id {permission_id} does not exist.")

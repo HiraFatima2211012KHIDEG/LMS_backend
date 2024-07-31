@@ -36,17 +36,7 @@ class AccessControlTestCase(TestCase):
         self.assertTrue(access_control.create)
         self.assertFalse(access_control.read)
         self.assertFalse(access_control.update)
-        self.assertFalse(access_control.delete)
-
-    def test_remove_permission_from_group(self):
-        """Test remove a permission from group"""
-        self.group.permissions.add(self.add_permission)
-        self.group.permissions.remove(self.add_permission)
-        access_control = AccessControl.objects.get(group=self.group, model=MODEL)
-        self.assertFalse(access_control.create)
-        self.assertFalse(access_control.read)
-        self.assertFalse(access_control.update)
-        self.assertFalse(access_control.delete)
+        self.assertFalse(access_control.remove)
 
     def test_add_multiple_permissions_to_group(self):
         """Test add multiple permissions to a model is successful."""
@@ -55,7 +45,7 @@ class AccessControlTestCase(TestCase):
         self.assertTrue(access_control.create)
         self.assertTrue(access_control.read)
         self.assertTrue(access_control.update)
-        self.assertFalse(access_control.delete)
+        self.assertFalse(access_control.remove)
 
     def test_remove_multiple_permissions_from_group(self):
         """Test remove multiple permissions to a model is successful."""
@@ -65,32 +55,48 @@ class AccessControlTestCase(TestCase):
         self.assertFalse(access_control.create)
         self.assertFalse(access_control.read)
         self.assertTrue(access_control.update)
-        self.assertFalse(access_control.delete)
+        self.assertFalse(access_control.remove)
 
     def test_add_permission_when_access_control_already_exists(self):
         """Test adding a new permission updates the existing record."""
-        AccessControl.objects.create(group=self.group, model=MODEL, create=False, read=False, update=False, delete=False)
+        AccessControl.objects.create(group=self.group, model=MODEL, create=False, read=False, update=False, remove=False)
         self.group.permissions.add(self.add_permission)
         access_control = AccessControl.objects.get(group=self.group, model=MODEL)
         self.assertTrue(access_control.create)
         self.assertFalse(access_control.read)
         self.assertFalse(access_control.update)
-        self.assertFalse(access_control.delete)
+        self.assertFalse(access_control.remove)
 
-    def test_remove_permission_when_access_control_already_exists(self):
-        """Test removing a new permission updates the existing record."""
-        AccessControl.objects.create(group=self.group, model=MODEL, create=True, read=False, update=False, delete=False)
-        self.group.permissions.remove(self.add_permission)
-        access_control = AccessControl.objects.get(group=self.group, model=MODEL)
-        self.assertFalse(access_control.create)
-        self.assertFalse(access_control.read)
-        self.assertFalse(access_control.update)
-        self.assertFalse(access_control.delete)
 
     def test_no_permissions_in_group(self):
         """Test no permissions is assigned to a group."""
         with self.assertRaises(AccessControl.DoesNotExist):
             AccessControl.objects.get(group=self.group, model=MODEL)
+
+    def test_remove_all_permissions_deletes_access_control(self):
+        """Test that removing all permissions deletes the AccessControl record."""
+        self.group.permissions.add(self.add_permission, self.view_permission, self.change_permission)
+        self.group.permissions.remove(self.add_permission, self.view_permission, self.change_permission)
+        with self.assertRaises(AccessControl.DoesNotExist):
+            AccessControl.objects.get(group=self.group, model=MODEL)
+
+    def test_add_and_remove_permission_updates_access_control(self):
+        """Test that adding and then removing a permission updates AccessControl correctly."""
+        self.group.permissions.add(self.add_permission)
+        self.group.permissions.remove(self.add_permission)
+        with self.assertRaises(AccessControl.DoesNotExist):
+            AccessControl.objects.get(group=self.group, model=MODEL)
+
+    def test_add_then_remove_then_add_permission(self):
+        """Test adding, removing, and re-adding a permission updates AccessControl correctly."""
+        self.group.permissions.add(self.add_permission)
+        self.group.permissions.remove(self.add_permission)
+        self.group.permissions.add(self.add_permission)
+        access_control = AccessControl.objects.get(group=self.group, model=MODEL)
+        self.assertTrue(access_control.create)
+        self.assertFalse(access_control.read)
+        self.assertFalse(access_control.update)
+        self.assertFalse(access_control.remove)
 
     def tearDown(self):
         self.group.permissions.clear()

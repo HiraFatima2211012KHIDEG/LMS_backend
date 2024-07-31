@@ -21,7 +21,7 @@ SECRET_KEY = 'django-insecure-y$aw0745t@#7s@v8c&^_fr&sh$snyd^32*jn_8p2436#acbql(
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1','https://80n6nqm0-3001.inc1.devtunnels.ms/']
 
 
 # Application definition
@@ -36,7 +36,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework.authtoken',
     # "rest_framework_simplejwt.token_blacklist",
-    # "corsheaders",
+    "corsheaders",
     'drf_spectacular',
     'accounts',
     'core'
@@ -80,19 +80,11 @@ WSGI_APPLICATION = 'lms.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        # 'HOST': os.environ.get('DB_HOST'),
-        # 'NAME': os.environ.get('DB_NAME'),
-        # 'USER': os.environ.get('DB_USER'),
-        # 'PASSWORD': os.environ.get('DB_PASSWORD'),
-        'PORT' : 5432,
-        'HOST': 'localhost',
-        'NAME': 'lms_db',
-        'USER': 'postgres',
-        'PASSWORD': 'postgres',
-
-
-
-
+        'HOST': os.getenv('DB_HOST'),
+        'NAME': os.getenv('DB_NAME'),
+        'USER': os.getenv('DB_USER'),
+        'PASSWORD': os.getenv('DB_PASSWORD'),
+        
     }
 }
 
