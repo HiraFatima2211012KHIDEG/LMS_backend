@@ -65,14 +65,13 @@ class UserLoginView(views.APIView):
             )
             if user is not None:
                 tokens = self.get_tokens_for_user(user)
-                group = user.groups.get()
-                permission = self.get_group_permissions(group.id)
+                user_group_id = Group.objects.get(user_id = user.id).id
+                permission = self.get_group_permissions(user_group_id)
                 return Response({
                         'status_code' : status.HTTP_200_OK,
                         'message': 'Login Successful.',
                         'response' : {
                             'token' : tokens,
-                            'role' : group,
                             'permissions' : permission
                         }
                         })
@@ -108,7 +107,7 @@ class UserLoginView(views.APIView):
         except Exception as e:
             raise Exception(f"Error generating tokens: {str(e)}")
 
-    def get_group_permissions(group_id):
+    def get_group_permissions(self, group_id):
         """Retrieve all the permissions related to a user group"""
         permissions_dict = {}
         access_controls = AccessControl.objects.filter(group_id=group_id)
@@ -153,16 +152,36 @@ class UserProfileView(views.APIView):
                       or error details if an exception occurs.
         """
         user = request.user
-        try:
-            user_profile = User.objects.get(id=user.id)
-            serializer = UserProfileSerializer(user_profile)
-            return Response({
-                        'status_code' : status.HTTP_200_OK,
-                        'message': 'User profile fetched.',
-                        'response' : serializer.data
-
+        serializer = UserProfileSerializer(user)
+        return Response({
+            'status_code': status.HTTP_200_OK,
+            'message': 'User profile fetched successfully.',
+            'response': serializer.data
         })
-        except User.DoesNotExist:
+
+class UserProfileUpdateView(views.APIView):
+    """
+    View to handle updating the authenticated user's profile.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def patch(self, request):
+        """
+        Handle PATCH requests to update user profile.
+
+        Args:
+            request (Request): The HTTP request object containing user data.
+
+        Returns:
+            Response: A Response object with the updated user profile data if successful,
+                      or error details if validation fails.
+        """
+        user = request.user
+        serializer = UserProfileUpdateSerializer(user, data=request.data, partial=True)
+
+        if serializer.is_valid(raise_exception=True):
+            serializer.save()
             return Response({
                         'status_code' : status.HTTP_404_NOT_FOUND,
                         'message': 'User not found.',
@@ -202,7 +221,7 @@ class ChangePasswordView(views.APIView):
             return Response({
                         'status_code' : status.HTTP_200_OK,
                         'message': 'Password changed successfully.',
-                        'response' : serializer.data
+                        # 'response' : serializer.data
 
         }, status=status.HTTP_200_OK)
         else:
@@ -262,8 +281,6 @@ class ResetPasswordView(views.APIView):
         data = request.data
         if 'email' not in data: return Response({'status_code' : status.HTTP_400_BAD_REQUEST, 'message' : 'Email is not provided.'})
 
-        email = data.get('email', '').lower()
-        data['email'] = email
 
         serializer = ResetPasswordSerializer(data=data)
         if serializer.is_valid(raise_exception=True):

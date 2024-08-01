@@ -116,3 +116,4 @@ class StudentInstructor(models.Model):
     session = models.ForeignKey(Sessions, on_delete=models.CASCADE)
     batch = models.ForeignKey(Batch, on_delete=models.CASCADE)
     registration_id = models.CharField(max_length=20)
+    registration_number = models.IntegerField()
