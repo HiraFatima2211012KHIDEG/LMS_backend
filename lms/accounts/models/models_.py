@@ -17,6 +17,7 @@ class City(models.Model):
 
 class Batch(models.Model):
     """Batches of cities."""
+    batch = models.CharField(max_length=10, primary_key=True)
     city = models.ForeignKey(City, on_delete=models.CASCADE)
     year = models.IntegerField()
     no_of_students = models.IntegerField()
@@ -24,6 +25,14 @@ class Batch(models.Model):
     end_date = models.DateField()
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+
+    def save(self, *args, **kwargs):
+        if not self.batch:
+            self.batch = f"{self.city.shortname}-{str(self.year)[-2:]}"
+        super(Batch, self).save(*args, **kwargs)
+
+    class Meta:
+        unique_together = ('city', 'year')
 
 
 
@@ -141,9 +150,20 @@ class Sessions(models.Model):
     end_time = models.DateTimeField(null=True, blank=True)
 
 
+
 class StudentInstructor(models.Model):
-    """Extra details of Student and Instructors in the System."""
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    """Extra details of Students and Instructors in the System."""
+    registration_id = models.CharField(max_length=20, primary_key=True)
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
     session = models.ForeignKey(Sessions, on_delete=models.CASCADE)
     batch = models.ForeignKey(Batch, on_delete=models.CASCADE)
-    registration_id = models.CharField(max_length=20)
+
+
+    def save(self, *args, **kwargs):
+        if not self.registration_id:
+            batch = self.batch.batch
+            self.registration_id = f"{batch}-{self.user.id}"
+        super(StudentInstructor, self).save(*args, **kwargs)
+
+    class Meta:
+        unique_together = ('batch', 'user')

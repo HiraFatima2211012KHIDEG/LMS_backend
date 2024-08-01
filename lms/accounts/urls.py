@@ -4,7 +4,14 @@ Urls for the Accounts app
 from django.urls import path
 from .views.application_views import CreateApplicationView
 from .views import user_views
-from .views.location_views import CityViewSet, BatchViewSet, LocationViewSet, SessionsViewSet
+from .views.location_views import (
+    CityViewSet,
+    BatchViewSet,
+    LocationViewSet,
+    SessionsViewSet,
+    CreateStudentInstructorView,
+    StudentInstructorDetailView
+)
 from rest_framework_simplejwt.views import  TokenObtainPairView, TokenRefreshView
 
 urlpatterns = [
@@ -26,5 +33,7 @@ urlpatterns = [
     path('location/<int:pk>/', LocationViewSet.as_view({'get': 'retrieve', 'put': 'update', 'delete': 'destroy'}), name='location-detail'),
     path('session/', SessionsViewSet.as_view({'get': 'list', 'post': 'create'}), name='session-list-create'),
     path('session/<int:pk>/', SessionsViewSet.as_view({'get': 'retrieve', 'put': 'update', 'delete': 'destroy'}), name='session-detail'),
+    path('student-instructor/', CreateStudentInstructorView.as_view(), name='create-student-instructor'),
+    path('student-instructor/<str:registration_id>/', StudentInstructorDetailView.as_view(), name='detail-student-instructor'),
 
 ]

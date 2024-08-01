@@ -29,7 +29,6 @@ class CreateUserView(generics.CreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
-        print('this view is running')
         return Response({
             'status_code': status.HTTP_200_OK,
             'message': 'User created successfully',

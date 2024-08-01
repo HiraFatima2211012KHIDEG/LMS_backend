@@ -1,7 +1,19 @@
-from rest_framework import viewsets, mixins, status
+from rest_framework import viewsets, mixins, status, generics
 from rest_framework.response import Response
-from ..models.models_ import City, Batch, Location, Sessions
-from ..serializers.location_serializers import CitySerializer, BatchSerializer, LocationSerializer, SessionsSerializer
+from ..models.models_ import (
+    City,
+    Batch,
+    Location,
+    Sessions,
+    StudentInstructor
+)
+from ..serializers.location_serializers import (
+    CitySerializer,
+    BatchSerializer,
+    LocationSerializer,
+    SessionsSerializer,
+    StudentInstructorSerializer
+    )
 
 class CustomResponseMixin:
     def custom_response(self, status_code, message, data):
@@ -85,3 +97,37 @@ class SessionsViewSet(CustomResponseMixin, mixins.CreateModelMixin, mixins.Retri
     def destroy(self, request, *args, **kwargs):
         response = super().destroy(request, *args, **kwargs)
         return self.custom_response(status.HTTP_204_NO_CONTENT, 'Session deleted successfully', None)
+
+
+class CreateStudentInstructorView(generics.CreateAPIView):
+    """Create a new student/instructor in the system."""
+    serializer_class = StudentInstructorSerializer
+
+    def create(self, request, *args, **kwargs):
+        user = request.data.get('user')
+        session = request.data.get('session')
+        batch_id = request.data.get('batch')
+
+        try:
+            batch = Batch.objects.get(batch=batch_id)
+        except Batch.DoesNotExist:
+            return Response({'error': 'Batch does not exist.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if StudentInstructor.objects.filter(user=user, batch=batch).exists():
+            return Response({'error': 'This user is already registered for this batch.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            student_instructor = serializer.save()
+            return Response({'status_code': status.HTTP_201_CREATED,
+                  'message': 'StudentInstructor successfully created',
+                  'response': serializer.data})
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class StudentInstructorDetailView(generics.RetrieveAPIView):
+    """Retrieve a student/instructor by registration_id."""
+    queryset = StudentInstructor.objects.all()
+    serializer_class = StudentInstructorSerializer
+    lookup_field = 'registration_id'
