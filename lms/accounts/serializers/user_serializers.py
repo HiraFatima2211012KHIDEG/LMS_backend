@@ -12,7 +12,7 @@ from django.utils.encoding import DjangoUnicodeDecodeError, force_bytes, smart_s
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from django.contrib.auth.hashers import check_password
 import re
-from accounts.utils import send_email
+# from accounts.utils import send_email
 
 class UserSerializer(serializers.ModelSerializer):
     """Serializer for the user object."""
@@ -34,7 +34,7 @@ class UserSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('Password must contain letters, numbers, and special characters.')
 
         return super().validate(attrs)
-    
+
     def create(self, validated_data):
         """Create and Return a user with encrypted password."""
         return get_user_model().objects.create_user(**validated_data)
@@ -56,14 +56,25 @@ class UserLoginSerializer(serializers.Serializer):
     password = serializers.CharField(style = {'input_type' : 'password'}, write_only = True)
 
 
+# class UserLoginSerializer(serializers.ModelSerializer):
+#     """Serializer for user login"""
+
+#     class Meta:
+#         model = get_user_model()
+#         fields = ['email', 'password']
+#         extra_kwargs = {'password': {'write_only': True, 'min_length':  5}}
+
+    # email = serializers.EmailField()
+    # password = serializers.CharField(style = {'input_type' : 'password'}, write_only = True)
+
+
 class UserProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
         fields = ['first_name', 'last_name','contact', 'city']
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
+
 class UserProfileUpdateSerializer(serializers.ModelSerializer):
     """Serializer for updating user profile."""
 
@@ -76,11 +87,6 @@ class UserProfileUpdateSerializer(serializers.ModelSerializer):
             'contact': {'required': False},
         }
 
-
-=======
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 class ChangePasswordSerializer(serializers.Serializer):
     old_password = serializers.CharField(style={'input_type': 'password'}, write_only = True)
     password = serializers.CharField(max_length=50,style={'input_type': 'password'}, write_only = True)
@@ -105,7 +111,7 @@ class ChangePasswordSerializer(serializers.Serializer):
 
         if not re.match(r'^(?=.*[a-zA-Z])(?=.*\d)(?=.*[@$!%*?&^#(){}[\]=+/\\|_\-<>])[A-Za-z\d@$!%*?&^#(){}[\]=+/\\|_\-<>]+$', password):
             raise serializers.ValidationError('Password must contain letters, numbers, and special characters.')
-        
+
         if user and check_password(password, user.password):
             raise serializers.ValidationError("New password cannot be the same as the old one.")
 
@@ -116,28 +122,15 @@ class ChangePasswordSerializer(serializers.Serializer):
         user = self.context.get('user')
         if not check_password(old_password, user.password):
             raise serializers.ValidationError('Old password is incorrect.')
-        
+
         return old_password
 
     def save(self):
         user = self.context.get('user')
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
         password = self.validated_data['password']
         user.set_password(password)
-        user.save()    
-    
-=======
-=======
->>>>>>> Stashed changes
-        new_password = self.validated_data['new_password']
-        user.set_password(new_password)
         user.save()
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 
 class SetPasswordSerializer(serializers.Serializer):
     """
@@ -163,7 +156,7 @@ class SetPasswordSerializer(serializers.Serializer):
 
         if not re.match(r'^(?=.*[a-zA-Z])(?=.*\d)(?=.*[@$!%*?&^#(){}[\]=+/\\|_\-<>])[A-Za-z\d@$!%*?&^#(){}[\]=+/\\|_\-<>]+$', value):
             raise serializers.ValidationError("Password should contain letters, numbers, and special characters.")
-        
+
 
         return value
 

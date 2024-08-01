@@ -10,7 +10,7 @@ from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 from accounts.models import User
 from django.contrib.auth.models import Group
-
+from drf_spectacular.utils import extend_schema
 from ..serializers.user_serializers import (
     UserSerializer,
 )
@@ -25,12 +25,31 @@ class CreateUserView(generics.CreateAPIView):
     """Create a new user in the system."""
     serializer_class = UserSerializer
     permission_classes = (permissions.AllowAny,)
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        print('this view is running')
+        return Response({
+            'status_code': status.HTTP_200_OK,
+            'message': 'User created successfully',
+            'response' : serializer.data
+        })
 
 
 class UserLoginView(views.APIView):
     """
     View to handle user login and generate authentication tokens.
     """
+    @extend_schema(
+        request=UserLoginSerializer,
+        responses={
+            200: 'Login Successful.',
+            400: 'Bad Request.',
+            401: 'Unauthorized.',
+        }
+    )
+
 
     def post(self, request):
         """

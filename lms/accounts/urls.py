@@ -3,7 +3,8 @@ Urls for the Accounts app
 """
 from django.urls import path
 from .views.application_views import CreateApplicationView
-from . views import user_views
+from .views import user_views
+from .views.location_views import CityViewSet, BatchViewSet, LocationViewSet, SessionsViewSet
 from rest_framework_simplejwt.views import  TokenObtainPairView, TokenRefreshView
 
 urlpatterns = [
@@ -16,7 +17,14 @@ urlpatterns = [
     path('user-profile/', user_views.UserProfileView.as_view(), name='user-profile'),
     path('set-password/', user_views.SetPasswordView.as_view(), name='set-password'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-    path('user-profile-update/', user_views.UserProfileUpdateView.as_view(), name='user-profile-update')
+    path('user-profile-update/', user_views.UserProfileUpdateView.as_view(), name='user-profile-update'),
+    path('cities/', CityViewSet.as_view({'get': 'list', 'post': 'create'}), name='city-list-create'),
+    path('cities/<int:pk>/', CityViewSet.as_view({'get': 'retrieve', 'put': 'update', 'delete': 'destroy'}), name='city-detail'),
+    path('batch/', BatchViewSet.as_view({'get': 'list', 'post': 'create'}), name='batch-list-create'),
+    path('batch/<int:pk>/', BatchViewSet.as_view({'get': 'retrieve', 'put': 'update', 'delete': 'destroy'}), name='batch-detail'),
+    path('location/', LocationViewSet.as_view({'get': 'list', 'post': 'create'}), name='location-list-create'),
+    path('location/<int:pk>/', LocationViewSet.as_view({'get': 'retrieve', 'put': 'update', 'delete': 'destroy'}), name='location-detail'),
+    path('session/', SessionsViewSet.as_view({'get': 'list', 'post': 'create'}), name='session-list-create'),
+    path('session/<int:pk>/', SessionsViewSet.as_view({'get': 'retrieve', 'put': 'update', 'delete': 'destroy'}), name='session-detail'),
 
-    # path('logout/', user_views.LogoutView.as_view(), name='logout'),
 ]

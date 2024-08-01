@@ -10,5 +10,5 @@ class ApplicationSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
     def create(self, validated_data):
-        """Create and Return a user with encrypted password."""
+        """Create and Return a application"""
         return Applications.objects.create(**validated_data)
