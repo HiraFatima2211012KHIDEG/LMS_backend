@@ -3,14 +3,14 @@ from rest_framework.response import Response
 from rest_framework import status,permissions
 from django.shortcuts import get_object_or_404
 from ..models.models import Content
-from ..serializers import ContentSerializer, ContentFile
+from ..serializers import ContentSerializer, ContentFile,ContentFileSerializer
 import logging
 
 logger = logging.getLogger(__name__)
 
 
 class ContentListCreateAPIView(APIView):
-    # permission_classes = (permissions.IsAuthenticated,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request, format=None):
         contents = Content.objects.all()
@@ -35,15 +35,15 @@ class ContentListCreateAPIView(APIView):
                 'status_code': status.HTTP_201_CREATED,
                 'message': 'Content created successfully',
                 'response': serializer.data
-            })
+            }, status=status.HTTP_201_CREATED)
         return Response({
             'status_code': status.HTTP_400_BAD_REQUEST,
             'message': 'Error creating content',
             'response': serializer.errors
-        })
+        }, status=status.HTTP_400_BAD_REQUEST)
 
 class ContentDetailAPIView(APIView):
-    # permission_classes = (permissions.IsAuthenticated,)
+    permission_classes = (permissions.IsAuthenticated,)
     def get(self, request, pk, format=None):
         content = get_object_or_404(Content, pk=pk)
         serializer = ContentSerializer(content)
@@ -83,4 +83,69 @@ class ContentDetailAPIView(APIView):
             'status_code': status.HTTP_204_NO_CONTENT,
             'message': 'Content deleted successfully',
             'response': {}
+        }, status=status.HTTP_204_NO_CONTENT)
+
+
+class ContentFileListCreateAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, format=None):
+        content_files = ContentFile.objects.all()
+        serializer = ContentFileSerializer(content_files, many=True)
+        return Response({
+            'status_code': status.HTTP_200_OK,
+            'message': 'Content files retrieved successfully',
+            'response': serializer.data
         })
+
+    def post(self, request, format=None):
+        serializer = ContentFileSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                'status_code': status.HTTP_201_CREATED,
+                'message': 'Content file created successfully',
+                'response': serializer.data
+            }, status=status.HTTP_201_CREATED)
+        return Response({
+            'status_code': status.HTTP_400_BAD_REQUEST,
+            'message': 'Error creating content file',
+            'response': serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+class ContentFileDetailAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, pk, format=None):
+        content_file = get_object_or_404(ContentFile, pk=pk)
+        serializer = ContentFileSerializer(content_file)
+        return Response({
+            'status_code': status.HTTP_200_OK,
+            'message': 'Content file retrieved successfully',
+            'response': serializer.data
+        })
+
+    def put(self, request, pk, format=None):
+        content_file = get_object_or_404(ContentFile, pk=pk)
+        serializer = ContentFileSerializer(content_file, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                'status_code': status.HTTP_200_OK,
+                'message': 'Content file updated successfully',
+                'response': serializer.data
+            })
+        return Response({
+            'status_code': status.HTTP_400_BAD_REQUEST,
+            'message': 'Error updating content file',
+            'response': serializer.errors
+        })
+
+    def delete(self, request, pk, format=None):
+        content_file = get_object_or_404(ContentFile, pk=pk)
+        content_file.delete()
+        return Response({
+            'status_code': status.HTTP_204_NO_CONTENT,
+            'message': 'Content file deleted successfully',
+            'response': {}
+        }, status=status.HTTP_204_NO_CONTENT)

@@ -2,8 +2,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status,permissions
 from django.shortcuts import get_object_or_404
-from ..models.models import Program, Course, Module
-from ..serializers import ProgramSerializer, CourseSerializer, ModuleSerializer
+from ..models.models import Program, Course, Module,Assignment
+from ..serializers import ProgramSerializer, CourseSerializer, ModuleSerializer,ContentFile, AssignmentSerializer
 from rest_framework.permissions import IsAuthenticated
 import logging
 
@@ -14,12 +14,11 @@ logger = logging.getLogger(__name__)
 
 
 class ProgramListCreateAPIView(APIView):
-    # permission_classes = (permissions.IsAuthenticated,)
+    permission_classes = (permissions.IsAuthenticated,)
 
 
     def get(self, request, format=None):
         programs = Program.objects.all()
-        print(programs)
         serializer = ProgramSerializer(programs, many=True)
         logger.info("Retrieved all programs")
         return Response({
@@ -30,7 +29,10 @@ class ProgramListCreateAPIView(APIView):
 
 
     def post(self, request, format=None):
-        serializer = ProgramSerializer(data=request.data)
+        data = request.data.copy()
+        data['created_by'] = request.user.id 
+
+        serializer = ProgramSerializer(data=data)
         if serializer.is_valid():
             serializer.save()
             logger.info("Created a new program")
@@ -48,7 +50,7 @@ class ProgramListCreateAPIView(APIView):
 
 
 class ProgramDetailAPIView(APIView):
-    # permission_classes = (permissions.IsAuthenticated,)
+    permission_classes = (permissions.IsAuthenticated,)
 
 
     def get(self, request, pk, format=None):
@@ -62,8 +64,10 @@ class ProgramDetailAPIView(APIView):
         })
 
     def put(self, request, pk, format=None):
+        data = request.data.copy()
+        data['created_by'] = request.user.id 
         program = get_object_or_404(Program, pk=pk)
-        serializer = ProgramSerializer(program, data=request.data)
+        serializer = ProgramSerializer(program, data=data)
         if serializer.is_valid():
             serializer.save()
             logger.info(f"Updated program with ID: {pk}")
@@ -90,7 +94,7 @@ class ProgramDetailAPIView(APIView):
         }, status=status.HTTP_204_NO_CONTENT)
 
 class CourseListCreateAPIView(APIView):
-    # permission_classes = (permissions.IsAuthenticated,)
+    permission_classes = (permissions.IsAuthenticated,)
 
 
     def get(self, request, format=None):
@@ -104,7 +108,9 @@ class CourseListCreateAPIView(APIView):
         })
 
     def post(self, request, format=None):
-        serializer = CourseSerializer(data=request.data)
+        data = request.data.copy()
+        data['created_by'] = request.user.id 
+        serializer = CourseSerializer(data=data)
         if serializer.is_valid():
             serializer.save()
             logger.info("Created a new course")
@@ -121,7 +127,7 @@ class CourseListCreateAPIView(APIView):
         }, status=status.HTTP_400_BAD_REQUEST)
 
 class CourseDetailAPIView(APIView):
-    # permission_classes = (permissions.IsAuthenticated,)
+    permission_classes = (permissions.IsAuthenticated,)
 
 
     def get(self, request, pk, format=None):
@@ -137,8 +143,10 @@ class CourseDetailAPIView(APIView):
 
 
     def put(self, request, pk, format=None):
+        data = request.data.copy()
+        data['created_by'] = request.user.id 
         course = get_object_or_404(Course, pk=pk)
-        serializer = CourseSerializer(course, data=request.data)
+        serializer = CourseSerializer(course, data=data)
         if serializer.is_valid():
             serializer.save()
             logger.info(f"Updated course with ID: {pk}")
@@ -165,13 +173,11 @@ class CourseDetailAPIView(APIView):
         }, status=status.HTTP_204_NO_CONTENT)
 
 class ModuleListCreateAPIView(APIView):
-    # permission_classes = (permissions.IsAuthenticated,)
-
+    permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request, format=None):
         modules = Module.objects.all()
         serializer = ModuleSerializer(modules, many=True)
-        logger.info("Retrieved all modules")
         return Response({
             'status_code': status.HTTP_200_OK,
             'message': 'Modules retrieved successfully',
@@ -179,34 +185,28 @@ class ModuleListCreateAPIView(APIView):
         })
 
     def post(self, request, format=None):
-        data = request.data
-        print("Request Data:", data)
+        data = request.data.copy()
+        data['created_by'] = request.user.id
         serializer = ModuleSerializer(data=data)
         if serializer.is_valid():
-            print("Validated Data:", serializer.validated_data)
-        
-            serializer.save()
-            logger.info("Created a new module")
+            module = serializer.save()
             return Response({
                 'status_code': status.HTTP_201_CREATED,
                 'message': 'Module created successfully',
-                'response': serializer.data
+                'response': ModuleSerializer(module).data
             }, status=status.HTTP_201_CREATED)
-        logger.error("Error creating a new module: %s", serializer.errors)
         return Response({
             'status_code': status.HTTP_400_BAD_REQUEST,
             'message': 'Error creating module',
             'response': serializer.errors
-        },status=status.HTTP_400_BAD_REQUEST)
+        }, status=status.HTTP_400_BAD_REQUEST)
 
 class ModuleDetailAPIView(APIView):
-    # permission_classes = (permissions.IsAuthenticated,)
-
+    permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request, pk, format=None):
         module = get_object_or_404(Module, pk=pk)
         serializer = ModuleSerializer(module)
-        logger.info(f"Retrieved module with ID: {pk}")
         return Response({
             'status_code': status.HTTP_200_OK,
             'message': 'Module retrieved successfully',
@@ -214,17 +214,17 @@ class ModuleDetailAPIView(APIView):
         })
 
     def put(self, request, pk, format=None):
+        data = request.data.copy()
+        data['created_by'] = request.user.id
         module = get_object_or_404(Module, pk=pk)
-        serializer = ModuleSerializer(module, data=request.data)
+        serializer = ModuleSerializer(module, data=data)
         if serializer.is_valid():
-            serializer.save()
-            logger.info(f"Updated module with ID: {pk}")
+            module = serializer.save()
             return Response({
                 'status_code': status.HTTP_200_OK,
                 'message': 'Module updated successfully',
-                'response': serializer.data
+                'response': ModuleSerializer(module).data
             })
-        logger.error(f"Error updating module with ID {pk}: {serializer.errors}")
         return Response({
             'status_code': status.HTTP_400_BAD_REQUEST,
             'message': 'Error updating module',
@@ -234,16 +234,14 @@ class ModuleDetailAPIView(APIView):
     def delete(self, request, pk, format=None):
         module = get_object_or_404(Module, pk=pk)
         module.delete()
-        logger.info(f"Deleted module with ID: {pk}")
         return Response({
             'status_code': status.HTTP_204_NO_CONTENT,
             'message': 'Module deleted successfully',
             'response': {}
         }, status=status.HTTP_204_NO_CONTENT)
 
-
 class ToggleActiveStatusAPIView(APIView):
-    # permission_classes = (permissions.IsAuthenticated,)
+    permission_classes = (permissions.IsAuthenticated,)
 
 
     def patch(self, request, model_name, pk, format=None):
@@ -251,15 +249,18 @@ class ToggleActiveStatusAPIView(APIView):
         serializer_class = None
         obj = None
 
-        if model_name == 'program':
+        if model_name == 'programs':
             model = Program
             serializer_class = ProgramSerializer
-        elif model_name == 'course':
+        elif model_name == 'courses':
             model = Course
             serializer_class = CourseSerializer
-        elif model_name == 'module':
+        elif model_name == 'modules':
             model = Module
             serializer_class = ModuleSerializer
+        elif model_name == 'assignments':
+            model = Assignment
+            serializer_class = AssignmentSerializer
         else:
             return Response({
                 'status_code': status.HTTP_400_BAD_REQUEST,

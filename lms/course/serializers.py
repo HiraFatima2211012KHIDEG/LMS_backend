@@ -1,18 +1,18 @@
 from rest_framework import serializers
-from .models.models import Program, Course, Module, Content, ContentFile, Assignment, AssignmentSubmission
+from .models.models import *
 
 
 class ProgramSerializer(serializers.ModelSerializer):
     class Meta:
         model = Program
-        fields = ["id", "name", "short_name", "description", "created_by"]
+        fields = ["id", "name", "short_name", "description", "created_by","status"]
 
 
 class CourseSerializer(serializers.ModelSerializer):
-    program = serializers.PrimaryKeyRelatedField(
-        queryset=Program.objects.all(), write_only=True
-    )
-    program_detail = ProgramSerializer(source="program", read_only=True)
+    # program = serializers.PrimaryKeyRelatedField(
+    #     queryset=Program.objects.all(), write_only=True
+    # )
+    # program_detail = ProgramSerializer(source="program", read_only=True)
 
     class Meta:
         model = Course
@@ -20,11 +20,11 @@ class CourseSerializer(serializers.ModelSerializer):
             "id",
             "name",
             "program",
-            "program_detail",
+            # "program_detail",
             "description",
             "created_by",
             "credit_hours",
-            "is_active",
+            "status",
         ]
 
     def create(self, validated_data):
@@ -39,10 +39,10 @@ class CourseSerializer(serializers.ModelSerializer):
 
 
 class ModuleSerializer(serializers.ModelSerializer):
-    course = serializers.PrimaryKeyRelatedField(
-        queryset=Course.objects.all(), write_only=True
-    )
-    course_detail = CourseSerializer(source="course", read_only=True)
+    # course = serializers.PrimaryKeyRelatedField(
+    #     queryset=Course.objects.all(), write_only=True
+    # )
+    # course_detail = CourseSerializer(source="course", read_only=True)
 
     class Meta:
         model = Module
@@ -50,10 +50,10 @@ class ModuleSerializer(serializers.ModelSerializer):
             "id",
             "name",
             "course",
-            "course_detail",
+            # "course_detail",
             "description",
             "created_by",
-            "is_active",
+            "status",
         ]
 
     def create(self, validated_data):
@@ -70,13 +70,13 @@ class ModuleSerializer(serializers.ModelSerializer):
 class ContentFileSerializer(serializers.ModelSerializer):
     class Meta:
         model = ContentFile
-        fields = ['id', 'file']
+        fields = ['id', 'file',"content_id"]
 
 class ContentSerializer(serializers.ModelSerializer):
-    module_details = ModuleSerializer(source="module", read_only=True)
-    module = serializers.PrimaryKeyRelatedField(
-        queryset=Module.objects.all(), write_only=True
-    )
+    # module_details = ModuleSerializer(source="module", read_only=True)
+    # module = serializers.PrimaryKeyRelatedField(
+    #     queryset=Module.objects.all(), write_only=True
+    # )
     files = ContentFileSerializer(many=True, read_only=True)
 
     class Meta:
@@ -84,50 +84,81 @@ class ContentSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "module",
-            "module_details",
+            # "module_details",
             "name",
             "created_at",
             "updated_at",
             "files",
         ]
 
-    # def validate(self, data):
-    #     """Ensure that either video_url or lecture_content is provided."""
-    #     if not data.get('video_url') and not data.get('lecture_content'):
-    #         raise serializers.ValidationError("Either 'video_url' or 'lecture_content' must be provided.")
-    #     return data
-
-
-
-
-    # from django.core.exceptions import ValidationError
-
-    # def validate_file_size(file):
-    #     """Validate file size (e.g., max size of 10MB)."""
-    #     max_size = 10 * 1024 * 1024  # 10 MB
-    #     if file.size > max_size:
-    #         raise ValidationError(f"File size should not exceed {max_size / (1024 * 1024)} MB.")
-
-    # def validate_file_extension(file):
-    #     """Validate file extension."""
-    #     allowed_extensions = ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'txt']
-    #     extension = file.name.split('.')[-1]
-    #     if extension not in allowed_extensions:
-    #         raise ValidationError(f"Unsupported file extension. Allowed extensions: {', '.join(allowed_extensions)}.")
-            
-    # def validate_lecture_content(self, value):
-    #     validate_file_size(value)
-    #     validate_file_extension(value)
-    #     return value
-
+   
 
 class AssignmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Assignment
-        fields = ['id','module' 'created_at', 'is_active', 'question','description','content', 'due_date']
+        fields = ['id','course', 'created_at','created_by', 'question','description','content' ,'due_date', 'status']
 
 
 class AssignmentSubmissionSerializer(serializers.ModelSerializer):
     class Meta:
         model = AssignmentSubmission
-        fields = ['id', 'assignment', 'user', 'submitted_file', 'submitted_at']
+        fields = ['id', 'assignment', 'user', 'submitted_file', 'submitted_at','resubmission','comments']
+
+
+class GradingSerializer(serializers.ModelSerializer):
+    # submission = serializers.PrimaryKeyRelatedField(
+    #     queryset=AssignmentSubmission.objects.all(), write_only=True
+    # )
+    # submission_detail = AssignmentSubmissionSerializer(source="submission", read_only=True)
+    class Meta:
+        model = Grading
+        fields = ['id', 'submission', 'grade','total_grade', 'feedback', 'graded_by', 'graded_at']
+
+
+
+
+class QuizzesSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Quizzes
+        fields = ['id','course', 'created_at', 'created_by', 'question','description','content' ,'due_date', 'status']
+
+
+class QuizSubmissionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = QuizSubmission
+        fields = ['id', 'quiz', 'user', 'quiz_submitted_file', 'quiz_submitted_at','resubmission','comments']
+
+
+class QuizGradingSerializer(serializers.ModelSerializer):
+    # quiz_submissions = serializers.PrimaryKeyRelatedField(
+    #     queryset=QuizSubmission.objects.all(), write_only=True
+    # )
+    # submission_detail = QuizSubmissionSerializer(source="quiz_submissions", read_only=True)
+
+    class Meta:
+        model = QuizGrading
+        fields = ['id', 'quiz_submissions', 'grade', 'total_grade', 'feedback', 'graded_by', 'graded_at']
+
+
+class ProjectSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Project
+        fields = ['id','course', 'created_at', 'created_by', 'title','description','content' ,'due_date', 'status']
+
+
+class ProjectSubmissionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProjectSubmission
+        fields = ['id', 'project', 'user', 'project_submitted_file', 'project_submitted_file','resubmission','comments']
+
+
+class ProjectGradingSerializer(serializers.ModelSerializer):
+    # project_submissions = serializers.PrimaryKeyRelatedField(
+    #     queryset=ProjectSubmission.objects.all(), write_only=True
+    # )
+    # submission_detail = ProjectSubmissionSerializer(source="project_submissions", read_only=True)
+
+    class Meta:
+        model = ProjectGrading
+        fields = ['id', 'project_submissions', 'grade', 'total_grade', 'feedback', 'graded_by', 'graded_at']
+       
