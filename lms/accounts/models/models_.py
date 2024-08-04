@@ -155,7 +155,7 @@ class StudentInstructor(models.Model):
     """Extra details of Students and Instructors in the System."""
     registration_id = models.CharField(max_length=20, primary_key=True)
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    session = models.ForeignKey(Sessions, on_delete=models.CASCADE)
+    session = models.ForeignKey(Sessions, on_delete=models.CASCADE, null=True, blank=True)
     batch = models.ForeignKey(Batch, on_delete=models.CASCADE)
 
 

@@ -1,4 +1,4 @@
-from rest_framework import viewsets, mixins, status, generics
+from rest_framework import viewsets, mixins, status, generics, permissions
 from rest_framework.response import Response
 from ..models.models_ import (
     City,
@@ -31,6 +31,7 @@ class CityViewSet(CustomResponseMixin, mixins.CreateModelMixin, mixins.RetrieveM
                   viewsets.GenericViewSet):
     queryset = City.objects.all()
     serializer_class = CitySerializer
+    # permission_classes = [permissions.IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         response = super().create(request, *args, **kwargs)
@@ -49,6 +50,7 @@ class BatchViewSet(CustomResponseMixin, mixins.CreateModelMixin, mixins.Retrieve
                    viewsets.GenericViewSet):
     queryset = Batch.objects.all()
     serializer_class = BatchSerializer
+    # permission_classes = [permissions.IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         response = super().create(request, *args, **kwargs)
@@ -67,6 +69,7 @@ class LocationViewSet(CustomResponseMixin, mixins.CreateModelMixin, mixins.Retri
                       viewsets.GenericViewSet):
     queryset = Location.objects.all()
     serializer_class = LocationSerializer
+    permission_classes = [permissions.IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         response = super().create(request, *args, **kwargs)
@@ -85,6 +88,7 @@ class SessionsViewSet(CustomResponseMixin, mixins.CreateModelMixin, mixins.Retri
                       viewsets.GenericViewSet):
     queryset = Sessions.objects.all()
     serializer_class = SessionsSerializer
+    permission_classes = [permissions.IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         response = super().create(request, *args, **kwargs)
