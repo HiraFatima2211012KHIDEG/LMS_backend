@@ -2,9 +2,11 @@
 from pathlib import Path
 import os
 import datetime
-import sys
-from dotenv import load_dotenv
 
+# Load environment variables from .env file
+
+
+from dotenv import load_dotenv
 load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -18,9 +20,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-y$aw0745t@#7s@v8c&^_fr&sh$snyd^32*jn_8p2436#acbql('
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# DEBUG = True
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1','https://80n6nqm0-3001.inc1.devtunnels.ms/']
+# settings.py
+DEBUG = True
 
 
 # Application definition
@@ -34,12 +38,13 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'rest_framework.authtoken',
-    "rest_framework_simplejwt.token_blacklist",
+    # "rest_framework_simplejwt.token_blacklist",
     "corsheaders",
     'drf_spectacular',
     'accounts',
     'core',
-    'course'
+    'course',
+     'django_extensions',
 ]
 
 MIDDLEWARE = [
@@ -83,28 +88,20 @@ DATABASES = {
         'HOST': os.environ.get('DB_HOST'),
         'NAME': os.environ.get('DB_NAME'),
         'USER': os.environ.get('DB_USER'),
-        'PASSWORD': os.environ.get('DB_PASS')
+        'PASSWORD': os.environ.get('DB_PASSWORD'),
+        'PORT' : 5432
+        # 'HOST': 'localhost',
+        # 'NAME': 'lms_db',
+        # 'USER': 'postgres',
+        # 'PASSWORD': 'postgres',
+
+
+
+
     }
 }
 
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'LMS',
-        'USER': 'maazjavaid',
-        'PASSWORD': 'Maaz12..',
-        'HOST': 'localhost',
-        'PORT': '5432',
-    }
-}
-# if 'test' in sys.argv:
-#     DATABASES = {
-#         'default': {
-#             'ENGINE': 'django.db.backends.sqlite3',
-#             'NAME': ':memory:',
-#         }
-#     }
 # Password validation
 # https://docs.djangoproject.com/en/3.2/ref/settings/#auth-password-validators
 
@@ -131,7 +128,7 @@ CORS_ORIGIN_WHITELIST = [
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
-    "http://localhost:3001"
+    "http://127.0.0.1:3000",
 ]
 
 
@@ -163,11 +160,21 @@ SPECTACULAR_SETTINGS = {
 }
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": datetime.timedelta(days=1),
+    "ACCESS_TOKEN_LIFETIME": datetime.timedelta(hours=2),
     "REFRESH_TOKEN_LIFETIME": datetime.timedelta(days=1),
     "ALGORITHM": "HS256",
     "SIGNING_KEY": SECRET_KEY,
 }
+
+MAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD")
+EMAIL_FROM_ADDRESS = os.environ.get("EMAIL_HOST_USER")
+EMAIL_DEBUG = True
+
 
 PASSWORD_RESET_TIMEOUT = 600  # 600Sec = 10 Min
 

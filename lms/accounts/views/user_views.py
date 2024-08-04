@@ -4,23 +4,19 @@ from rest_framework import (
     generics,
     permissions
     )
-from rest_framework.authtoken.views import ObtainAuthToken
-from rest_framework.settings import api_settings
 from rest_framework.response import Response
-from django.contrib.auth import login as auth_login, logout as auth_logout
 from ..serializers.user_serializers import *
-# (
-#     UserSerializer,
-#     UserLoginSerializer,
-#     UserProfileSerializer
-#     # AuthTokenSerializer
-# )
-# from drf_yasg.utils import swagger_auto_schema
-# from drf_yasg import openapi
-# from drf_spectacular.utils import extend_schema
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 from accounts.models import User
+from django.contrib.auth.models import Group
+from drf_spectacular.utils import extend_schema
+from ..serializers.user_serializers import (
+    UserSerializer,
+)
+from ..models.models_ import AccessControl
+import constants
+
 
 
 
@@ -29,43 +25,31 @@ class CreateUserView(generics.CreateAPIView):
     """Create a new user in the system."""
     serializer_class = UserSerializer
     permission_classes = (permissions.AllowAny,)
-
-
-# class CreateTokenView(ObtainAuthToken):
-#     """Create a new auth token for user."""
-#     serializer_class = AuthTokenSerializer
-#     renderer_classes = api_settings.DEFAULT_RENDERER_CLASSES
-
-
-# class LoginView(views.APIView):
-#     """View to login a user and start a session."""
-#     serializer_class = AuthTokenSerializer
-#     renderer_classes = api_settings.DEFAULT_RENDERER_CLASSES
-#     permission_classes = (permissions.AllowAny,)
-#     def post(self, request):
-#         serializer = AuthTokenSerializer(data=request.data)
-#         if serializer.is_valid():
-#             user = serializer.validated_data['user']
-#             auth_login(request, user)
-#             return Response({'message': 'Login successful', 'user_id': user.id})
-#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-# class LogoutView(views.APIView):
-#     """View to logout a user."""
-
-#     @extend_schema(request=None, responses=UserSerializer)
-#     def post(self, request):
-#         auth_logout(request)
-#         return Response({'message': 'Logout successful'})
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response({
+            'status_code': status.HTTP_200_OK,
+            'message': 'User created successfully',
+            'response' : serializer.data
+        })
 
 
 class UserLoginView(views.APIView):
     """
     View to handle user login and generate authentication tokens.
     """
+    @extend_schema(
+        request=UserLoginSerializer,
+        responses={
+            200: 'Login Successful.',
+            400: 'Bad Request.',
+            401: 'Unauthorized.',
+        }
+    )
 
-    # @swagger_auto_schema(request_body=UserLoginSerializer)
+
     def post(self, request):
         """
         Handle POST requests for user login.
@@ -81,8 +65,16 @@ class UserLoginView(views.APIView):
                       or error details if validation fails.
         """
         data = request.data
-        if 'email' not in data: return Response({'status_code' : status.HTTP_400_BAD_REQUEST, 'message' : 'Email is not provided.'})
-        if 'password' not in data: return Response({'status_code' : status.HTTP_400_BAD_REQUEST, 'message' : 'Password is not provided.'})
+        if 'email' not in data:
+            return Response(
+                {'status_code' : status.HTTP_400_BAD_REQUEST,
+                 'message' : 'Email is not provided.'}
+                 )
+        if 'password' not in data:
+            return Response(
+                {'status_code' : status.HTTP_400_BAD_REQUEST,
+                 'message' : 'Password is not provided.'}
+                 )
         data['email'] = data.get('email', '').lower()
         serializer = UserLoginSerializer(data=data)
         if serializer.is_valid(raise_exception=True):
@@ -91,7 +83,16 @@ class UserLoginView(views.APIView):
             )
             if user is not None:
                 tokens = self.get_tokens_for_user(user)
-                return Response(tokens, status=status.HTTP_200_OK)
+                user_group_id = Group.objects.get(user_id = user.id).id
+                permission = self.get_group_permissions(user_group_id)
+                return Response({
+                        'status_code' : status.HTTP_200_OK,
+                        'message': 'Login Successful.',
+                        'response' : {
+                            'token' : tokens,
+                            'permissions' : permission
+                        }
+                        })
             else:
                 return Response({
                         'status_code' : status.HTTP_401_UNAUTHORIZED,
@@ -104,7 +105,7 @@ class UserLoginView(views.APIView):
                         'response' : serializer.errors
 
         })
-    
+
     def get_tokens_for_user(self, user):
         """
         Generate JWT tokens for the authenticated user.
@@ -123,6 +124,28 @@ class UserLoginView(views.APIView):
             }
         except Exception as e:
             raise Exception(f"Error generating tokens: {str(e)}")
+
+    def get_group_permissions(self, group_id):
+        """Retrieve all the permissions related to a user group"""
+        permissions_dict = {}
+        access_controls = AccessControl.objects.filter(group_id=group_id)
+
+        for access_control in access_controls:
+            model_name = access_control.model
+            permissions_value = ''
+
+            if access_control.create:
+                permissions_value += constants.CREATE
+            if access_control.read:
+                permissions_value += constants.READ
+            if access_control.update:
+                permissions_value += constants.UPDATE
+            if access_control.delete:
+                permissions_value += constants.DELETE
+
+            permissions_dict[model_name] = permissions_value
+
+        return permissions_dict
 
 
 
@@ -147,40 +170,60 @@ class UserProfileView(views.APIView):
                       or error details if an exception occurs.
         """
         user = request.user
-        try:
-            user_profile = User.objects.get(id=user.id)
-            serializer = UserProfileSerializer(user_profile)
-            return Response({
-                        'status_code' : status.HTTP_200_OK,
-                        'message': 'User profile fetched.',
-                        'response' : serializer.data
-
+        serializer = UserProfileSerializer(user)
+        return Response({
+            'status_code': status.HTTP_200_OK,
+            'message': 'User profile fetched successfully.',
+            'response': serializer.data
         })
-        except User.DoesNotExist:
+
+class UserProfileUpdateView(views.APIView):
+    """
+    View to handle updating the authenticated user's profile.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def patch(self, request):
+        """
+        Handle PATCH requests to update user profile.
+
+        Args:
+            request (Request): The HTTP request object containing user data.
+
+        Returns:
+            Response: A Response object with the updated user profile data if successful,
+                      or error details if validation fails.
+        """
+        user = request.user
+        serializer = UserProfileUpdateSerializer(user, data=request.data, partial=True)
+
+        if serializer.is_valid(raise_exception=True):
+            serializer.save()
             return Response({
                         'status_code' : status.HTTP_404_NOT_FOUND,
                         'message': 'User not found.',
             })
-        
+
 
 class ChangePasswordView(views.APIView):
     """
     View to change the password of the authenticated user.
-    
+
     * Requires authentication.
     * Validates the old password and ensures the new password meets complexity requirements.
     * Updates the user's password if validation is successful.
     """
-    
+
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
         """
         Handle the POST request to change the user's password.
-        
+
         Parameters:
         request (Request): The request object containing the old and new passwords.
-        
+
         Returns:
         Response: A response indicating the success or failure of the password change.
         """
@@ -188,15 +231,15 @@ class ChangePasswordView(views.APIView):
         data = request.data
         if 'old_password' not in data: return Response({'status_code' : status.HTTP_400_BAD_REQUEST, 'message' : 'Old password is not provided.'})
         if 'password' not in data: return Response({'status_code' : status.HTTP_400_BAD_REQUEST, 'message' : 'Password is not provided.'})
-        if 'password2' not in data: return Response({'status_code' : status.HTTP_400_BAD_REQUEST, 'message' : 'Confirm password is not provided.'})        
+        if 'password2' not in data: return Response({'status_code' : status.HTTP_400_BAD_REQUEST, 'message' : 'Confirm password is not provided.'})
 
         serializer = ChangePasswordSerializer(data=data, context={'user': user})
         if serializer.is_valid(raise_exception=True):
-            serializer.save() 
+            serializer.save()
             return Response({
                         'status_code' : status.HTTP_200_OK,
                         'message': 'Password changed successfully.',
-                        'response' : serializer.data
+                        # 'response' : serializer.data
 
         }, status=status.HTTP_200_OK)
         else:
@@ -220,7 +263,7 @@ class SetPasswordView(views.APIView):
         user = request.user
         data = request.data
         if 'password' not in data: return Response({'status_code' : status.HTTP_400_BAD_REQUEST, 'message' : 'Password is not provided.'})
-        if 'password2' not in data: return Response({'status_code' : status.HTTP_400_BAD_REQUEST, 'message' : 'Confirm password is not provided.'})        
+        if 'password2' not in data: return Response({'status_code' : status.HTTP_400_BAD_REQUEST, 'message' : 'Confirm password is not provided.'})
 
         serializer = SetPasswordSerializer(data=data, context={'user': user})
         if serializer.is_valid(raise_exception=True):
@@ -237,7 +280,7 @@ class SetPasswordView(views.APIView):
 
         })
 
-        
+
 class ResetPasswordView(views.APIView):
     """
     API view for requesting a password reset email.
@@ -246,18 +289,16 @@ class ResetPasswordView(views.APIView):
     def post(self, request):
         """
         Handle POST request to initiate password reset process.
-        
+
         Args:
             request: The HTTP request object containing the email.
-        
+
         Returns:
             Response: JSON response with a success message or validation errors.
         """
         data = request.data
         if 'email' not in data: return Response({'status_code' : status.HTTP_400_BAD_REQUEST, 'message' : 'Email is not provided.'})
 
-        email = data.get('email', '').lower()
-        data['email'] = email
 
         serializer = ResetPasswordSerializer(data=data)
         if serializer.is_valid(raise_exception=True):
@@ -299,7 +340,7 @@ class UserpasswordResetView(views.APIView):
         token = kwargs.get("token")
         data = request.data
         if 'password' not in data: return Response({'status_code' : status.HTTP_400_BAD_REQUEST, 'message' : 'Password is not provided.'})
-        if 'password2' not in data: return Response({'status_code' : status.HTTP_400_BAD_REQUEST, 'message' : 'Confirm password is not provided.'})        
+        if 'password2' not in data: return Response({'status_code' : status.HTTP_400_BAD_REQUEST, 'message' : 'Confirm password is not provided.'})
 
 
         if not uid or not token:
@@ -329,6 +370,6 @@ class UserpasswordResetView(views.APIView):
                         'response' : serializer.errors
         }
             )
-        
+
         except DjangoUnicodeDecodeError:
             return Response({"detail": "Invalid UID or token."}, status=status.HTTP_400_BAD_REQUEST)
