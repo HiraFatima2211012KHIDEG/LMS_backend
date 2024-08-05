@@ -9,19 +9,24 @@ from accounts.models.models_ import *
 import logging
 
 logger = logging.getLogger(__name__)
+class CustomResponseMixin:
+    def custom_response(self, status_code, message, data):
+        return Response(
+            {
+                'status_code': status_code,
+                'message': message,
+                'data': data
+            },
+            status=status_code
+        )
 
-class ProjectListCreateAPIView(APIView):
+class ProjectListCreateAPIView(CustomResponseMixin,APIView):
     permission_classes = [permissions.IsAuthenticated]
-    parser_classes = (MultiPartParser, FormParser)
 
     def get(self, request, format=None):
         projects = Project.objects.all()
         serializer = ProjectSerializer(projects, many=True)
-        return Response({
-            'status_code': status.HTTP_200_OK,
-            'message': 'Projects retrieved successfully',
-            'response': serializer.data
-        })
+        return self.custom_response(status.HTTP_200_OK, 'Projects retrieved successfully', serializer.data)
 
     def post(self, request, format=None):
         data = request.data
@@ -31,37 +36,21 @@ class ProjectListCreateAPIView(APIView):
             data['registration_id'] = student_instructor.registration_id
         except StudentInstructor.DoesNotExist:
             logger.error("StudentInstructor not found for user: %s", request.user)
-            return Response({
-                'status_code': status.HTTP_400_BAD_REQUEST,
-                'message': 'StudentInstructor not found for user',
-                'response': {}
-            }, status=status.HTTP_400_BAD_REQUEST)
+            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
 
         serializer = ProjectSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
-            return Response({
-                'status_code': status.HTTP_201_CREATED,
-                'message': 'Project created successfully',
-                'response': serializer.data
-            }, status=status.HTTP_201_CREATED)
-        return Response({
-            'status_code': status.HTTP_400_BAD_REQUEST,
-            'message': 'Error creating project',
-            'response': serializer.errors
-        }, status=status.HTTP_400_BAD_REQUEST)
+            return self.custom_response(status.HTTP_201_CREATED, 'Project created successfully', serializer.data)
+        return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error creating project', serializer.errors)
 
-class ProjectDetailAPIView(APIView):
+class ProjectDetailAPIView(CustomResponseMixin, APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, pk, format=None):
         project = get_object_or_404(Project, pk=pk)
         serializer = ProjectSerializer(project)
-        return Response({
-            'status_code': status.HTTP_200_OK,
-            'message': 'Project retrieved successfully',
-            'response': serializer.data
-        })
+        return self.custom_response(status.HTTP_200_OK, 'Project retrieved successfully', serializer.data)
 
     def put(self, request, pk, format=None):
         data = request.data
@@ -71,50 +60,30 @@ class ProjectDetailAPIView(APIView):
             data['registration_id'] = student_instructor.registration_id
         except StudentInstructor.DoesNotExist:
             logger.error("StudentInstructor not found for user: %s", request.user)
-            return Response({
-                'status_code': status.HTTP_400_BAD_REQUEST,
-                'message': 'StudentInstructor not found for user',
-                'response': {}
-            }, status=status.HTTP_400_BAD_REQUEST)
+            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
 
         project = get_object_or_404(Project, pk=pk)
         serializer = ProjectSerializer(project, data=data)
         if serializer.is_valid():
             serializer.save()
-            return Response({
-                'status_code': status.HTTP_200_OK,
-                'message': 'Project updated successfully',
-                'response': serializer.data
-            })
-        return Response({
-            'status_code': status.HTTP_400_BAD_REQUEST,
-            'message': 'Error updating project',
-            'response': serializer.errors
-        }, status=status.HTTP_400_BAD_REQUEST)
+            return self.custom_response(status.HTTP_200_OK, 'Project updated successfully', serializer.data)
+        return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error updating project', serializer.errors)
 
     def delete(self, request, pk, format=None):
         project = get_object_or_404(Project, pk=pk)
         project.delete()
-        return Response({
-            'status_code': status.HTTP_204_NO_CONTENT,
-            'message': 'Project deleted successfully',
-            'response': {}
-        }, status=status.HTTP_204_NO_CONTENT)
+        return self.custom_response(status.HTTP_204_NO_CONTENT, 'Project deleted successfully', {})
 
 
 
 
-class ProjectSubmissionListCreateAPIView(APIView):
+class ProjectSubmissionListCreateAPIView(CustomResponseMixin, APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, format=None):
         project_submissions = ProjectSubmission.objects.all()
         serializer = ProjectSubmissionSerializer(project_submissions, many=True)
-        return Response({
-            'status_code': status.HTTP_200_OK,
-            'message': 'Project submissions retrieved successfully',
-            'response': serializer.data
-        })
+        return self.custom_response(status.HTTP_200_OK, 'Project submissions retrieved successfully', serializer.data)
 
     def post(self, request, format=None):
         data = request.data
@@ -124,37 +93,21 @@ class ProjectSubmissionListCreateAPIView(APIView):
             data['registration_id'] = student_instructor.registration_id
         except StudentInstructor.DoesNotExist:
             logger.error("StudentInstructor not found for user: %s", request.user)
-            return Response({
-                'status_code': status.HTTP_400_BAD_REQUEST,
-                'message': 'StudentInstructor not found for user',
-                'response': {}
-            }, status=status.HTTP_400_BAD_REQUEST)
+            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
 
         serializer = ProjectSubmissionSerializer(data=data)
         if serializer.is_valid():
             serializer.save(user=request.user)
-            return Response({
-                'status_code': status.HTTP_201_CREATED,
-                'message': 'Project submission created successfully',
-                'response': serializer.data
-            }, status=status.HTTP_201_CREATED)
-        return Response({
-            'status_code': status.HTTP_400_BAD_REQUEST,
-            'message': 'Error creating project submission',
-            'response': serializer.errors
-        }, status=status.HTTP_400_BAD_REQUEST)
+            return self.custom_response(status.HTTP_201_CREATED, 'Project submission created successfully', serializer.data)
+        return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error creating project submission', serializer.errors)
 
-class ProjectSubmissionDetailAPIView(APIView):
+class ProjectSubmissionDetailAPIView(CustomResponseMixin, APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, pk, format=None):
         project_submission = get_object_or_404(ProjectSubmission, pk=pk)
         serializer = ProjectSubmissionSerializer(project_submission)
-        return Response({
-            'status_code': status.HTTP_200_OK,
-            'message': 'Project submission retrieved successfully',
-            'response': serializer.data
-        })
+        return self.custom_response(status.HTTP_200_OK, 'Project submission retrieved successfully', serializer.data)
 
     def put(self, request, pk, format=None):
         data = request.data
@@ -164,50 +117,30 @@ class ProjectSubmissionDetailAPIView(APIView):
             data['registration_id'] = student_instructor.registration_id
         except StudentInstructor.DoesNotExist:
             logger.error("StudentInstructor not found for user: %s", request.user)
-            return Response({
-                'status_code': status.HTTP_400_BAD_REQUEST,
-                'message': 'StudentInstructor not found for user',
-                'response': {}
-            }, status=status.HTTP_400_BAD_REQUEST)
+            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
 
         project_submission = get_object_or_404(ProjectSubmission, pk=pk)
         serializer = ProjectSubmissionSerializer(project_submission, data=data, partial=True)
         if serializer.is_valid():
             serializer.save(user=request.user)
-            return Response({
-                'status_code': status.HTTP_200_OK,
-                'message': 'Project submission updated successfully',
-                'response': serializer.data
-            })
-        return Response({
-            'status_code': status.HTTP_400_BAD_REQUEST,
-            'message': 'Error updating project submission',
-            'response': serializer.errors
-        }, status=status.HTTP_400_BAD_REQUEST)
+            return self.custom_response(status.HTTP_200_OK, 'Project submission updated successfully', serializer.data)
+        return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error updating project submission', serializer.errors)
 
     def delete(self, request, pk, format=None):
         project_submission = get_object_or_404(ProjectSubmission, pk=pk)
         project_submission.delete()
-        return Response({
-            'status_code': status.HTTP_204_NO_CONTENT,
-            'message': 'Project submission deleted successfully',
-            'response': {}
-        }, status=status.HTTP_204_NO_CONTENT)
+        return self.custom_response(status.HTTP_204_NO_CONTENT, 'Project submission deleted successfully', {})
     
 
 
 
-class ProjectGradingListCreateAPIView(APIView):
+class ProjectGradingListCreateAPIView(CustomResponseMixin, APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, format=None):
         project_gradings = ProjectGrading.objects.all()
         serializer = ProjectGradingSerializer(project_gradings, many=True)
-        return Response({
-            'status_code': status.HTTP_200_OK,
-            'message': 'Project gradings retrieved successfully',
-            'response': serializer.data
-        })
+        return self.custom_response(status.HTTP_200_OK, 'Project gradings retrieved successfully', serializer.data)
 
     def post(self, request, format=None):
         data = request.data.copy()
@@ -217,37 +150,21 @@ class ProjectGradingListCreateAPIView(APIView):
             data['registration_id'] = student_instructor.registration_id
         except StudentInstructor.DoesNotExist:
             logger.error("StudentInstructor not found for user: %s", request.user)
-            return Response({
-                'status_code': status.HTTP_400_BAD_REQUEST,
-                'message': 'StudentInstructor not found for user',
-                'response': {}
-            }, status=status.HTTP_400_BAD_REQUEST)
+            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
 
         serializer = ProjectGradingSerializer(data=data)
         if serializer.is_valid():
             serializer.save(graded_by=request.user)
-            return Response({
-                'status_code': status.HTTP_201_CREATED,
-                'message': 'Project grading created successfully',
-                'response': serializer.data
-            }, status=status.HTTP_201_CREATED)
-        return Response({
-            'status_code': status.HTTP_400_BAD_REQUEST,
-            'message': 'Error creating project grading',
-            'response': serializer.errors
-        }, status=status.HTTP_400_BAD_REQUEST)
+            return self.custom_response(status.HTTP_201_CREATED, 'Project grading created successfully', serializer.data)
+        return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error creating project grading', serializer.errors)
 
-class ProjectGradingDetailAPIView(APIView):
+class ProjectGradingDetailAPIView(CustomResponseMixin, APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, pk, format=None):
         project_grading = get_object_or_404(ProjectGrading, pk=pk)
         serializer = ProjectGradingSerializer(project_grading)
-        return Response({
-            'status_code': status.HTTP_200_OK,
-            'message': 'Project grading retrieved successfully',
-            'response': serializer.data
-        })
+        return self.custom_response(status.HTTP_200_OK, 'Project grading retrieved successfully', serializer.data)
 
     def put(self, request, pk, format=None):
         data = request.data.copy()
@@ -257,32 +174,17 @@ class ProjectGradingDetailAPIView(APIView):
             data['registration_id'] = student_instructor.registration_id
         except StudentInstructor.DoesNotExist:
             logger.error("StudentInstructor not found for user: %s", request.user)
-            return Response({
-                'status_code': status.HTTP_400_BAD_REQUEST,
-                'message': 'StudentInstructor not found for user',
-                'response': {}
-            }, status=status.HTTP_400_BAD_REQUEST)
+            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
 
         project_grading = get_object_or_404(ProjectGrading, pk=pk)
         serializer = ProjectGradingSerializer(project_grading, data=data, partial=True)
         if serializer.is_valid():
             serializer.save(graded_by=request.user)
-            return Response({
-                'status_code': status.HTTP_200_OK,
-                'message': 'Project grading updated successfully',
-                'response': serializer.data
-            })
-        return Response({
-            'status_code': status.HTTP_400_BAD_REQUEST,
-            'message': 'Error updating project grading',
-            'response': serializer.errors
-        }, status=status.HTTP_400_BAD_REQUEST)
+            return self.custom_response(status.HTTP_200_OK, 'Project grading updated successfully', serializer.data)
+        return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error updating project grading', serializer.errors)
+
 
     def delete(self, request, pk, format=None):
         project_grading = get_object_or_404(ProjectGrading, pk=pk)
         project_grading.delete()
-        return Response({
-            'status_code': status.HTTP_204_NO_CONTENT,
-            'message': 'Project grading deleted successfully',
-            'response': {}
-        }, status=status.HTTP_204_NO_CONTENT)
+        return self.custom_response(status.HTTP_204_NO_CONTENT, 'Project grading deleted successfully', {})

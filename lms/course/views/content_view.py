@@ -70,7 +70,7 @@ class ContentDetailAPIView(CustomResponseMixin, APIView):
     def delete(self, request, pk, format=None):
         content = get_object_or_404(Content, pk=pk)
         content.delete()
-        return self.custom_response(status.HTTP_204_NO_CONTENT, 'Content deleted successfully')
+        return self.custom_response(status.HTTP_204_NO_CONTENT, 'Content deleted successfully', {})
 
 
 class ContentFileListCreateAPIView(CustomResponseMixin, APIView):
@@ -108,4 +108,4 @@ class ContentFileDetailAPIView(CustomResponseMixin,APIView):
     def delete(self, request, pk, format=None):
         content_file = get_object_or_404(ContentFile, pk=pk)
         content_file.delete()
-        return self.custom_response(status.HTTP_204_NO_CONTENT, 'Content file deleted successfully')
+        return self.custom_response(status.HTTP_204_NO_CONTENT, 'Content file deleted successfully', {})

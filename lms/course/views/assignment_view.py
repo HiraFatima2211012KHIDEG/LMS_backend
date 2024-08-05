@@ -39,7 +39,7 @@ class AssignmentListCreateAPIView(CustomResponseMixin, APIView):
             data['registration_id'] = student_instructor.registration_id
         except StudentInstructor.DoesNotExist:
             logger.error("StudentInstructor not found for user: %s", request.user)
-            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', serializer.data)
+            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
 
 
         serializer = AssignmentSerializer(data=data)
@@ -65,7 +65,7 @@ class AssignmentDetailAPIView(CustomResponseMixin,APIView):
             data['registration_id'] = student_instructor.registration_id
         except StudentInstructor.DoesNotExist:
             logger.error("StudentInstructor not found for user: %s", request.user)
-            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', serializer.data)
+            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
 
         assignment = get_object_or_404(Assignment, pk=pk)
         serializer = AssignmentSerializer(assignment, data=data)
@@ -78,7 +78,7 @@ class AssignmentDetailAPIView(CustomResponseMixin,APIView):
     def delete(self, request, pk, format=None):
         assignment = get_object_or_404(Assignment, pk=pk)
         assignment.delete()
-        return self.custom_response(status.HTTP_204_NO_CONTENT, 'Assignment deleted successfully')
+        return self.custom_response(status.HTTP_204_NO_CONTENT, 'Assignment deleted successfully', {})
 
 
 
@@ -98,7 +98,7 @@ class AssignmentSubmissionCreateAPIView(CustomResponseMixin,APIView):
             data['registration_id'] = student_instructor.registration_id
         except StudentInstructor.DoesNotExist:
             logger.error("StudentInstructor not found for user: %s", request.user)
-            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', serializer.data)
+            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
 
         serializer = AssignmentSubmissionSerializer(data=data)
         if serializer.is_valid():
@@ -123,7 +123,7 @@ class AssignmentSubmissionDetailAPIView(CustomResponseMixin, APIView):
             data['registration_id'] = student_instructor.registration_id
         except StudentInstructor.DoesNotExist:
             logger.error("StudentInstructor not found for user: %s", request.user)
-            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', serializer.data)
+            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
 
         submission = get_object_or_404(AssignmentSubmission, pk=pk)
         serializer = AssignmentSubmissionSerializer(submission, data=data)
@@ -136,7 +136,7 @@ class AssignmentSubmissionDetailAPIView(CustomResponseMixin, APIView):
     def delete(self, request, pk, format=None):
         submission = get_object_or_404(AssignmentSubmission, pk=pk)
         submission.delete()
-        return self.custom_response(status.HTTP_204_NO_CONTENT, 'Assignment submission deleted successfully')
+        return self.custom_response(status.HTTP_204_NO_CONTENT, 'Assignment submission deleted successfully', {})
 
 
 
@@ -157,7 +157,7 @@ class AssignmentGradingListCreateAPIView(CustomResponseMixin,APIView):
             data['registration_id'] = student_instructor.registration_id
         except StudentInstructor.DoesNotExist:
             logger.error("StudentInstructor not found for user: %s", request.user)
-            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', serializer.data)
+            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
 
         serializer = GradingSerializer(data=data)
         if serializer.is_valid():
@@ -184,7 +184,7 @@ class AssignmentGradingDetailAPIView(CustomResponseMixin, APIView):
             data['registration_id'] = student_instructor.registration_id
         except StudentInstructor.DoesNotExist:
             logger.error("StudentInstructor not found for user: %s", request.user)
-            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', serializer.data)
+            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
 
         grading = get_object_or_404(Grading, pk=pk)
         serializer = GradingSerializer(grading, data=data, partial=True)
@@ -197,5 +197,5 @@ class AssignmentGradingDetailAPIView(CustomResponseMixin, APIView):
     def delete(self, request, pk, format=None):
         grading = get_object_or_404(Grading, pk=pk)
         grading.delete()
-        return self.custom_response(status.HTTP_204_NO_CONTENT, 'Project grading deleted successfully')
+        return self.custom_response(status.HTTP_204_NO_CONTENT, 'Project grading deleted successfully', {})
     

@@ -41,7 +41,7 @@ class ProgramListCreateAPIView(CustomResponseMixin,APIView):
             data['registration_id'] = student_instructor.registration_id
         except StudentInstructor.DoesNotExist:
             logger.error("StudentInstructor not found for user: %s", request.user)
-            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', serializer.data)
+            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
         
         serializer = ProgramSerializer(data=data)
         if serializer.is_valid():
@@ -71,7 +71,7 @@ class ProgramDetailAPIView(CustomResponseMixin,APIView):
             data['registration_id'] = student_instructor.registration_id
         except StudentInstructor.DoesNotExist:
             logger.error("StudentInstructor not found for user: %s", request.user)
-            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', serializer.data)
+            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
         
         program = get_object_or_404(Program, pk=pk)
         serializer = ProgramSerializer(program, data=data)
@@ -87,7 +87,7 @@ class ProgramDetailAPIView(CustomResponseMixin,APIView):
         program = get_object_or_404(Program, pk=pk)
         program.delete()
         logger.info(f"Deleted program with ID: {pk}")
-        return self.custom_response(status.HTTP_204_NO_CONTENT, 'Program deleted successfully')
+        return self.custom_response(status.HTTP_204_NO_CONTENT, 'Program deleted successfully', {})
     
 class CourseListCreateAPIView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
@@ -107,7 +107,7 @@ class CourseListCreateAPIView(CustomResponseMixin, APIView):
             data['registration_id'] = student_instructor.registration_id
         except StudentInstructor.DoesNotExist:
             logger.error("StudentInstructor not found for user: %s", request.user)
-            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', serializer.data)
+            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
 
 
         serializer = CourseSerializer(data=data)
@@ -139,7 +139,7 @@ class CourseDetailAPIView(CustomResponseMixin, APIView):
             data['registration_id'] = student_instructor.registration_id
         except StudentInstructor.DoesNotExist:
             logger.error("StudentInstructor not found for user: %s", request.user)
-            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', serializer.data)
+            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
 
 
         course = get_object_or_404(Course, pk=pk)
@@ -156,7 +156,7 @@ class CourseDetailAPIView(CustomResponseMixin, APIView):
         course = get_object_or_404(Course, pk=pk)
         course.delete()
         logger.info(f"Deleted course with ID: {pk}")
-        return self.custom_response(status.HTTP_204_NO_CONTENT, 'Course deleted successfully')
+        return self.custom_response(status.HTTP_204_NO_CONTENT, 'Course deleted successfully', {})
 
 class ModuleListCreateAPIView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
@@ -174,7 +174,7 @@ class ModuleListCreateAPIView(CustomResponseMixin, APIView):
             data['registration_id'] = student_instructor.registration_id
         except StudentInstructor.DoesNotExist:
             logger.error("StudentInstructor not found for user: %s", request.user)
-            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', serializer.data)
+            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
 
 
         serializer = ModuleSerializer(data=data)
@@ -202,7 +202,7 @@ class ModuleDetailAPIView(CustomResponseMixin, APIView):
             data['registration_id'] = student_instructor.registration_id
         except StudentInstructor.DoesNotExist:
             logger.error("StudentInstructor not found for user: %s", request.user)
-            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', serializer.data)
+            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
 
 
         module = get_object_or_404(Module, pk=pk)
@@ -217,7 +217,7 @@ class ModuleDetailAPIView(CustomResponseMixin, APIView):
     def delete(self, request, pk, format=None):
         module = get_object_or_404(Module, pk=pk)
         module.delete()
-        return self.custom_response(status.HTTP_204_NO_CONTENT, 'Module deleted successfully')
+        return self.custom_response(status.HTTP_204_NO_CONTENT, 'Module deleted successfully', {})
 
 
 class ToggleActiveStatusAPIView(CustomResponseMixin, APIView):
