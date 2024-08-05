@@ -12,7 +12,7 @@ from django.utils.encoding import DjangoUnicodeDecodeError, force_bytes, smart_s
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from django.contrib.auth.hashers import check_password
 import re
-# from accounts.utils import send_email
+from accounts.utils import send_email
 
 class UserSerializer(serializers.ModelSerializer):
     """Serializer for the user object."""

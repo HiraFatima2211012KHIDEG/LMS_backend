@@ -2,7 +2,7 @@
 Urls for the Accounts app
 """
 from django.urls import path
-from .views.application_views import CreateApplicationView
+from .views.application_views import CreateApplicationView, ApplicationProcessView, UserRegistrationView
 from .views import user_views
 from .views.location_views import (
     CityViewSet,
@@ -15,7 +15,10 @@ from .views.location_views import (
 from rest_framework_simplejwt.views import  TokenObtainPairView, TokenRefreshView
 
 urlpatterns = [
-    path('applications', CreateApplicationView.as_view(), name='create-application'),
+    path('applications/', CreateApplicationView.as_view(), name='create-application'),
+    path('applications-process/<int:application_id>/', ApplicationProcessView.as_view(), name='update-application'),
+    path('applications-process/', ApplicationProcessView.as_view(), name='get-all-applications'),
+    path('registration/', UserRegistrationView.as_view(), name='registration-completion'),
     path('create/', user_views.CreateUserView.as_view(), name='create'),
     path('login/', user_views.UserLoginView.as_view(), name='login'),
     path('change-password/', user_views.ChangePasswordView.as_view(), name='change-password'),

@@ -79,11 +79,11 @@ class UserLoginView(views.APIView):
         serializer = UserLoginSerializer(data=data)
         if serializer.is_valid(raise_exception=True):
             user = authenticate(
-                email=serializer.data["email"], password=serializer.data["password"]
+                email=serializer.validated_data["email"], password=serializer.validated_data["password"]
             )
             if user is not None:
                 tokens = self.get_tokens_for_user(user)
-                user_group_id = Group.objects.get(user_id = user.id).id
+                user_group_id = Group.objects.get(user = user.id).id
                 permission = self.get_group_permissions(user_group_id)
                 return Response({
                         'status_code' : status.HTTP_200_OK,
@@ -140,7 +140,7 @@ class UserLoginView(views.APIView):
                 permissions_value += constants.READ
             if access_control.update:
                 permissions_value += constants.UPDATE
-            if access_control.delete:
+            if access_control.remove:
                 permissions_value += constants.DELETE
 
             permissions_dict[model_name] = permissions_value
@@ -201,8 +201,8 @@ class UserProfileUpdateView(views.APIView):
         if serializer.is_valid(raise_exception=True):
             serializer.save()
             return Response({
-                        'status_code' : status.HTTP_404_NOT_FOUND,
-                        'message': 'User not found.',
+                        'status_code' : status.HTTP_200_OK,
+                        'message': 'User updated successfully.',
             })
 
 
@@ -372,4 +372,7 @@ class UserpasswordResetView(views.APIView):
             )
 
         except DjangoUnicodeDecodeError:
-            return Response({"detail": "Invalid UID or token."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(        {
+                        'status_code' : status.HTTP_400_BAD_REQUEST,
+                        'message': 'Invalid UID or token.',
+        })

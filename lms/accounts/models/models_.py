@@ -32,7 +32,7 @@ class Batch(models.Model):
         super(Batch, self).save(*args, **kwargs)
 
     class Meta:
-        unique_together = ('city', 'year')
+        unique_together = ('city', 'year')  #this need some clarification
 
 
 
@@ -46,7 +46,17 @@ class Applications(models.Model):
     group_name = models.CharField(max_length=20, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True,null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True,null=True, blank=True)
+    application_status_choices = [
+        ('rejected', 'Rejected'),
+        ('approved', 'Approved'),
+        ('short_listed', 'Short_Listed'),
+        ('pending', 'Pending')
+    ]
+    application_status = models.CharField(max_length= 15, choices= application_status_choices, default='pending') # I added 
+    #program_id should also be here
+    #area of residence.
 
+#this should have a status field.
 
 class UserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
@@ -138,6 +148,7 @@ class Location(models.Model):
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
 
+#location should also tell when the capacity is full
 
 class Sessions(models.Model):
     """Location based sessions."""
@@ -148,7 +159,10 @@ class Sessions(models.Model):
     batch = models.ForeignKey(Batch, on_delete=models.CASCADE)
     start_time = models.DateTimeField(null=True, blank=True)
     end_time = models.DateTimeField(null=True, blank=True)
+    # program = models.ForeignKey(Program, on_delete=models.CASCADE)
 
+#session should also have a program or program_id.
+#session should also have a name.
 
 
 class StudentInstructor(models.Model):
@@ -167,3 +181,4 @@ class StudentInstructor(models.Model):
 
     class Meta:
         unique_together = ('batch', 'user')
+
