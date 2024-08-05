@@ -163,4 +163,19 @@ class ProjectGradingSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProjectGrading
         fields = ['id', 'project_submissions', 'grade', 'total_grade', 'feedback', 'graded_by',"registration_id", 'graded_at']
-       
+    
+
+class ExamSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Exam
+        fields = '__all__'
+
+class ExamSubmissionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ExamSubmission
+        fields = '__all__'
+
+class ExamGradingSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ExamGrading
+        fields = '__all__'

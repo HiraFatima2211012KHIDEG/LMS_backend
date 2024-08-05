@@ -4,6 +4,7 @@ from .views.content_view import *
 from .views.assignment_view import *
 from .views.quizzes_view import *
 from .views.project_view import *
+from .views.exam_view import *
 
 urlpatterns = [
     path('programs/', ProgramListCreateAPIView.as_view(), name='program-list-create'),
@@ -36,4 +37,10 @@ urlpatterns = [
     path('project_submissions/<int:pk>/', ProjectSubmissionDetailAPIView.as_view(), name='project-submission-detail'),
     path('project_gradings/', ProjectGradingListCreateAPIView.as_view(), name='project-grading-list-create'),
     path('project_gradings/<int:pk>/', ProjectGradingDetailAPIView.as_view(), name='project-grading-detail'),
+    path('exams/', ExamListCreateAPIView.as_view(), name='exam-list-create'),
+    path('exams/<int:pk>/', ExamDetailAPIView.as_view(), name='exam-detail'),
+    path('exam_submissions/', ExamSubmissionListCreateAPIView.as_view(), name='exam-submission-list-create'),
+    path('exam_submissions/<int:pk>/', ExamSubmissionDetailAPIView.as_view(), name='exam-submission-detail'),
+    path('exam_gradings/', ExamGradingListCreateAPIView.as_view(), name='exam-grading-list-create'),
+    path('exam_gradings/<int:pk>/', ExamGradingDetailAPIView.as_view(), name='exam-grading-detail'),
 ]

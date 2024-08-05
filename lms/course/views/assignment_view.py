@@ -115,7 +115,7 @@ class AssignmentSubmissionDetailAPIView(CustomResponseMixin, APIView):
         return self.custom_response(status.HTTP_200_OK, 'Assignment submission retrieved successfully', serializer.data)
 
     def put(self, request, pk, format=None):
-        data = request.data.copy()
+        data = request.data
         data['user'] = request.user.id
         try:
             student_instructor = StudentInstructor.objects.get(user=request.user)
@@ -176,7 +176,7 @@ class AssignmentGradingDetailAPIView(CustomResponseMixin, APIView):
 
 
     def put(self, request, pk, format=None):
-        data = request.data.copy()
+        data = request.data
         data['graded_by'] = request.user.id
         try:
             student_instructor = StudentInstructor.objects.get(user=request.user)

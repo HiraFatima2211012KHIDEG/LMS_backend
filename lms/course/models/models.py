@@ -262,3 +262,59 @@ class ProjectGrading(models.Model):
 
     def __str__(self):
         return f"{self.project_submissions} - {self.grade}"
+
+
+class Exam(models.Model):
+    course = models.ForeignKey(Course, related_name='exams', on_delete=models.CASCADE)
+    title = models.CharField(max_length=255)
+    description = models.TextField()
+    content = models.FileField(
+        upload_to="material/exam/",
+        validators=[
+            FileExtensionValidator(
+                allowed_extensions=["pdf", "doc", "docx", "ppt", "pptx", "txt", "zip"]
+            )
+        ],
+        null=True, blank=True
+    )
+    due_date = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=0)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    registration_id = models.CharField(max_length=50, null=True, blank=True)
+
+    def __str__(self):
+        return self.title
+
+class ExamSubmission(models.Model):
+    exam = models.ForeignKey(
+        Exam, related_name="exam_submissions", on_delete=models.CASCADE
+    )
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    registration_id = models.CharField(max_length=50, null=True, blank=True)
+    exam_submitted_file = models.FileField(
+        upload_to="material/exam_submissions/",
+        validators=[
+            FileExtensionValidator(
+                allowed_extensions=["pdf", "doc", "docx", "ppt", "pptx", "txt", "zip"]
+            )
+        ],
+    )
+    exam_submitted_at = models.DateTimeField(auto_now_add=True)
+    resubmission = models.BooleanField(default=False)
+    comments = models.TextField(null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.user} - {self.exam}"
+
+class ExamGrading(models.Model):
+    exam_submission = models.ForeignKey(ExamSubmission, on_delete=models.CASCADE)
+    grade = models.DecimalField(max_digits=10, decimal_places=2, null=True)
+    total_grade = models.DecimalField(max_digits=10, decimal_places=2, null=True)
+    feedback = models.TextField(null=True, blank=True)
+    graded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    registration_id = models.CharField(max_length=50, null=True, blank=True)
+    graded_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.exam_submission} - {self.grade}"
