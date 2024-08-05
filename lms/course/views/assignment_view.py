@@ -6,6 +6,7 @@ from ..models.models import Assignment,AssignmentSubmission,Grading
 from ..serializers import AssignmentSerializer,AssignmentSubmissionSerializer,GradingSerializer
 from accounts.models.models_ import *
 import logging
+from rest_framework.parsers import FileUploadParser, MultiPartParser,FormParser
 
 logger = logging.getLogger(__name__)
 
@@ -80,18 +81,17 @@ class AssignmentDetailAPIView(CustomResponseMixin,APIView):
         assignment.delete()
         return self.custom_response(status.HTTP_204_NO_CONTENT, 'Assignment deleted successfully', {})
 
-
-
-class AssignmentSubmissionCreateAPIView(CustomResponseMixin,APIView):
+class AssignmentSubmissionCreateAPIView(CustomResponseMixin, APIView):
+    # parser_classes = (MultiPartParser, FormParser)
     permission_classes = (permissions.IsAuthenticated,)
+
     def get(self, request, format=None):
         assignments = AssignmentSubmission.objects.all()
         serializer = AssignmentSubmissionSerializer(assignments, many=True)
-        return self.custom_response(status.HTTP_200_OK, 'Assignment submission retrieved successfully', serializer.data)
-
+        return self.custom_response(status.HTTP_200_OK, 'Assignment submissions retrieved successfully', serializer.data)
 
     def post(self, request, format=None):
-        data = request.data.copy()
+        data = request.data
         data['user'] = request.user.id
         try:
             student_instructor = StudentInstructor.objects.get(user=request.user)
@@ -106,7 +106,6 @@ class AssignmentSubmissionCreateAPIView(CustomResponseMixin,APIView):
             return self.custom_response(status.HTTP_201_CREATED, 'Assignment submission created successfully', serializer.data)
         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error creating assignment submission', serializer.errors)
     
-
 class AssignmentSubmissionDetailAPIView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
     
