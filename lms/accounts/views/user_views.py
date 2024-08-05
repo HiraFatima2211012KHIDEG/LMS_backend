@@ -79,11 +79,11 @@ class UserLoginView(views.APIView):
         serializer = UserLoginSerializer(data=data)
         if serializer.is_valid(raise_exception=True):
             user = authenticate(
-                email=serializer.data["email"], password=serializer.data["password"]
+                email=serializer.validated_data["email"], password=serializer.validated_data["password"]
             )
             if user is not None:
                 tokens = self.get_tokens_for_user(user)
-                user_group_id = Group.objects.get(user_id = user.id).id
+                user_group_id = Group.objects.get(user = user.id).id
                 permission = self.get_group_permissions(user_group_id)
                 return Response({
                         'status_code' : status.HTTP_200_OK,
