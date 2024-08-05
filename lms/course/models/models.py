@@ -16,6 +16,7 @@ class Program(models.Model):
     description = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    registration_id = models.CharField(max_length=50, null=True, blank=True)
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=0)
 
     def __str__(self):
@@ -30,6 +31,7 @@ class Course(models.Model):
     description = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    registration_id = models.CharField(max_length=50, null=True, blank=True)
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=0)
     credit_hours = models.IntegerField()
 
@@ -43,6 +45,7 @@ class Module(models.Model):
     description = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    registration_id = models.CharField(max_length=50, null=True, blank=True)
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=0)
 
     def __str__(self):
@@ -70,7 +73,7 @@ class Content(models.Model):
 class ContentFile(models.Model):
     content = models.ForeignKey(Content, related_name="files", on_delete=models.CASCADE)
     file = models.FileField(
-        upload_to="content/",
+        upload_to="material/content/",
         validators=[
             FileExtensionValidator(
                 allowed_extensions=["pdf", "docx", "ppt", "xls", "zip"]
@@ -87,8 +90,9 @@ class Assignment(models.Model):
     question = models.TextField(null=True, blank=True)
     description = models.TextField(null=True, blank=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,null=True, blank=True)
+    registration_id = models.CharField(max_length=50, null=True, blank=True)
     content = models.FileField(
-        upload_to="assignments/",
+        upload_to="material/assignments/",
         validators=[
             FileExtensionValidator(
                 allowed_extensions=["pdf", "doc", "docx", "ppt", "pptx", "txt",'zip']
@@ -108,11 +112,12 @@ class AssignmentSubmission(models.Model):
         Assignment, related_name="submissions", on_delete=models.CASCADE
     )
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    registration_id = models.CharField(max_length=50, null=True, blank=True)
     submitted_file = models.FileField(
-        upload_to="submissions/",
+        upload_to="material/submissions/",
         validators=[
             FileExtensionValidator(
-                allowed_extensions=["pdf", "doc", "docx", "ppt", "pptx", "txt",'zip']
+                allowed_extensions=['pdf', "doc", "docx", "ppt", "pptx", "txt",'zip']
             )
         ],
     )
@@ -131,6 +136,7 @@ class Grading(models.Model):
     total_grade=models.DecimalField(max_digits=10, decimal_places=2, null=True)
     feedback = models.TextField(null=True, blank=True)
     graded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    registration_id = models.CharField(max_length=50, null=True, blank=True)
     graded_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -143,11 +149,12 @@ class Quizzes(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    registration_id = models.CharField(max_length=50, null=True, blank=True)
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=0)
     question = models.TextField(null=True, blank=True)
     description = models.TextField(null=True, blank=True)
     content = models.FileField(
-        upload_to="quizzes/",
+        upload_to="material/quizzes/",
         validators=[
             FileExtensionValidator(
                 allowed_extensions=["pdf", "doc", "docx", "ppt", "pptx", "txt",'zip']
@@ -166,8 +173,9 @@ class QuizSubmission(models.Model):
         Quizzes, related_name="quiz_submissions", on_delete=models.CASCADE
     )
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    registration_id = models.CharField(max_length=50, null=True, blank=True)
     quiz_submitted_file = models.FileField(
-        upload_to="quiz_submissions/",
+        upload_to="material/quiz_submissions/",
         validators=[
             FileExtensionValidator(
                 allowed_extensions=["pdf", "doc", "docx", "ppt", "pptx", "txt",'zip']
@@ -189,6 +197,7 @@ class QuizGrading(models.Model):
     total_grade=models.DecimalField(max_digits=10, decimal_places=2, null=True)
     feedback = models.TextField(null=True, blank=True)
     graded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    registration_id = models.CharField(max_length=50, null=True, blank=True)
     graded_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -201,7 +210,7 @@ class Project(models.Model):
     title = models.CharField(max_length=255)
     description = models.TextField()
     content = models.FileField(
-        upload_to="project/",
+        upload_to="material/project/",
         validators=[
             FileExtensionValidator(
                 allowed_extensions=["pdf", "doc", "docx", "ppt", "pptx", "txt", "zip"]
@@ -213,6 +222,7 @@ class Project(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=0)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    registration_id = models.CharField(max_length=50, null=True, blank=True)
 
     def __str__(self):
         return self.title
@@ -223,8 +233,9 @@ class ProjectSubmission(models.Model):
         Project, related_name="project_submissions", on_delete=models.CASCADE
     )
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    registration_id = models.CharField(max_length=50, null=True, blank=True)
     project_submitted_file = models.FileField(
-        upload_to="project_submissions/",
+        upload_to="material/project_submissions/",
         validators=[
             FileExtensionValidator(
                 allowed_extensions=["pdf", "doc", "docx", "ppt", "pptx", "txt",'zip']
@@ -246,6 +257,7 @@ class ProjectGrading(models.Model):
     total_grade=models.DecimalField(max_digits=10, decimal_places=2, null=True)
     feedback = models.TextField(null=True, blank=True)
     graded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    registration_id = models.CharField(max_length=50, null=True, blank=True)
     graded_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

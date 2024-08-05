@@ -5,7 +5,7 @@ from .models.models import *
 class ProgramSerializer(serializers.ModelSerializer):
     class Meta:
         model = Program
-        fields = ["id", "name", "short_name", "description", "created_by","status"]
+        fields = ["id", "name", "short_name", "description", "created_by","registration_id","status"]
 
 
 class CourseSerializer(serializers.ModelSerializer):
@@ -23,6 +23,7 @@ class CourseSerializer(serializers.ModelSerializer):
             # "program_detail",
             "description",
             "created_by",
+            "registration_id",
             "credit_hours",
             "status",
         ]
@@ -53,6 +54,7 @@ class ModuleSerializer(serializers.ModelSerializer):
             # "course_detail",
             "description",
             "created_by",
+            "registration_id",
             "status",
         ]
 
@@ -96,13 +98,13 @@ class ContentSerializer(serializers.ModelSerializer):
 class AssignmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Assignment
-        fields = ['id','course', 'created_at','created_by', 'question','description','content' ,'due_date', 'status']
+        fields = ['id','course', 'created_at','created_by',"registration_id", 'question','description','content' ,'due_date', 'status']
 
 
 class AssignmentSubmissionSerializer(serializers.ModelSerializer):
     class Meta:
         model = AssignmentSubmission
-        fields = ['id', 'assignment', 'user', 'submitted_file', 'submitted_at','resubmission','comments']
+        fields = ['id', 'assignment', 'user',"registration_id", 'submitted_file', 'submitted_at','resubmission','comments']
 
 
 class GradingSerializer(serializers.ModelSerializer):
@@ -112,7 +114,7 @@ class GradingSerializer(serializers.ModelSerializer):
     # submission_detail = AssignmentSubmissionSerializer(source="submission", read_only=True)
     class Meta:
         model = Grading
-        fields = ['id', 'submission', 'grade','total_grade', 'feedback', 'graded_by', 'graded_at']
+        fields = ['id', 'submission', 'grade','total_grade', 'feedback', 'graded_by',"registration_id", 'graded_at']
 
 
 
@@ -120,13 +122,13 @@ class GradingSerializer(serializers.ModelSerializer):
 class QuizzesSerializer(serializers.ModelSerializer):
     class Meta:
         model = Quizzes
-        fields = ['id','course', 'created_at', 'created_by', 'question','description','content' ,'due_date', 'status']
+        fields = ['id','course', 'created_at', 'created_by',"registration_id", 'question','description','content' ,'due_date', 'status']
 
 
 class QuizSubmissionSerializer(serializers.ModelSerializer):
     class Meta:
         model = QuizSubmission
-        fields = ['id', 'quiz', 'user', 'quiz_submitted_file', 'quiz_submitted_at','resubmission','comments']
+        fields = ['id', 'quiz', 'user',"registration_id", 'quiz_submitted_file', 'quiz_submitted_at','resubmission','comments']
 
 
 class QuizGradingSerializer(serializers.ModelSerializer):
@@ -137,19 +139,19 @@ class QuizGradingSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = QuizGrading
-        fields = ['id', 'quiz_submissions', 'grade', 'total_grade', 'feedback', 'graded_by', 'graded_at']
+        fields = ['id', 'quiz_submissions', 'grade', 'total_grade', 'feedback', 'graded_by', "registration_id",'graded_at']
 
 
 class ProjectSerializer(serializers.ModelSerializer):
     class Meta:
         model = Project
-        fields = ['id','course', 'created_at', 'created_by', 'title','description','content' ,'due_date', 'status']
+        fields = ['id','course', 'created_at', 'created_by', "registration_id",'title','description','content' ,'due_date', 'status']
 
 
 class ProjectSubmissionSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProjectSubmission
-        fields = ['id', 'project', 'user', 'project_submitted_file', 'project_submitted_file','resubmission','comments']
+        fields = ['id', 'project', 'user',"registration_id", 'project_submitted_file', 'project_submitted_file','resubmission','comments']
 
 
 class ProjectGradingSerializer(serializers.ModelSerializer):
@@ -160,5 +162,5 @@ class ProjectGradingSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ProjectGrading
-        fields = ['id', 'project_submissions', 'grade', 'total_grade', 'feedback', 'graded_by', 'graded_at']
+        fields = ['id', 'project_submissions', 'grade', 'total_grade', 'feedback', 'graded_by',"registration_id", 'graded_at']
        

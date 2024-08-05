@@ -5,6 +5,7 @@ from django.shortcuts import get_object_or_404
 from ..models.models import *
 from ..serializers import *
 from rest_framework.parsers import MultiPartParser, FormParser
+from accounts.models.models_ import *
 import logging
 
 logger = logging.getLogger(__name__)
@@ -25,6 +26,17 @@ class ProjectListCreateAPIView(APIView):
     def post(self, request, format=None):
         data = request.data
         data['created_by'] = request.user.id 
+        try:
+            student_instructor = StudentInstructor.objects.get(user=request.user)
+            data['registration_id'] = student_instructor.registration_id
+        except StudentInstructor.DoesNotExist:
+            logger.error("StudentInstructor not found for user: %s", request.user)
+            return Response({
+                'status_code': status.HTTP_400_BAD_REQUEST,
+                'message': 'StudentInstructor not found for user',
+                'response': {}
+            }, status=status.HTTP_400_BAD_REQUEST)
+
         serializer = ProjectSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
@@ -54,6 +66,17 @@ class ProjectDetailAPIView(APIView):
     def put(self, request, pk, format=None):
         data = request.data
         data['created_by'] = request.user.id
+        try:
+            student_instructor = StudentInstructor.objects.get(user=request.user)
+            data['registration_id'] = student_instructor.registration_id
+        except StudentInstructor.DoesNotExist:
+            logger.error("StudentInstructor not found for user: %s", request.user)
+            return Response({
+                'status_code': status.HTTP_400_BAD_REQUEST,
+                'message': 'StudentInstructor not found for user',
+                'response': {}
+            }, status=status.HTTP_400_BAD_REQUEST)
+
         project = get_object_or_404(Project, pk=pk)
         serializer = ProjectSerializer(project, data=data)
         if serializer.is_valid():
@@ -96,6 +119,17 @@ class ProjectSubmissionListCreateAPIView(APIView):
     def post(self, request, format=None):
         data = request.data
         data['user'] = request.user.id
+        try:
+            student_instructor = StudentInstructor.objects.get(user=request.user)
+            data['registration_id'] = student_instructor.registration_id
+        except StudentInstructor.DoesNotExist:
+            logger.error("StudentInstructor not found for user: %s", request.user)
+            return Response({
+                'status_code': status.HTTP_400_BAD_REQUEST,
+                'message': 'StudentInstructor not found for user',
+                'response': {}
+            }, status=status.HTTP_400_BAD_REQUEST)
+
         serializer = ProjectSubmissionSerializer(data=data)
         if serializer.is_valid():
             serializer.save(user=request.user)
@@ -125,6 +159,17 @@ class ProjectSubmissionDetailAPIView(APIView):
     def put(self, request, pk, format=None):
         data = request.data
         data['user'] = request.user.id
+        try:
+            student_instructor = StudentInstructor.objects.get(user=request.user)
+            data['registration_id'] = student_instructor.registration_id
+        except StudentInstructor.DoesNotExist:
+            logger.error("StudentInstructor not found for user: %s", request.user)
+            return Response({
+                'status_code': status.HTTP_400_BAD_REQUEST,
+                'message': 'StudentInstructor not found for user',
+                'response': {}
+            }, status=status.HTTP_400_BAD_REQUEST)
+
         project_submission = get_object_or_404(ProjectSubmission, pk=pk)
         serializer = ProjectSubmissionSerializer(project_submission, data=data, partial=True)
         if serializer.is_valid():
@@ -167,6 +212,17 @@ class ProjectGradingListCreateAPIView(APIView):
     def post(self, request, format=None):
         data = request.data.copy()
         data['graded_by'] = request.user.id
+        try:
+            student_instructor = StudentInstructor.objects.get(user=request.user)
+            data['registration_id'] = student_instructor.registration_id
+        except StudentInstructor.DoesNotExist:
+            logger.error("StudentInstructor not found for user: %s", request.user)
+            return Response({
+                'status_code': status.HTTP_400_BAD_REQUEST,
+                'message': 'StudentInstructor not found for user',
+                'response': {}
+            }, status=status.HTTP_400_BAD_REQUEST)
+
         serializer = ProjectGradingSerializer(data=data)
         if serializer.is_valid():
             serializer.save(graded_by=request.user)
@@ -196,6 +252,17 @@ class ProjectGradingDetailAPIView(APIView):
     def put(self, request, pk, format=None):
         data = request.data.copy()
         data['graded_by'] = request.user.id
+        try:
+            student_instructor = StudentInstructor.objects.get(user=request.user)
+            data['registration_id'] = student_instructor.registration_id
+        except StudentInstructor.DoesNotExist:
+            logger.error("StudentInstructor not found for user: %s", request.user)
+            return Response({
+                'status_code': status.HTTP_400_BAD_REQUEST,
+                'message': 'StudentInstructor not found for user',
+                'response': {}
+            }, status=status.HTTP_400_BAD_REQUEST)
+
         project_grading = get_object_or_404(ProjectGrading, pk=pk)
         serializer = ProjectGradingSerializer(project_grading, data=data, partial=True)
         if serializer.is_valid():

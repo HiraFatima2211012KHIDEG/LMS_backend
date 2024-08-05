@@ -5,7 +5,10 @@ from rest_framework import status,permissions
 from django.shortcuts import get_object_or_404
 from ..models.models import *
 from ..serializers import *
+from accounts.models.models_ import *
+import logging
 
+logger = logging.getLogger(__name__)
 
 class QuizListCreateAPIView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
@@ -22,6 +25,17 @@ class QuizListCreateAPIView(APIView):
     def post(self, request, format=None):
         data = request.data
         data['created_by'] = request.user.id
+        try:
+            student_instructor = StudentInstructor.objects.get(user=request.user)
+            data['registration_id'] = student_instructor.registration_id
+        except StudentInstructor.DoesNotExist:
+            logger.error("StudentInstructor not found for user: %s", request.user)
+            return Response({
+                'status_code': status.HTTP_400_BAD_REQUEST,
+                'message': 'StudentInstructor not found for user',
+                'response': {}
+            }, status=status.HTTP_400_BAD_REQUEST)
+
         serializer = QuizzesSerializer(data=data)
         if serializer.is_valid():
             serializer.save()
@@ -52,6 +66,17 @@ class QuizDetailAPIView(APIView):
     def put(self, request, pk, format=None):
         data = request.data
         data['created_by'] = request.user.id
+        try:
+            student_instructor = StudentInstructor.objects.get(user=request.user)
+            data['registration_id'] = student_instructor.registration_id
+        except StudentInstructor.DoesNotExist:
+            logger.error("StudentInstructor not found for user: %s", request.user)
+            return Response({
+                'status_code': status.HTTP_400_BAD_REQUEST,
+                'message': 'StudentInstructor not found for user',
+                'response': {}
+            }, status=status.HTTP_400_BAD_REQUEST)
+
         quiz = get_object_or_404(Quizzes, pk=pk)
         serializer = QuizzesSerializer(quiz, data=data)
         if serializer.is_valid():
@@ -91,6 +116,17 @@ class QuizSubmissionCreateAPIView(APIView):
     def post(self, request, format=None):
         data = request.data
         data['user'] = request.user.id
+        try:
+            student_instructor = StudentInstructor.objects.get(user=request.user)
+            data['registration_id'] = student_instructor.registration_id
+        except StudentInstructor.DoesNotExist:
+            logger.error("StudentInstructor not found for user: %s", request.user)
+            return Response({
+                'status_code': status.HTTP_400_BAD_REQUEST,
+                'message': 'StudentInstructor not found for user',
+                'response': {}
+            }, status=status.HTTP_400_BAD_REQUEST)
+
         serializer = QuizSubmissionSerializer(data=data)
         if serializer.is_valid():
             serializer.save()
@@ -121,6 +157,17 @@ class QuizSubmissionDetailAPIView(APIView):
     def put(self, request, pk, format=None):
         data = request.data
         data['user'] = request.user.id
+        try:
+            student_instructor = StudentInstructor.objects.get(user=request.user)
+            data['registration_id'] = student_instructor.registration_id
+        except StudentInstructor.DoesNotExist:
+            logger.error("StudentInstructor not found for user: %s", request.user)
+            return Response({
+                'status_code': status.HTTP_400_BAD_REQUEST,
+                'message': 'StudentInstructor not found for user',
+                'response': {}
+            }, status=status.HTTP_400_BAD_REQUEST)
+
         quiz_submission = get_object_or_404(QuizSubmission, pk=pk)
         serializer = QuizSubmissionSerializer(quiz_submission, data=data)
         if serializer.is_valid():
@@ -162,6 +209,17 @@ class QuizGradingListCreateAPIVieww(APIView):
     def post(self, request, pk, format=None):
         data = request.data.copy()
         data['graded_by'] = request.user.id
+        try:
+            student_instructor = StudentInstructor.objects.get(user=request.user)
+            data['registration_id'] = student_instructor.registration_id
+        except StudentInstructor.DoesNotExist:
+            logger.error("StudentInstructor not found for user: %s", request.user)
+            return Response({
+                'status_code': status.HTTP_400_BAD_REQUEST,
+                'message': 'StudentInstructor not found for user',
+                'response': {}
+            }, status=status.HTTP_400_BAD_REQUEST)
+
         serializer = QuizGradingSerializer(data=data)
         if serializer.is_valid():
             serializer.save()
@@ -192,6 +250,17 @@ class QuizGradingDetailAPIView(APIView):
     def put(self, request, pk, format=None):
         data = request.data.copy()
         data['graded_by'] = request.user.id
+        try:
+            student_instructor = StudentInstructor.objects.get(user=request.user)
+            data['registration_id'] = student_instructor.registration_id
+        except StudentInstructor.DoesNotExist:
+            logger.error("StudentInstructor not found for user: %s", request.user)
+            return Response({
+                'status_code': status.HTTP_400_BAD_REQUEST,
+                'message': 'StudentInstructor not found for user',
+                'response': {}
+            }, status=status.HTTP_400_BAD_REQUEST)
+
         quiz_grading = get_object_or_404(QuizGrading, pk=pk)
         serializer = QuizGradingSerializer(quiz_grading, data=data, partial=True)
         if serializer.is_valid():
