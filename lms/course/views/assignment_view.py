@@ -6,7 +6,8 @@ from ..models.models import Assignment,AssignmentSubmission,Grading
 from ..serializers import AssignmentSerializer,AssignmentSubmissionSerializer,GradingSerializer
 from accounts.models.models_ import *
 import logging
-from rest_framework.parsers import FileUploadParser, MultiPartParser,FormParser
+from django.shortcuts import get_list_or_404
+
 
 logger = logging.getLogger(__name__)
 
@@ -197,4 +198,21 @@ class AssignmentGradingDetailAPIView(CustomResponseMixin, APIView):
         grading = get_object_or_404(Grading, pk=pk)
         grading.delete()
         return self.custom_response(status.HTTP_204_NO_CONTENT, 'Project grading deleted successfully', {})
-    
+
+class AssignmentsByCourseIDAPIView(CustomResponseMixin, APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request, course_id, format=None):
+        # Fetch assignments for the given course_id
+        assignments = get_list_or_404(Assignment, course_id=course_id)
+        serializer = AssignmentSerializer(assignments, many=True)
+        return self.custom_response(status.HTTP_200_OK, 'Assignments retrieved successfully', serializer.data)
+
+class UsersWhoSubmittedAssignmentAPIView(CustomResponseMixin, APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request, assignment_id, format=None):
+        # Fetch submissions for the given assignment_id
+        submissions = get_list_or_404(AssignmentSubmission, assignment_id=assignment_id)
+        serializer = AssignmentSubmissionSerializer(submissions, many=True)
+        return self.custom_response(status.HTTP_200_OK, 'Users who submitted the assignment retrieved successfully', serializer.data)
