@@ -81,12 +81,14 @@ WSGI_APPLICATION = 'lms.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'HOST': os.getenv('DB_HOST'),
-        'NAME': os.getenv('DB_NAME'),
-        'USER': os.getenv('DB_USER'),
-        'PASSWORD': os.getenv('DB_PASSWORD'),
-
-
+        # 'HOST': os.getenv('DB_HOST'),
+        # 'NAME': os.getenv('DB_NAME'),
+        # 'USER': os.getenv('DB_USER'),
+        # 'PASSWORD': os.getenv('DB_PASSWORD'),
+        'HOST': 'localhost',
+        'NAME': 'test',
+        'USER': 'postgres',
+        'PASSWORD': 'password',
     }
 }
 
@@ -145,6 +147,10 @@ REST_FRAMEWORK = {
 }
 
 SPECTACULAR_SETTINGS = {
+    'TITLE': 'Learning Management System API',
+    'DESCRIPTION': 'Learning Management System for virtual, onsite, blended delivery of training and post training access to the system.',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
     'COMPONENT_SPLIT_REQUEST': True
 }
 
