@@ -12,9 +12,7 @@ class Attendance(models.Model):
         choices=[("Present", "Present"), ("Absent", "Absent"), ("Leave", "Leave")],
     )
     marked_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, related_name='instructor')
-
-    class Meta:
-        unique_together = ("session", "student", "date")
+    
 
     def __str__(self):
         return f"{self.student} - {self.session} - {self.date}"
