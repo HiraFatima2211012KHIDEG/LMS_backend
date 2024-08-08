@@ -83,16 +83,20 @@ class UserLoginView(views.APIView):
             )
             if user is not None:
                 tokens = self.get_tokens_for_user(user)
-                user_group_id = Group.objects.get(user = user.id).id
-                permission = self.get_group_permissions(user_group_id)
-                return Response({
-                        'status_code' : status.HTTP_200_OK,
-                        'message': 'Login Successful.',
-                        'response' : {
-                            'token' : tokens,
-                            'permissions' : permission
-                        }
-                        })
+                user_group = Group.objects.get(user=user.id)
+                permission = self.get_group_permissions(user_group.id)
+                user_profile = UserProfileSerializer(user)
+                return Response(
+                    {
+                        "status_code": status.HTTP_200_OK,
+                        "message": "Login Successful.",
+                        "response": {
+                            "token": tokens,
+                            "Group": user_group.name,
+                            "user": user_profile.data,
+                            "permissions": permission,
+                        },
+                    })
             else:
                 return Response({
                         'status_code' : status.HTTP_401_UNAUTHORIZED,
@@ -200,11 +204,14 @@ class UserProfileUpdateView(views.APIView):
 
         if serializer.is_valid(raise_exception=True):
             serializer.save()
+            # return Response({
+            #             'status_code' : status.HTTP_404_NOT_FOUND,
+            #             'message': 'User not found.',
+            # })
             return Response({
-                        'status_code' : status.HTTP_404_NOT_FOUND,
-                        'message': 'User not found.',
+                        'status_code' : status.HTTP_200_OK,
+                        'message': 'User updated successfully.',
             })
-
 
 class ChangePasswordView(views.APIView):
     """

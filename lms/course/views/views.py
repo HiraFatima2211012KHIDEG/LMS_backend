@@ -88,7 +88,36 @@ class ProgramDetailAPIView(CustomResponseMixin,APIView):
         program.delete()
         logger.info(f"Deleted program with ID: {pk}")
         return self.custom_response(status.HTTP_204_NO_CONTENT, 'Program deleted successfully', {})
-    
+
+class ProgramCoursesAPIView(CustomResponseMixin, APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request, program_id, format=None):
+        program = get_object_or_404(Program, id=program_id)
+        courses = Course.objects.filter(program=program)
+        serializer = CourseSerializer(courses, many=True)
+        return self.custom_response(status.HTTP_200_OK, 'Courses retrieved successfully', serializer.data)
+
+
+class CourseModulesAPIView(CustomResponseMixin, APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request, course_id, format=None):
+        course = get_object_or_404(Course, id=course_id)
+        modules = Module.objects.filter(course=course)
+        serializer = ModuleSerializer(modules, many=True)
+        return self.custom_response(status.HTTP_200_OK, 'Modules retrieved successfully', serializer.data)
+
+class ModuleContentAPIView(CustomResponseMixin, APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request, module_id, format=None):
+        module = get_object_or_404(Module, id=module_id)
+        contents = Content.objects.filter(module=module)
+        serializer = ContentSerializer(contents, many=True)
+        return self.custom_response(status.HTTP_200_OK, 'Content retrieved successfully', serializer.data)
+
+
 class CourseListCreateAPIView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
 

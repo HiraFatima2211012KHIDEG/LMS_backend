@@ -9,10 +9,13 @@ from .views.exam_view import *
 urlpatterns = [
     path('programs/', ProgramListCreateAPIView.as_view(), name='program-list-create'),
     path('programs/<int:pk>/', ProgramDetailAPIView.as_view(), name='program-detail'),
+    path('programs/<int:program_id>/courses/', ProgramCoursesAPIView.as_view(), name='program-courses'),
     path('courses/', CourseListCreateAPIView.as_view(), name='course-list-create'),
     path('courses/<int:pk>/', CourseDetailAPIView.as_view(), name='course-detail'),
+    path('courses/<int:course_id>/modules/', CourseModulesAPIView.as_view(), name='course-modules'),
     path('modules/', ModuleListCreateAPIView.as_view(), name='module-list-create'),
     path('modules/<int:pk>/', ModuleDetailAPIView.as_view(), name='module-detail'),
+    path('modules/<int:module_id>/content/', ModuleContentAPIView.as_view(), name='module-contents'),
     path('contents/', ContentListCreateAPIView.as_view(), name='content-list-create'),
     path('contents/<int:pk>/', ContentDetailAPIView.as_view(), name='content-detail'),
     path('content_files/', ContentFileListCreateAPIView.as_view(), name='content-file-list-create'),

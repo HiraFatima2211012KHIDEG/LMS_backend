@@ -44,7 +44,8 @@ INSTALLED_APPS = [
     'accounts',
     'core',
     'course',
-     'django_extensions',
+    'django_extensions',
+    'rest_framework_swagger'
 ]
 
 MIDDLEWARE = [
@@ -156,7 +157,7 @@ SPECTACULAR_SETTINGS = {
 }
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": datetime.timedelta(hours=2),
+    "ACCESS_TOKEN_LIFETIME": datetime.timedelta(hours=8),
     "REFRESH_TOKEN_LIFETIME": datetime.timedelta(days=1),
     "ALGORITHM": "HS256",
     "SIGNING_KEY": SECRET_KEY,

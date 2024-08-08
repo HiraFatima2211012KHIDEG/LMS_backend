@@ -121,6 +121,7 @@ class AssignmentSubmission(models.Model):
             )
         ],
     )
+    status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=0)
     submitted_at = models.DateTimeField(auto_now_add=True)
     resubmission = models.BooleanField(default=False)
     comments = models.TextField(null=True, blank=True)
@@ -182,6 +183,7 @@ class QuizSubmission(models.Model):
             )
         ],
     )
+    status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=0)
     quiz_submitted_at = models.DateTimeField(auto_now_add=True)
     resubmission = models.BooleanField(default=False)
     comments = models.TextField(null=True, blank=True)
@@ -242,6 +244,7 @@ class ProjectSubmission(models.Model):
             )
         ],
     )
+    status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=0)
     project_submitted_at = models.DateTimeField(auto_now_add=True)
     resubmission = models.BooleanField(default=False)
     comments = models.TextField(null=True, blank=True)
@@ -300,6 +303,7 @@ class ExamSubmission(models.Model):
             )
         ],
     )
+    status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=0)
     exam_submitted_at = models.DateTimeField(auto_now_add=True)
     resubmission = models.BooleanField(default=False)
     comments = models.TextField(null=True, blank=True)
