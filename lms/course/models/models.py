@@ -10,25 +10,12 @@ STATUS_CHOICES = (
         (1, 'Active'),
         (2, 'Deleted'),
     )
-class Program(models.Model):
-    name = models.CharField(max_length=100)
-    short_name = models.CharField(max_length=50)
-    description = models.TextField()
-    created_at = models.DateTimeField(auto_now_add=True)
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    registration_id = models.CharField(max_length=50, null=True, blank=True)
-    status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=0)
-
-    def __str__(self):
-        return self.name
 
 
 class Course(models.Model):
-    program = models.ForeignKey(
-        Program, on_delete=models.CASCADE, related_name="courses", null=True, blank=True
-    )
     name = models.CharField(max_length=100)
-    description = models.TextField()
+    short_description = models.TextField()
+    about = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     registration_id = models.CharField(max_length=50, null=True, blank=True)

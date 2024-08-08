@@ -5,6 +5,7 @@ from .views.assignment_view import *
 from .views.quizzes_view import *
 from .views.project_view import *
 from .views.exam_view import *
+from .views.program_view import *
 
 urlpatterns = [
     path('programs/', ProgramListCreateAPIView.as_view(), name='program-list-create'),

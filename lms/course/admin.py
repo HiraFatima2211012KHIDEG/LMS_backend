@@ -1,5 +1,6 @@
 from django.contrib import admin
 from .models.models import *
+from .models.program_model import *
 
 admin.site.register(Program)
 admin.site.register(Course)

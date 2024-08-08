@@ -1,42 +1,48 @@
 from rest_framework import serializers
 from .models.models import *
+from .models.program_model import *
 
-
-class ProgramSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Program
-        fields = ["id", "name", "short_name", "description", "created_by","registration_id","status"]
 
 
 class CourseSerializer(serializers.ModelSerializer):
-    # program = serializers.PrimaryKeyRelatedField(
-    #     queryset=Program.objects.all(), write_only=True
-    # )
-    # program_detail = ProgramSerializer(source="program", read_only=True)
-
     class Meta:
         model = Course
         fields = [
             "id",
             "name",
-            "program",
-            # "program_detail",
-            "description",
+            "short_description",
+            "about",
+            "created_at",
             "created_by",
             "registration_id",
             "credit_hours",
             "status",
         ]
 
-    def create(self, validated_data):
-        program = validated_data.pop("program")
-        return Course.objects.create(program=program, **validated_data)
 
-    def validate(self, data):
-        program = data.get("program")
-        if not Program.objects.filter(id=program.id).exists():
-            raise serializers.ValidationError({"program": "Invalid program ID."})
-        return data
+
+
+class ProgramSerializer(serializers.ModelSerializer):
+    courses = serializers.PrimaryKeyRelatedField(many=True, queryset=Course.objects.all())
+
+    class Meta:
+        model = Program
+        fields = ["id", "name", "short_description", "about", "created_by","registration_id","status","courses","picture"]
+
+
+    def create(self, validated_data):
+        courses = validated_data.pop('courses', [])
+        program = Program.objects.create(**validated_data)
+        program.courses.set(courses)
+        return program
+
+    def update(self, instance, validated_data):
+        courses = validated_data.pop('courses', [])
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        instance.courses.set(courses)
+        return instance
 
 
 class ModuleSerializer(serializers.ModelSerializer):
