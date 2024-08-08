@@ -2,7 +2,8 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APIClient
 from django.test import TestCase
-from ..models.user_models import City, Applications, Batch, Location, Sessions
+from ..models.user_models import Applications
+from ..models.location_models import City, Batch, Location, Sessions
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 

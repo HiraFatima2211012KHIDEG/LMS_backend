@@ -11,7 +11,7 @@ from ..models.location_models import (
 class CitySerializer(serializers.ModelSerializer):
     class Meta:
         model = City
-        fields = ['city', 'shortname']
+        fields = ['id', 'city', 'shortname']
 
 
 class BatchSerializer(serializers.ModelSerializer):

@@ -57,7 +57,7 @@ class UserLoginView(views.APIView):
             Response: A Response object with authentication tokens if successful,
                       or error details if validation fails.
         """
-        data = request.data
+        data = request.data.copy()
         if "email" not in data:
             return Response(
                 {

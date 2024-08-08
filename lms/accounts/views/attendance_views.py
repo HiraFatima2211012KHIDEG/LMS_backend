@@ -1,5 +1,6 @@
 from rest_framework import generics
 from rest_framework.response import Response
+from rest_framework import permissions
 from rest_framework import status
 from ..models.attendance_models import Attendance
 from ..serializers.attendance_serializers import AttendanceSerializer
@@ -15,6 +16,7 @@ class AttendanceDetailView(BaseLocationViewSet):
 
 class UserAttendanceListView(generics.GenericAPIView):
     serializer_class = AttendanceSerializer
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, user_id, *args, **kwargs):
         try:

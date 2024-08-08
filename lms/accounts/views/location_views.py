@@ -27,7 +27,7 @@ class CustomResponseMixin:
 class BaseLocationViewSet(CustomResponseMixin, mixins.CreateModelMixin, mixins.RetrieveModelMixin,
                   mixins.UpdateModelMixin, mixins.DestroyModelMixin, mixins.ListModelMixin,
                   viewsets.GenericViewSet):
-    # permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated]
     def create(self, request, *args, **kwargs):
         response = super().create(request, *args, **kwargs)
         return self.custom_response(status.HTTP_201_CREATED, 'created successfully', response.data)
