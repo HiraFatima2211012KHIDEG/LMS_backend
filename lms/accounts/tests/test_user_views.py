@@ -7,8 +7,8 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APIClient
 from django.contrib.auth.models import Group
-from ..models.models_ import User
-from ..models.models_ import Applications
+from ..models.user_models import User
+from ..models.user_models import Applications
 
 
 def create_user(email='user@example.com', password='testpass'):

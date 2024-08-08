@@ -2,13 +2,13 @@ from django.test import TestCase
 from rest_framework.test import APIClient
 from rest_framework import status
 from django.urls import reverse
-from ..models.models_ import Applications
+from ..models.user_models import Applications
 
 class CreateApplicationViewTests(TestCase):
 
     def setUp(self):
         self.client = APIClient()
-        self.url = reverse('create-application')  
+        self.url = reverse('create-application')
 
         self.valid_payload = {
             'email': 'test@example.com',

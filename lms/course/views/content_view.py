@@ -4,7 +4,7 @@ from rest_framework import status,permissions
 from django.shortcuts import get_object_or_404
 from ..models.models import Content
 from ..serializers import ContentSerializer, ContentFile,ContentFileSerializer
-from accounts.models.models_ import *
+from accounts.models.user_models import *
 import logging
 
 logger = logging.getLogger(__name__)

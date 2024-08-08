@@ -8,9 +8,13 @@ from .views.location_views import (
     CityViewSet,
     BatchViewSet,
     LocationViewSet,
-    SessionsViewSet,
-    CreateStudentInstructorView,
-    StudentInstructorDetailView
+    SessionsViewSet
+)
+
+from .views.attendance_views import (
+    AttendanceListCreateView,
+    AttendanceDetailView,
+    UserAttendanceListView
 )
 from .views.attendance_views import *
 from rest_framework_simplejwt.views import  TokenObtainPairView, TokenRefreshView
@@ -29,14 +33,15 @@ urlpatterns = [
     path('cities/', CityViewSet.as_view({'get': 'list', 'post': 'create'}), name='city-list-create'),
     path('cities/<int:pk>/', CityViewSet.as_view({'get': 'retrieve', 'put': 'update', 'delete': 'destroy'}), name='city-detail'),
     path('batch/', BatchViewSet.as_view({'get': 'list', 'post': 'create'}), name='batch-list-create'),
-    path('batch/<int:pk>/', BatchViewSet.as_view({'get': 'retrieve', 'put': 'update', 'delete': 'destroy'}), name='batch-detail'),
+    path('batch/<str:pk>/', BatchViewSet.as_view({'get': 'retrieve', 'put': 'update', 'delete': 'destroy'}), name='batch-detail'),
     path('location/', LocationViewSet.as_view({'get': 'list', 'post': 'create'}), name='location-list-create'),
     path('location/<int:pk>/', LocationViewSet.as_view({'get': 'retrieve', 'put': 'update', 'delete': 'destroy'}), name='location-detail'),
     path('session/', SessionsViewSet.as_view({'get': 'list', 'post': 'create'}), name='session-list-create'),
     path('session/<int:pk>/', SessionsViewSet.as_view({'get': 'retrieve', 'put': 'update', 'delete': 'destroy'}), name='session-detail'),
-    path('student-instructor/', CreateStudentInstructorView.as_view(), name='create-student-instructor'),
-    path('student-instructor/<str:registration_id>/', StudentInstructorDetailView.as_view(), name='detail-student-instructor'),
+    path('student-instructor/', user_views.CreateStudentInstructorView.as_view(), name='create-student-instructor'),
+    path('student-instructor/<str:registration_id>/', user_views.StudentInstructorDetailView.as_view(), name='detail-student-instructor'),
     path('attendance/', AttendanceListCreateView.as_view({'get': 'list', 'post': 'create'}), name='attendance-list-create'),
     path('attendance/<int:pk>/', AttendanceDetailView.as_view({'get': 'retrieve', 'put': 'update', 'delete': 'destroy'}), name='attendance-detail'),
     path('attendance/user/<int:user_id>/', UserAttendanceListView.as_view(), name='user-attendance-list'),
+
 ]

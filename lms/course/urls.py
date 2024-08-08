@@ -48,4 +48,6 @@ urlpatterns = [
     path('exam_submissions/<int:pk>/', ExamSubmissionDetailAPIView.as_view(), name='exam-submission-detail'),
     path('exam_gradings/', ExamGradingListCreateAPIView.as_view(), name='exam-grading-list-create'),
     path('exam_gradings/<int:pk>/', ExamGradingDetailAPIView.as_view(), name='exam-grading-detail'),
+    path('courses/<int:course_id>/assignment-progress/', AssignmentProgressAPIView.as_view(), name='assignment-progress'),
+
 ]

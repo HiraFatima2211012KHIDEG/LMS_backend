@@ -179,3 +179,11 @@ class ExamGradingSerializer(serializers.ModelSerializer):
     class Meta:
         model = ExamGrading
         fields = '__all__'
+
+
+class AssignmentProgressSerializer(serializers.Serializer):
+    student_id = serializers.IntegerField()
+    course_id = serializers.IntegerField()
+    total_assignments = serializers.IntegerField()
+    submitted_assignments = serializers.IntegerField()
+    progress_percentage = serializers.FloatField()

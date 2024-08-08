@@ -4,7 +4,7 @@ from rest_framework import status,permissions
 from django.shortcuts import get_object_or_404
 from ..models.models import *
 from ..serializers import *
-from accounts.models.models_ import *
+from accounts.models.user_models import *
 from rest_framework.permissions import IsAuthenticated
 import logging
 

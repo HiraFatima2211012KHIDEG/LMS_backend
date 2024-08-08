@@ -12,6 +12,7 @@ from django.utils.encoding import DjangoUnicodeDecodeError, force_bytes, smart_s
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from django.contrib.auth.hashers import check_password
 import re
+from ..models.user_models import StudentInstructor
 # from accounts.utils import send_email
 
 class UserSerializer(serializers.ModelSerializer):
@@ -288,3 +289,10 @@ class UserpasswordResetSerializer(serializers.Serializer):
 
         except DjangoUnicodeDecodeError:
             raise serializers.ValidationError("Token is not valid or expired.")
+
+
+class StudentInstructorSerializer(serializers.ModelSerializer):
+    registration_id = serializers.CharField(read_only=True)
+    class Meta:
+        model = StudentInstructor
+        fields = ['registration_id','user', 'session', 'batch']

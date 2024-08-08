@@ -2,9 +2,9 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status,permissions
 from django.shortcuts import get_object_or_404
-from ..models.models import Assignment,AssignmentSubmission,Grading
-from ..serializers import AssignmentSerializer,AssignmentSubmissionSerializer,GradingSerializer
-from accounts.models.models_ import *
+from ..models.models import *
+from ..serializers import AssignmentSerializer,AssignmentSubmissionSerializer,GradingSerializer,AssignmentProgressSerializer
+from accounts.models.user_models import *
 import logging
 from django.shortcuts import get_list_or_404
 
@@ -216,3 +216,30 @@ class UsersWhoSubmittedAssignmentAPIView(CustomResponseMixin, APIView):
         submissions = get_list_or_404(AssignmentSubmission, assignment_id=assignment_id)
         serializer = AssignmentSubmissionSerializer(submissions, many=True)
         return self.custom_response(status.HTTP_200_OK, 'Users who submitted the assignment retrieved successfully', serializer.data)
+
+
+class AssignmentProgressAPIView(CustomResponseMixin, APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request, course_id, format=None):
+        user = request.user
+        print(user.id)
+        course = get_object_or_404(Course, id=course_id)
+        total_assignments = Assignment.objects.filter(course=course).count()
+        submitted_assignments = AssignmentSubmission.objects.filter(user=user, assignment__course=course).count()
+
+        if total_assignments == 0:
+            progress_percentage = 0
+        else:
+            progress_percentage = (submitted_assignments / total_assignments) * 100
+
+        progress_data = {
+            'student_id': user.id,
+            'course_id': course_id,
+            'total_assignments': total_assignments,
+            'submitted_assignments': submitted_assignments,
+            'progress_percentage': progress_percentage
+        }
+
+        serializer = AssignmentProgressSerializer(progress_data)
+        return self.custom_response(status.HTTP_200_OK, 'Assignment progress retrieved successfully', serializer.data)

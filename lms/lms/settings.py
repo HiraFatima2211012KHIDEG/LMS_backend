@@ -44,8 +44,7 @@ INSTALLED_APPS = [
     'accounts',
     'core',
     'course',
-    'django_extensions',
-    'rest_framework_swagger'
+    'django_extensions'
 ]
 
 MIDDLEWARE = [
@@ -94,6 +93,7 @@ DATABASES = {
         # 'NAME': 'test',
         # 'USER': 'postgres',
         # 'PASSWORD': 'password',
+
 
     }
 }
@@ -153,6 +153,10 @@ REST_FRAMEWORK = {
 }
 
 SPECTACULAR_SETTINGS = {
+    'TITLE': 'Learning Management System API',
+    'DESCRIPTION': 'Learning Management System for virtual, onsite, blended delivery of training and post training access to the system.',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
     'COMPONENT_SPLIT_REQUEST': True
 }
 
