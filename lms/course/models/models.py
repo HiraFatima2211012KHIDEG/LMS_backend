@@ -293,10 +293,3 @@ class ExamGrading(models.Model):
         return f"{self.exam_submission} - {self.grade}"
 
 
-class AssignmentProgressSerializer(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    registration_id = models.CharField(max_length=50, null=True, blank=True)
-    course = models.ForeignKey(Course, related_name='assignment_progress', on_delete=models.CASCADE)
-    total_assignments = models.IntegerField()
-    submitted_assignments = models.IntegerField()
-    progress_percentage = models.FloatField()

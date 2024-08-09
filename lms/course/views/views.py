@@ -172,8 +172,6 @@ class ModuleDetailAPIView(CustomResponseMixin, APIView):
 
             files_to_delete = existing_files - uploaded_files
             ContentFile.objects.filter(id__in=files_to_delete).delete()
-
-
             return self.custom_response(status.HTTP_200_OK, 'Module updated successfully', serializer.data)
         
         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error updating module', serializer.errors)
