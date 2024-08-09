@@ -156,9 +156,24 @@ class ModuleDetailAPIView(CustomResponseMixin, APIView):
         serializer = ModuleSerializer(module, data=data)
         if serializer.is_valid():
             module = serializer.save()
+            # files = request.FILES.getlist('files')
+            # for file in files:
+            #     ContentFile.objects.create(module=module, file=file)
+        # Handle file updates
+            existing_files = set(module.files.values_list('id', flat=True))
+            uploaded_files = set()
+
+            # Create new files
             files = request.FILES.getlist('files')
             for file in files:
-                ContentFile.objects.create(module=module, file=file)
+                content_file = ContentFile.objects.create(module=module, file=file)
+                uploaded_files.add(content_file.id)
+
+
+            files_to_delete = existing_files - uploaded_files
+            ContentFile.objects.filter(id__in=files_to_delete).delete()
+
+
             return self.custom_response(status.HTTP_200_OK, 'Module updated successfully', serializer.data)
         
         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error updating module', serializer.errors)

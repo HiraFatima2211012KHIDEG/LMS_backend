@@ -48,7 +48,7 @@ class ProgramSerializer(serializers.ModelSerializer):
 class ContentFileSerializer(serializers.ModelSerializer):
     class Meta:
         model = ContentFile
-        fields = ['id', 'file']
+        fields = ['id', 'file','module_id']
 
 class ModuleSerializer(serializers.ModelSerializer):
     files = ContentFileSerializer(many=True, read_only=True)
