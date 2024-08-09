@@ -5,9 +5,9 @@ from django.shortcuts import get_object_or_404
 from ..models.models import *
 from ..serializers import *
 from accounts.models.user_models import *
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.parsers import MultiPartParser, FormParser
 import logging
-
+from django.apps import apps 
 
 logger = logging.getLogger(__name__)
 
@@ -23,82 +23,6 @@ class CustomResponseMixin:
         )
 
 
-# class ProgramListCreateAPIView(CustomResponseMixin,APIView):
-#     permission_classes = (permissions.IsAuthenticated,)
-
-
-#     def get(self, request, format=None):
-#         programs = Program.objects.all()
-#         serializer = ProgramSerializer(programs, many=True)
-#         logger.info("Retrieved all programs")
-#         return self.custom_response(status.HTTP_200_OK, 'Programs retrieved successfully', serializer.data)
-
-#     def post(self, request, format=None):
-#         data = request.data.copy()
-#         data['created_by'] = request.user.id 
-#         try:
-#             student_instructor = StudentInstructor.objects.get(user=request.user)
-#             data['registration_id'] = student_instructor.registration_id
-#         except StudentInstructor.DoesNotExist:
-#             logger.error("StudentInstructor not found for user: %s", request.user)
-#             return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
-        
-#         serializer = ProgramSerializer(data=data)
-#         if serializer.is_valid():
-#             serializer.save()
-#             logger.info("Created a new program")
-
-#             return self.custom_response(status.HTTP_201_CREATED, 'Program created successfully', serializer.data)
-        
-#         logger.error("Error creating a new program: %s", serializer.errors)
-#         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error creating program', serializer.errors)
-
-# class ProgramDetailAPIView(CustomResponseMixin,APIView):
-#     permission_classes = (permissions.IsAuthenticated,)
-
-
-#     def get(self, request, pk, format=None):
-#         program = get_object_or_404(Program, pk=pk)
-#         serializer = ProgramSerializer(program)
-#         logger.info(f"Retrieved program with ID: {pk}")
-#         return self.custom_response(status.HTTP_200_OK, 'Program retrieved successfully', serializer.data)
-    
-#     def put(self, request, pk, format=None):
-#         data = request.data.copy()
-#         data['created_by'] = request.user.id 
-#         try:
-#             student_instructor = StudentInstructor.objects.get(user=request.user)
-#             data['registration_id'] = student_instructor.registration_id
-#         except StudentInstructor.DoesNotExist:
-#             logger.error("StudentInstructor not found for user: %s", request.user)
-#             return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
-        
-#         program = get_object_or_404(Program, pk=pk)
-#         serializer = ProgramSerializer(program, data=data)
-#         if serializer.is_valid():
-#             serializer.save()
-#             logger.info(f"Updated program with ID: {pk}")
-#             return self.custom_response(status.HTTP_200_OK, 'Program updated successfully', serializer.data)
-        
-#         logger.error(f"Error updating program with ID {pk}: {serializer.errors}")
-#         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error updating program', serializer.errors)
-    
-#     def delete(self, request, pk, format=None):
-#         program = get_object_or_404(Program, pk=pk)
-#         program.delete()
-#         logger.info(f"Deleted program with ID: {pk}")
-#         return self.custom_response(status.HTTP_204_NO_CONTENT, 'Program deleted successfully', {})
-
-# class ProgramCoursesAPIView(CustomResponseMixin, APIView):
-#     permission_classes = (permissions.IsAuthenticated,)
-
-#     def get(self, request, program_id, format=None):
-#         program = get_object_or_404(Program, id=program_id)
-#         courses = Course.objects.filter(program=program)
-#         serializer = CourseSerializer(courses, many=True)
-#         return self.custom_response(status.HTTP_200_OK, 'Courses retrieved successfully', serializer.data)
-
-
 class CourseModulesAPIView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
@@ -107,15 +31,6 @@ class CourseModulesAPIView(CustomResponseMixin, APIView):
         modules = Module.objects.filter(course=course)
         serializer = ModuleSerializer(modules, many=True)
         return self.custom_response(status.HTTP_200_OK, 'Modules retrieved successfully', serializer.data)
-
-class ModuleContentAPIView(CustomResponseMixin, APIView):
-    permission_classes = (permissions.IsAuthenticated,)
-
-    def get(self, request, module_id, format=None):
-        module = get_object_or_404(Module, id=module_id)
-        contents = Content.objects.filter(module=module)
-        serializer = ContentSerializer(contents, many=True)
-        return self.custom_response(status.HTTP_200_OK, 'Content retrieved successfully', serializer.data)
 
 
 class CourseListCreateAPIView(CustomResponseMixin, APIView):
@@ -189,14 +104,14 @@ class CourseDetailAPIView(CustomResponseMixin, APIView):
 
 class ModuleListCreateAPIView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
-
+    parser_classes = (MultiPartParser, FormParser) 
     def get(self, request, format=None):
         modules = Module.objects.all()
         serializer = ModuleSerializer(modules, many=True)
         return self.custom_response(status.HTTP_200_OK, 'Modules retrieved successfully', serializer.data)
 
     def post(self, request, format=None):
-        data = request.data.copy()
+        data = request.data
         data['created_by'] = request.user.id
         try:
             student_instructor = StudentInstructor.objects.get(user=request.user)
@@ -209,6 +124,9 @@ class ModuleListCreateAPIView(CustomResponseMixin, APIView):
         serializer = ModuleSerializer(data=data)
         if serializer.is_valid():
             module = serializer.save()
+            files = request.FILES.getlist('files')
+            for file in files:
+                ContentFile.objects.create(module=module, file=file)
             return self.custom_response(status.HTTP_201_CREATED, 'Module created successfully', serializer.data)
         
         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error creating Module', serializer.errors)
@@ -216,7 +134,7 @@ class ModuleListCreateAPIView(CustomResponseMixin, APIView):
 
 class ModuleDetailAPIView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
-
+    parser_classes = (MultiPartParser, FormParser)
     def get(self, request, pk, format=None):
         module = get_object_or_404(Module, pk=pk)
         serializer = ModuleSerializer(module)
@@ -224,7 +142,7 @@ class ModuleDetailAPIView(CustomResponseMixin, APIView):
     
 
     def put(self, request, pk, format=None):
-        data = request.data.copy()
+        data = request.data
         data['created_by'] = request.user.id
         try:
             student_instructor = StudentInstructor.objects.get(user=request.user)
@@ -238,6 +156,9 @@ class ModuleDetailAPIView(CustomResponseMixin, APIView):
         serializer = ModuleSerializer(module, data=data)
         if serializer.is_valid():
             module = serializer.save()
+            files = request.FILES.getlist('files')
+            for file in files:
+                ContentFile.objects.create(module=module, file=file)
             return self.custom_response(status.HTTP_200_OK, 'Module updated successfully', serializer.data)
         
         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error updating module', serializer.errors)
@@ -248,90 +169,65 @@ class ModuleDetailAPIView(CustomResponseMixin, APIView):
         module.delete()
         return self.custom_response(status.HTTP_204_NO_CONTENT, 'Module deleted successfully', {})
 
-
 class ToggleActiveStatusAPIView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
+    MODEL_SERIALIZER_MAPPING = {
+        'programs': ('Program', ProgramSerializer),
+        'courses': ('Course', CourseSerializer),
+        'modules': ('Module', ModuleSerializer),
+        'assignments': ('Assignment', AssignmentSerializer),
+        'quizzes': ('Quizzes', QuizzesSerializer),
+        'projects': ('Project', ProjectSerializer),
+        'submissions': ('AssignmentSubmission', AssignmentSubmissionSerializer),
+        'quiz_submissions': ('QuizSubmission', QuizSubmissionSerializer),
+        'project_submissions': ('ProjectSubmission', ProjectSubmissionSerializer),
+        'exam_submissions': ('ExamSubmission', ExamSubmissionSerializer),
+    }
+
     def patch(self, request, model_name, pk, format=None):
-        model = None
-        serializer_class = None
-        obj = None
-
-
-        if model_name == 'programs':
-            model = Program
-            serializer_class = ProgramSerializer
-        elif model_name == 'courses':
-            model = Course
-            serializer_class = CourseSerializer
-        elif model_name == 'modules':
-            model = Module
-            serializer_class = ModuleSerializer
-        elif model_name == 'assignments':
-            model = Assignment
-            serializer_class = AssignmentSerializer
-        elif model_name == 'quizzes':
-            model = Quizzes
-            serializer_class = QuizzesSerializer
-        elif model_name == 'projects':
-            model = Project
-            serializer_class = ProjectSerializer
-        else:
+        if model_name not in self.MODEL_SERIALIZER_MAPPING:
             return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Invalid model name')
-
-       
+        
+        model_name, serializer_class = self.MODEL_SERIALIZER_MAPPING[model_name]
+        model = apps.get_model('course', model_name)  
+        
         obj = get_object_or_404(model, pk=pk)
         current_status = obj.status
 
-      
-        if current_status == 0:
-            obj.status = 1  
-        elif current_status == 1:
-            obj.status = 0 
-        # elif current_status == 2:
-        #     obj.status = 0  # Deactivate
-
+        obj.status = 1 if current_status == 0 else 0
         obj.save()
 
         serializer = serializer_class(obj)
-        return self.custom_response(status.HTTP_200_OK, 'Status toggled successfully',serializer.data)
-    
+        return self.custom_response(status.HTTP_200_OK, 'Status toggled successfully', serializer.data)
+
 
 class ToggleActiveDeleteStatusAPIView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
+    MODEL_SERIALIZER_MAPPING = {
+        'programs': ('Program', ProgramSerializer),
+        'courses': ('Course', CourseSerializer),
+        'modules': ('Module', ModuleSerializer),
+        'assignments': ('Assignment', AssignmentSerializer),
+        'quizzes': ('Quizzes', QuizzesSerializer),
+        'projects': ('Project', ProjectSerializer),
+        'submissions': ('AssignmentSubmission', AssignmentSubmissionSerializer),
+        'quiz_submissions': ('QuizSubmission', QuizSubmissionSerializer),
+        'project_submissions': ('ProjectSubmission', ProjectSubmissionSerializer),
+        'exam_submissions': ('ExamSubmission', ExamSubmissionSerializer),
+    }
 
     def patch(self, request, model_name, pk, format=None):
-        model = None
-        serializer_class = None
-        obj = None
-
-        if model_name == 'programs':
-            model = Program
-            serializer_class = ProgramSerializer
-        elif model_name == 'courses':
-            model = Course
-            serializer_class = CourseSerializer
-        elif model_name == 'modules':
-            model = Module
-            serializer_class = ModuleSerializer
-        elif model_name == 'assignments':
-            model = Assignment
-            serializer_class = AssignmentSerializer
-        elif model_name == 'quizzes':
-            model = Quizzes
-            serializer_class = QuizzesSerializer
-        elif model_name == 'projects':
-            model = Project
-            serializer_class = ProjectSerializer
-        else:
+        if model_name not in self.MODEL_SERIALIZER_MAPPING:
             return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Invalid model name')
-
+        
+        model_name, serializer_class = self.MODEL_SERIALIZER_MAPPING[model_name]
+        model = apps.get_model('course', model_name)  
         obj = get_object_or_404(model, pk=pk)
         current_status = obj.status
 
         if current_status == 0 or 1:
-            obj.status = 2 
-
+            obj.status = 2
         obj.save()
 
         serializer = serializer_class(obj)

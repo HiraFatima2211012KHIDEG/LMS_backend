@@ -38,27 +38,10 @@ class Module(models.Model):
     def __str__(self):
         return self.name
 
-
-# def validate_video_url(value):
-#     """Validator to ensure the URL is a valid video URL."""
-#     if value and not re.match(r'^.*\.(mp4|avi|mov|mkv)$', value):
-#         raise ValidationError('Invalid video URL. Only .mp4, .avi, .mov, and .mkv files are allowed.')
-
-
-class Content(models.Model):
-    module = models.ForeignKey(
-        Module, related_name="contents", on_delete=models.CASCADE
-    )
-    name = models.CharField(max_length=255)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return self.name
-
-
 class ContentFile(models.Model):
-    content = models.ForeignKey(Content, related_name="files", on_delete=models.CASCADE)
+    module = models.ForeignKey(
+        Module, related_name="files", on_delete=models.CASCADE, null=True, blank=True
+    )    
     file = models.FileField(
         upload_to="material/content/",
         validators=[
@@ -67,7 +50,6 @@ class ContentFile(models.Model):
             )
         ],
     )
-
 
 class Assignment(models.Model):
     # module = models.ForeignKey(Module, on_delete=models.CASCADE)

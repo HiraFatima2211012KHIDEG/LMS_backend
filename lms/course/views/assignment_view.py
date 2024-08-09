@@ -223,8 +223,15 @@ class AssignmentProgressAPIView(CustomResponseMixin, APIView):
 
     def get(self, request, course_id, format=None):
         user = request.user
-        print(user.id)
         course = get_object_or_404(Course, id=course_id)
+  
+        try:
+            student_instructor = StudentInstructor.objects.get(user=user)
+            registration_id = student_instructor.registration_id
+        except StudentInstructor.DoesNotExist:
+            logger.error("StudentInstructor not found for user: %s", user)
+            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
+        
         total_assignments = Assignment.objects.filter(course=course).count()
         submitted_assignments = AssignmentSubmission.objects.filter(user=user, assignment__course=course).count()
 
@@ -234,7 +241,8 @@ class AssignmentProgressAPIView(CustomResponseMixin, APIView):
             progress_percentage = (submitted_assignments / total_assignments) * 100
 
         progress_data = {
-            'student_id': user.id,
+            'user_id': user.id,
+            'student_id': registration_id,
             'course_id': course_id,
             'total_assignments': total_assignments,
             'submitted_assignments': submitted_assignments,
