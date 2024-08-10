@@ -2,7 +2,7 @@ from django.urls import reverse
 from rest_framework import status
 from ..models.location_models import Sessions, Location, Batch, City
 from .test_location_views import BaseAPITestCase
-from ..models.user_models import Applications
+from ..models.user_models import Applications, StudentInstructor
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 
@@ -33,15 +33,17 @@ class AttendanceTestCases(BaseAPITestCase):
             email="student@example.com",
             password="TestPass&123",
         )
+        self.user_registration = StudentInstructor.objects.create(user_id=self.user.id, batch=batch)
+        self.student_registration = StudentInstructor.objects.create(user_id=self.student.id, batch=batch)
         self.client.force_authenticate(user=self.student)
 
     def test_create_attendance(self):
         """Test creating attendance successfully"""
         payload = {
             "session": self.session.id,
-            "marked_by": self.user.id,
+            "marked_by": self.user_registration.registration_id,
             "status": "Present",
-            "student": self.student.id,
+            "student": self.student_registration.registration_id,
         }
         res = self.client.post(CREATE_URL, payload)
         self.assertEqual(res.status_code, status.HTTP_201_CREATED)
@@ -51,9 +53,9 @@ class AttendanceTestCases(BaseAPITestCase):
         """test retrieving attendance."""
         payload = {
             "session": self.session.id,
-            "marked_by": self.user.id,
+            "marked_by": self.user_registration.registration_id,
             "status": "Present",
-            "student": self.student.id,
+            "student": self.student_registration.registration_id,
         }
         self.client.post(CREATE_URL, payload)
         res = self.client.get(CREATE_URL)
