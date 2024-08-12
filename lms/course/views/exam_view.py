@@ -30,7 +30,8 @@ class ExamListCreateAPIView(CustomResponseMixin, APIView):
         return self.custom_response(status.HTTP_200_OK, 'Exams retrieved successfully', serializer.data)
 
     def post(self, request, format=None):
-        data = request.data
+        # data = request.data.copy()
+        data = {key: value for key, value in request.data.items()}
         data['created_by'] = request.user.id
         try:
             student_instructor = StudentInstructor.objects.get(user=request.user)
@@ -38,6 +39,12 @@ class ExamListCreateAPIView(CustomResponseMixin, APIView):
         except StudentInstructor.DoesNotExist:
             logger.error("StudentInstructor not found for user: %s", request.user)
             return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
+        
+        file_content = request.FILES.get('content', None)
+        if file_content is not None:
+            data['content'] = file_content
+        else:
+            data['content'] = None
 
         serializer = ExamSerializer(data=data)
         if serializer.is_valid():
@@ -54,7 +61,8 @@ class ExamDetailAPIView(CustomResponseMixin, APIView):
         return self.custom_response(status.HTTP_200_OK, 'Exam retrieved successfully', serializer.data)
 
     def put(self, request, pk, format=None):
-        data = request.data
+        # data = request.data.copy()
+        data = {key: value for key, value in request.data.items()}
         data['created_by'] = request.user.id 
         try:
             student_instructor = StudentInstructor.objects.get(user=request.user)
@@ -64,8 +72,11 @@ class ExamDetailAPIView(CustomResponseMixin, APIView):
             return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
 
         exam = get_object_or_404(Exam, pk=pk)
-        data = request.data.copy()
-        data['created_by'] = request.user.id
+        file_content = request.FILES.get('content', None)
+        if file_content is not None:
+            data['content'] = file_content
+        else:
+            data['content'] = None
         serializer = ExamSerializer(exam, data=data)
         if serializer.is_valid():
             serializer.save()

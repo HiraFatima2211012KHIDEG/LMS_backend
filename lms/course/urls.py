@@ -34,12 +34,14 @@ urlpatterns = [
     path('quiz_submissions/<int:pk>/', QuizSubmissionDetailAPIView.as_view(), name='quiz_submission_detail'),
     path('quiz_grading/', QuizGradingListCreateAPIVieww.as_view(), name='quiz-grading-create'),
     path('quiz_grading/<int:pk>/', QuizGradingDetailAPIView.as_view(), name='quiz-grading-detail'),
+    path('quizzes/course/<int:course_id>/', QuizzesByCourseIDAPIView.as_view(), name='quizzes-by-course-id'),
     path('projects/', ProjectListCreateAPIView.as_view(), name='project-list-create'),
     path('projects/<int:pk>/', ProjectDetailAPIView.as_view(), name='project-detail'),
     path('project_submissions/', ProjectSubmissionListCreateAPIView.as_view(), name='project-submission-list-create'),
     path('project_submissions/<int:pk>/', ProjectSubmissionDetailAPIView.as_view(), name='project-submission-detail'),
     path('project_gradings/', ProjectGradingListCreateAPIView.as_view(), name='project-grading-list-create'),
     path('project_gradings/<int:pk>/', ProjectGradingDetailAPIView.as_view(), name='project-grading-detail'),
+    # path('projects/course/<int:course_id>/', ProjectsByCourseIDAPIView.as_view(), name='projects-by-course-id'),
     path('exams/', ExamListCreateAPIView.as_view(), name='exam-list-create'),
     path('exams/<int:pk>/', ExamDetailAPIView.as_view(), name='exam-detail'),
     path('exam_submissions/', ExamSubmissionListCreateAPIView.as_view(), name='exam-submission-list-create'),
@@ -47,5 +49,7 @@ urlpatterns = [
     path('exam_gradings/', ExamGradingListCreateAPIView.as_view(), name='exam-grading-list-create'),
     path('exam_gradings/<int:pk>/', ExamGradingDetailAPIView.as_view(), name='exam-grading-detail'),
     path('courses/<int:course_id>/assignment-progress/', AssignmentProgressAPIView.as_view(), name='assignment-progress'),
+    path('course/<int:course_id>/course-progress/', CourseProgressAPIView.as_view(), name='course-progress'),
+
 
 ]

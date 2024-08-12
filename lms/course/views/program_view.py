@@ -30,7 +30,7 @@ class ProgramListCreateAPIView(CustomResponseMixin, APIView):
         return self.custom_response(status.HTTP_200_OK, 'Programs retrieved successfully', serializer.data)
 
     def post(self, request, format=None):
-        data = request.data.copy()
+        data = {key: value for key, value in request.data.items()}
         data['created_by'] = request.user.id
         try:
             student_instructor = StudentInstructor.objects.get(user=request.user)
@@ -58,7 +58,7 @@ class ProgramDetailAPIView(CustomResponseMixin, APIView):
         return self.custom_response(status.HTTP_200_OK, 'Program retrieved successfully', serializer.data)
 
     def put(self, request, pk, format=None):
-        data = request.data.copy()
+        data = {key: value for key, value in request.data.items()}
         data['created_by'] = request.user.id
         try:
             student_instructor = StudentInstructor.objects.get(user=request.user)

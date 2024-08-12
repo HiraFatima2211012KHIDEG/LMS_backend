@@ -44,7 +44,7 @@ class CourseListCreateAPIView(CustomResponseMixin, APIView):
         return self.custom_response(status.HTTP_200_OK, 'Courses retrieved successfully', serializer.data)
     
     def post(self, request, format=None):
-        data = request.data.copy()
+        data = {key: value for key, value in request.data.items()}
         data['created_by'] = request.user.id 
         try:
             student_instructor = StudentInstructor.objects.get(user=request.user)
@@ -76,7 +76,7 @@ class CourseDetailAPIView(CustomResponseMixin, APIView):
 
 
     def put(self, request, pk, format=None):
-        data = request.data.copy()
+        data = {key: value for key, value in request.data.items()}
         data['created_by'] = request.user.id 
         try:
             student_instructor = StudentInstructor.objects.get(user=request.user)
@@ -111,7 +111,7 @@ class ModuleListCreateAPIView(CustomResponseMixin, APIView):
         return self.custom_response(status.HTTP_200_OK, 'Modules retrieved successfully', serializer.data)
 
     def post(self, request, format=None):
-        data = request.data
+        data = {key: value for key, value in request.data.items()}
         data['created_by'] = request.user.id
         try:
             student_instructor = StudentInstructor.objects.get(user=request.user)
@@ -142,7 +142,7 @@ class ModuleDetailAPIView(CustomResponseMixin, APIView):
     
 
     def put(self, request, pk, format=None):
-        data = request.data
+        data = {key: value for key, value in request.data.items()}
         data['created_by'] = request.user.id
         try:
             student_instructor = StudentInstructor.objects.get(user=request.user)
