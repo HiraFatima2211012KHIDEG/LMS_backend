@@ -89,6 +89,8 @@ class AssignmentSubmission(models.Model):
                 allowed_extensions=['pdf', "doc", "docx", "ppt", "pptx", "txt",'zip']
             )
         ],
+        
+        null=True, blank=True
     )
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=0)
     submitted_at = models.DateTimeField(auto_now_add=True)
@@ -293,3 +295,9 @@ class ExamGrading(models.Model):
         return f"{self.exam_submission} - {self.grade}"
 
 
+class Weightage(models.Model):
+    course = models.ForeignKey(Course, related_name='weightage', on_delete=models.CASCADE)
+    assignments_weightage = models.FloatField(default=0,null=True, blank=True)
+    quizzes_weightage = models.FloatField(default=0,null=True, blank=True)
+    projects_weightage = models.FloatField(default=0,null=True, blank=True)
+    exams_weightage = models.FloatField(default=0,null=True, blank=True)

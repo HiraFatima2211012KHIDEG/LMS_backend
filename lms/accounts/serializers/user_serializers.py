@@ -70,10 +70,18 @@ class UserLoginSerializer(serializers.Serializer):
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
+    registration_id = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ['first_name', 'last_name','contact', 'city']
+        fields = ['id', 'first_name', 'last_name', 'contact', 'city', 'registration_id']
+
+    def get_registration_id(self, obj):
+        try:
+            student_instructor = StudentInstructor.objects.get(user=obj)
+            return student_instructor.registration_id
+        except StudentInstructor.DoesNotExist:
+            return None
 
 
 class UserProfileUpdateSerializer(serializers.ModelSerializer):

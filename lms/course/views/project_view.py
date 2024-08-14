@@ -7,6 +7,8 @@ from ..serializers import *
 from rest_framework.parsers import MultiPartParser, FormParser
 from accounts.models.user_models import *
 import logging
+from django.shortcuts import get_list_or_404
+
 
 logger = logging.getLogger(__name__)
 class CustomResponseMixin:
@@ -96,7 +98,7 @@ class ProjectSubmissionListCreateAPIView(CustomResponseMixin, APIView):
         return self.custom_response(status.HTTP_200_OK, 'Project submissions retrieved successfully', serializer.data)
 
     def post(self, request, format=None):
-        data = request.data
+        data = {key: value for key, value in request.data.items()}
         data['user'] = request.user.id
         try:
             student_instructor = StudentInstructor.objects.get(user=request.user)
@@ -120,7 +122,7 @@ class ProjectSubmissionDetailAPIView(CustomResponseMixin, APIView):
         return self.custom_response(status.HTTP_200_OK, 'Project submission retrieved successfully', serializer.data)
 
     def put(self, request, pk, format=None):
-        data = request.data
+        data = {key: value for key, value in request.data.items()}
         data['user'] = request.user.id
         try:
             student_instructor = StudentInstructor.objects.get(user=request.user)
@@ -153,7 +155,7 @@ class ProjectGradingListCreateAPIView(CustomResponseMixin, APIView):
         return self.custom_response(status.HTTP_200_OK, 'Project gradings retrieved successfully', serializer.data)
 
     def post(self, request, format=None):
-        data = request.data.copy()
+        data = {key: value for key, value in request.data.items()}
         data['graded_by'] = request.user.id
         try:
             student_instructor = StudentInstructor.objects.get(user=request.user)
@@ -177,7 +179,7 @@ class ProjectGradingDetailAPIView(CustomResponseMixin, APIView):
         return self.custom_response(status.HTTP_200_OK, 'Project grading retrieved successfully', serializer.data)
 
     def put(self, request, pk, format=None):
-        data = request.data.copy()
+        data = {key: value for key, value in request.data.items()}
         data['graded_by'] = request.user.id
         try:
             student_instructor = StudentInstructor.objects.get(user=request.user)
@@ -198,3 +200,13 @@ class ProjectGradingDetailAPIView(CustomResponseMixin, APIView):
         project_grading = get_object_or_404(ProjectGrading, pk=pk)
         project_grading.delete()
         return self.custom_response(status.HTTP_204_NO_CONTENT, 'Project grading deleted successfully', {})
+
+
+class ProjectsByCourseIDAPIView(CustomResponseMixin, APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request, course_id, format=None):
+        # Fetch assignments for the given course_id
+        projects = get_list_or_404(Project, course_id=course_id)
+        serializer = ProjectSerializer(projects, many=True)
+        return self.custom_response(status.HTTP_200_OK, 'Projects retrieved successfully', serializer.data)

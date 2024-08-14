@@ -3,7 +3,6 @@ from .models.models import *
 from .models.program_model import *
 
 
-
 class CourseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Course
@@ -20,24 +19,33 @@ class CourseSerializer(serializers.ModelSerializer):
         ]
 
 
-
-
 class ProgramSerializer(serializers.ModelSerializer):
-    courses = serializers.PrimaryKeyRelatedField(many=True, queryset=Course.objects.all())
+    courses = serializers.PrimaryKeyRelatedField(
+        many=True, queryset=Course.objects.all()
+    )
 
     class Meta:
         model = Program
-        fields = ["id", "name", "short_description", "about", "created_by","registration_id","status","courses","picture"]
-
+        fields = [
+            "id",
+            "name",
+            "short_description",
+            "about",
+            "created_by",
+            "registration_id",
+            "status",
+            "courses",
+            "picture",
+        ]
 
     def create(self, validated_data):
-        courses = validated_data.pop('courses', [])
+        courses = validated_data.pop("courses", [])
         program = Program.objects.create(**validated_data)
         program.courses.set(courses)
         return program
 
     def update(self, instance, validated_data):
-        courses = validated_data.pop('courses', [])
+        courses = validated_data.pop("courses", [])
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
@@ -48,11 +56,12 @@ class ProgramSerializer(serializers.ModelSerializer):
 class ContentFileSerializer(serializers.ModelSerializer):
     class Meta:
         model = ContentFile
-        fields = ['id', 'file','module_id']
+        fields = ["id", "file", "module_id"]
+
 
 class ModuleSerializer(serializers.ModelSerializer):
     files = ContentFileSerializer(many=True, read_only=True)
-    
+
     class Meta:
         model = Module
         fields = [
@@ -63,7 +72,7 @@ class ModuleSerializer(serializers.ModelSerializer):
             "created_by",
             "registration_id",
             "status",
-            "files"
+            "files",
         ]
 
     def create(self, validated_data):
@@ -77,39 +86,86 @@ class ModuleSerializer(serializers.ModelSerializer):
         return data
 
 
-   
-
 class AssignmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Assignment
-        fields = ['id','course', 'created_at','created_by',"registration_id", 'question','description','content' ,'due_date', 'status']
+        fields = [
+            "id",
+            "course",
+            "created_at",
+            "created_by",
+            "registration_id",
+            "question",
+            "description",
+            "content",
+            "due_date",
+            "status",
+        ]
 
 
 class AssignmentSubmissionSerializer(serializers.ModelSerializer):
     class Meta:
         model = AssignmentSubmission
-        fields = ['id', 'assignment', 'user',"registration_id", 'submitted_file', 'submitted_at','status','resubmission','comments']
+        fields = [
+            "id",
+            "assignment",
+            "user",
+            "registration_id",
+            "submitted_file",
+            "submitted_at",
+            "status",
+            "resubmission",
+            "comments",
+        ]
 
 
 class GradingSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Grading
-        fields = ['id', 'submission', 'grade','total_grade', 'feedback', 'graded_by',"registration_id", 'graded_at']
-
-
+        fields = [
+            "id",
+            "submission",
+            "grade",
+            "total_grade",
+            "feedback",
+            "graded_by",
+            "registration_id",
+            "graded_at",
+        ]
 
 
 class QuizzesSerializer(serializers.ModelSerializer):
     class Meta:
         model = Quizzes
-        fields = ['id','course', 'created_at', 'created_by',"registration_id", 'question','description','content' ,'due_date', 'status']
+        fields = [
+            "id",
+            "course",
+            "created_at",
+            "created_by",
+            "registration_id",
+            "question",
+            "description",
+            "content",
+            "due_date",
+            "status",
+        ]
 
 
 class QuizSubmissionSerializer(serializers.ModelSerializer):
     class Meta:
         model = QuizSubmission
-        fields = ['id', 'quiz', 'user',"registration_id", 'quiz_submitted_file', 'quiz_submitted_at','status','resubmission','comments']
+        fields = [
+            "id",
+            "quiz",
+            "user",
+            "registration_id",
+            "quiz_submitted_file",
+            "quiz_submitted_at",
+            "status",
+            "resubmission",
+            "comments",
+        ]
 
 
 class QuizGradingSerializer(serializers.ModelSerializer):
@@ -120,19 +176,49 @@ class QuizGradingSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = QuizGrading
-        fields = ['id', 'quiz_submissions', 'grade', 'total_grade', 'feedback', 'graded_by', "registration_id",'graded_at']
+        fields = [
+            "id",
+            "quiz_submissions",
+            "grade",
+            "total_grade",
+            "feedback",
+            "graded_by",
+            "registration_id",
+            "graded_at",
+        ]
 
 
 class ProjectSerializer(serializers.ModelSerializer):
     class Meta:
         model = Project
-        fields = ['id','course', 'created_at', 'created_by', "registration_id",'title','description','content' ,'due_date', 'status']
+        fields = [
+            "id",
+            "course",
+            "created_at",
+            "created_by",
+            "registration_id",
+            "title",
+            "description",
+            "content",
+            "due_date",
+            "status",
+        ]
 
 
 class ProjectSubmissionSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProjectSubmission
-        fields = ['id', 'project', 'user',"registration_id", 'project_submitted_file', 'project_submitted_file','status','resubmission','comments']
+        fields = [
+            "id",
+            "project",
+            "user",
+            "registration_id",
+            "project_submitted_file",
+            "project_submitted_file",
+            "status",
+            "resubmission",
+            "comments",
+        ]
 
 
 class ProjectGradingSerializer(serializers.ModelSerializer):
@@ -143,23 +229,34 @@ class ProjectGradingSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ProjectGrading
-        fields = ['id', 'project_submissions', 'grade', 'total_grade', 'feedback', 'graded_by',"registration_id", 'graded_at']
-    
+        fields = [
+            "id",
+            "project_submissions",
+            "grade",
+            "total_grade",
+            "feedback",
+            "graded_by",
+            "registration_id",
+            "graded_at",
+        ]
+
 
 class ExamSerializer(serializers.ModelSerializer):
     class Meta:
         model = Exam
-        fields = '__all__'
+        fields = "__all__"
+
 
 class ExamSubmissionSerializer(serializers.ModelSerializer):
     class Meta:
         model = ExamSubmission
-        fields = '__all__'
+        fields = "__all__"
+
 
 class ExamGradingSerializer(serializers.ModelSerializer):
     class Meta:
         model = ExamGrading
-        fields = '__all__'
+        fields = "__all__"
 
 
 class AssignmentProgressSerializer(serializers.Serializer):
@@ -170,6 +267,7 @@ class AssignmentProgressSerializer(serializers.Serializer):
     submitted_assignments = serializers.IntegerField()
     progress_percentage = serializers.FloatField()
 
+
 class CourseProgressSerializer(serializers.Serializer):
     user_id = serializers.IntegerField()
     student_id = serializers.IntegerField()
@@ -177,3 +275,10 @@ class CourseProgressSerializer(serializers.Serializer):
     total_modules = serializers.IntegerField()
     total_attendance = serializers.IntegerField()
     progress_percentage = serializers.FloatField()
+
+
+
+class WeightageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Weightage
+        fields = '__all__'

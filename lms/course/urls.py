@@ -6,6 +6,7 @@ from .views.quizzes_view import *
 from .views.project_view import *
 from .views.exam_view import *
 from .views.program_view import *
+from .views.weightage_view import *
 
 urlpatterns = [
     path('programs/', ProgramListCreateAPIView.as_view(), name='program-list-create'),
@@ -27,7 +28,10 @@ urlpatterns = [
     path('assignments_grading/', AssignmentGradingListCreateAPIView.as_view(), name='grade-assignment'),
     path('assignments_grading/<int:pk>/', AssignmentGradingDetailAPIView.as_view(), name='grading-detail'),
     path('assignments/course/<int:course_id>/', AssignmentsByCourseIDAPIView.as_view(), name='assignments-by-course-id'),
-    path('assignments/<int:assignment_id>/submissions/', UsersWhoSubmittedAssignmentAPIView.as_view(), name='users-who-submitted-assignment'),
+    path('assignments/<int:course_id>/course/<str:registration_id>/total_score/', StudentScoresSummaryAPIView.as_view(), name='users-score-assignment'),
+    path('courses/<int:course_id>/students/<str:registration_id>/pending-assignments/', PendingAssignmentsView.as_view(), name='pending-assignments'),
+    path('assignments/<str:registration_id>/submissions/', StudentsWhoSubmittedAssignmentAPIView.as_view(), name='users-who-submitted-assignment'),
+    # path('assignments/<int:assignment_id>/students/', StudentsListSubmittedAssignmentAPIView.as_view(), name='users-list-submitted-assignment'),
     path('quizzes/', QuizListCreateAPIView.as_view(), name='quiz-list-create'),
     path('quizzes/<int:pk>/', QuizDetailAPIView.as_view(), name='quiz-detail'),
     path('quiz_submissions/', QuizSubmissionCreateAPIView.as_view(), name='quiz_submission_list_create'),
@@ -41,15 +45,16 @@ urlpatterns = [
     path('project_submissions/<int:pk>/', ProjectSubmissionDetailAPIView.as_view(), name='project-submission-detail'),
     path('project_gradings/', ProjectGradingListCreateAPIView.as_view(), name='project-grading-list-create'),
     path('project_gradings/<int:pk>/', ProjectGradingDetailAPIView.as_view(), name='project-grading-detail'),
-    # path('projects/course/<int:course_id>/', ProjectsByCourseIDAPIView.as_view(), name='projects-by-course-id'),
+    path('projects/course/<int:course_id>/', ProjectsByCourseIDAPIView.as_view(), name='projects-by-course-id'),
     path('exams/', ExamListCreateAPIView.as_view(), name='exam-list-create'),
     path('exams/<int:pk>/', ExamDetailAPIView.as_view(), name='exam-detail'),
     path('exam_submissions/', ExamSubmissionListCreateAPIView.as_view(), name='exam-submission-list-create'),
     path('exam_submissions/<int:pk>/', ExamSubmissionDetailAPIView.as_view(), name='exam-submission-detail'),
     path('exam_gradings/', ExamGradingListCreateAPIView.as_view(), name='exam-grading-list-create'),
     path('exam_gradings/<int:pk>/', ExamGradingDetailAPIView.as_view(), name='exam-grading-detail'),
+    path('exams/course/<int:course_id>/', ExamsByCourseIDAPIView.as_view(), name='exams-by-course-id'),
     path('courses/<int:course_id>/assignment-progress/', AssignmentProgressAPIView.as_view(), name='assignment-progress'),
     path('course/<int:course_id>/course-progress/', CourseProgressAPIView.as_view(), name='course-progress'),
-
-
+    path('weightages/', WeightageListCreateAPIView.as_view(), name='weightage-list-create'),
+    path('weightages/<int:pk>/', WeightageDetailAPIView.as_view(), name='weightage-detail'),
 ]

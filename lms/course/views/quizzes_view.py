@@ -94,7 +94,7 @@ class QuizSubmissionCreateAPIView(CustomResponseMixin, APIView):
         return self.custom_response(status.HTTP_200_OK, 'Quiz submissions retrieved successfully', serializer.data)
 
     def post(self, request, format=None):
-        data = request.data
+        data = {key: value for key, value in request.data.items()}
         data['user'] = request.user.id
         try:
             student_instructor = StudentInstructor.objects.get(user=request.user)
@@ -119,7 +119,7 @@ class QuizSubmissionDetailAPIView(CustomResponseMixin, APIView):
         return self.custom_response(status.HTTP_200_OK, 'Quiz submission retrieved successfully', serializer.data)
 
     def put(self, request, pk, format=None):
-        data = request.data
+        data = {key: value for key, value in request.data.items()}
         data['user'] = request.user.id
         try:
             student_instructor = StudentInstructor.objects.get(user=request.user)
@@ -150,8 +150,8 @@ class QuizGradingListCreateAPIVieww(CustomResponseMixin, APIView):
         return self.custom_response(status.HTTP_200_OK, 'Quiz gradings retrieved successfully', serializer.data)
 
 
-    def post(self, request, pk, format=None):
-        data = request.data.copy()
+    def post(self, request, format=None):
+        data = {key: value for key, value in request.data.items()}
         data['graded_by'] = request.user.id
         try:
             student_instructor = StudentInstructor.objects.get(user=request.user)
@@ -175,7 +175,7 @@ class QuizGradingDetailAPIView(CustomResponseMixin, APIView):
         return self.custom_response(status.HTTP_200_OK, 'Quiz grading retrieved successfully', serializer.data)
 
     def put(self, request, pk, format=None):
-        data = request.data.copy()
+        data = {key: value for key, value in request.data.items()}
         data['graded_by'] = request.user.id
         try:
             student_instructor = StudentInstructor.objects.get(user=request.user)
