@@ -6,8 +6,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from accounts.models import User
 from django.contrib.auth.models import Group
 from drf_spectacular.utils import extend_schema
-from ..serializers.user_serializers import UserSerializer, StudentInstructor
-from ..models.user_models import AccessControl, StudentInstructor
+from ..serializers.user_serializers import UserSerializer, StudentSerializer
+from ..models.user_models import AccessControl, Student
 import constants
 from ..models.location_models import *
 
@@ -443,7 +443,7 @@ class UserpasswordResetView(views.APIView):
 class CreateStudentInstructorView(generics.CreateAPIView):
     """Create a new student/instructor in the system."""
 
-    serializer_class = StudentInstructorSerializer
+    serializer_class = StudentSerializer
 
     def create(self, request, *args, **kwargs):
         user = request.data.get("user")
@@ -457,7 +457,7 @@ class CreateStudentInstructorView(generics.CreateAPIView):
                 {"error": "Batch does not exist."}, status=status.HTTP_400_BAD_REQUEST
             )
 
-        if StudentInstructor.objects.filter(user=user, batch=batch).exists():
+        if Student.objects.filter(user=user, batch=batch).exists():
             return Response(
                 {"error": "This user is already registered for this batch."},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -480,6 +480,6 @@ class CreateStudentInstructorView(generics.CreateAPIView):
 class StudentInstructorDetailView(generics.RetrieveAPIView):
     """Retrieve a student/instructor by registration_id."""
 
-    queryset = StudentInstructor.objects.all()
-    serializer_class = StudentInstructorSerializer
+    queryset = Student.objects.all()
+    serializer_class = StudentSerializer
     lookup_field = "registration_id"

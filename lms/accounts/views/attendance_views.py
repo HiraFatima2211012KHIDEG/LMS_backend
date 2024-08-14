@@ -16,9 +16,9 @@ class AttendanceDetailView(BaseLocationViewSet):
 class UserAttendanceListView(generics.GenericAPIView):
     serializer_class = AttendanceSerializer
 
-    def get(self, request, user_id, *args, **kwargs):
+    def get(self, request, registration_id, *args, **kwargs):
         try:
-            attendance_records = Attendance.objects.filter(student_id=user_id)
+            attendance_records = Attendance.objects.filter(student_id=registration_id)
             serializer = self.get_serializer(attendance_records, many=True)
             return Response(serializer.data, status=status.HTTP_200_OK)
         except Exception as e:

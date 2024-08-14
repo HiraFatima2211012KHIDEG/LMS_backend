@@ -5,10 +5,12 @@ from django.contrib.auth.models import (
     PermissionsMixin,
     Group
 )
+from django.contrib.auth import get_user_model
 from .location_models import (
     Sessions,
     Batch
 )
+from django.conf import settings
 
 
 class Applications(models.Model):
@@ -103,8 +105,8 @@ class AccessControl(models.Model):
     updated_at = models.DateTimeField(auto_now=True,null=True, blank=True)
 
 
-class StudentInstructor(models.Model):
-    """Extra details of Students and Instructors in the System."""
+class Student(models.Model):
+    """Extra details of Students in the System."""
     registration_id = models.CharField(max_length=20, primary_key=True)
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     session = models.ForeignKey(Sessions, on_delete=models.CASCADE, null=True, blank=True)
@@ -115,7 +117,18 @@ class StudentInstructor(models.Model):
         if not self.registration_id:
             batch = self.batch.batch
             self.registration_id = f"{batch}-{self.user.id}"
-        super(StudentInstructor, self).save(*args, **kwargs)
+        super(Student, self).save(*args, **kwargs)
 
     class Meta:
         unique_together = ('batch', 'user')
+
+class Instructor(models.Model):
+    """Extra details of Instructors in the System."""
+    session = models.ForeignKey(Sessions, on_delete=models.CASCADE, null=True, blank=True)
+    user = models.ForeignKey(
+                settings.AUTH_USER_MODEL,
+                on_delete=models.CASCADE
+                , related_name='instructor',
+                null=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)

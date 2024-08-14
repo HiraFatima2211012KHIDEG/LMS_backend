@@ -1,5 +1,4 @@
 from rest_framework import serializers
-from ..models.user_models import StudentInstructor
 from ..models.location_models import (
     City,
     Batch,
