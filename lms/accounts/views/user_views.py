@@ -14,9 +14,11 @@ from drf_spectacular.utils import extend_schema
 from ..serializers.user_serializers import (
     UserSerializer,
 )
-from ..models.models_ import AccessControl
+from ..models.models_ import *
 import constants
-
+from ..serializers.application_serializers import *
+from ..serializers.location_serializers import *
+from .location_views import CustomResponseMixin
 
 
 
@@ -83,13 +85,16 @@ class UserLoginView(views.APIView):
             )
             if user is not None:
                 tokens = self.get_tokens_for_user(user)
-                user_group_id = Group.objects.get(user = user.id).id
-                permission = self.get_group_permissions(user_group_id)
+                user_group = Group.objects.get(user = user.id)
+                permission = self.get_group_permissions(user_group.id)
+                user_profile = UserProfileSerializer(user)
                 return Response({
                         'status_code' : status.HTTP_200_OK,
                         'message': 'Login Successful.',
                         'response' : {
                             'token' : tokens,
+                            'Group' : user_group.name,
+                            'User' : user_profile.data,
                             'permissions' : permission
                         }
                         })
@@ -140,7 +145,7 @@ class UserLoginView(views.APIView):
                 permissions_value += constants.READ
             if access_control.update:
                 permissions_value += constants.UPDATE
-            if access_control.delete:
+            if access_control.remove:
                 permissions_value += constants.DELETE
 
             permissions_dict[model_name] = permissions_value
@@ -201,8 +206,8 @@ class UserProfileUpdateView(views.APIView):
         if serializer.is_valid(raise_exception=True):
             serializer.save()
             return Response({
-                        'status_code' : status.HTTP_404_NOT_FOUND,
-                        'message': 'User not found.',
+                        'status_code' : status.HTTP_200_OK,
+                        'message': 'User updated successfully.',
             })
 
 
@@ -250,35 +255,35 @@ class ChangePasswordView(views.APIView):
         })
 
 
-class SetPasswordView(views.APIView):
-    """
-    View to set a new password for the authenticated user.
-    """
-    permission_classes = [permissions.IsAuthenticated]
+# class SetPasswordView(views.APIView):
+#     """
+#     View to set a new password for the authenticated user.
+#     """
+#     permission_classes = [permissions.IsAuthenticated]
 
-    def post(self, request):
-        """
-        Handle POST request to set a new password.
-        """
-        user = request.user
-        data = request.data
-        if 'password' not in data: return Response({'status_code' : status.HTTP_400_BAD_REQUEST, 'message' : 'Password is not provided.'})
-        if 'password2' not in data: return Response({'status_code' : status.HTTP_400_BAD_REQUEST, 'message' : 'Confirm password is not provided.'})
+#     def post(self, request):
+#         """
+#         Handle POST request to set a new password.
+#         """
+#         user = request.user
+#         data = request.data
+#         if 'password' not in data: return Response({'status_code' : status.HTTP_400_BAD_REQUEST, 'message' : 'Password is not provided.'})
+#         if 'password2' not in data: return Response({'status_code' : status.HTTP_400_BAD_REQUEST, 'message' : 'Confirm password is not provided.'})
 
-        serializer = SetPasswordSerializer(data=data, context={'user': user})
-        if serializer.is_valid(raise_exception=True):
-            serializer.save()
-            return Response({
-                        'status_code' : status.HTTP_200_OK,
-                        'message': 'Password set successfully.',
-        })
-        else:
-            return Response({
-                        'status_code' : status.HTTP_400_BAD_REQUEST,
-                        'message': 'Unable to set password.',
-                        'response' : serializer.errors
+#         serializer = SetPasswordSerializer(data=data, context={'user': user})
+#         if serializer.is_valid(raise_exception=True):
+#             serializer.save()
+#             return Response({
+#                         'status_code' : status.HTTP_200_OK,
+#                         'message': 'Password set successfully.',
+#         })
+#         else:
+#             return Response({
+#                         'status_code' : status.HTTP_400_BAD_REQUEST,
+#                         'message': 'Unable to set password.',
+#                         'response' : serializer.errors
 
-        })
+#         })
 
 
 class ResetPasswordView(views.APIView):
@@ -372,4 +377,50 @@ class UserpasswordResetView(views.APIView):
             )
 
         except DjangoUnicodeDecodeError:
-            return Response({"detail": "Invalid UID or token."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(        {
+                        'status_code' : status.HTTP_400_BAD_REQUEST,
+                        'message': 'Invalid UID or token.',
+        })
+
+class AssignSessionView(views.APIView, CustomResponseMixin):
+    permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
+
+    def patch(self, request, user_id=None, session_id=None):
+        try:
+            # Retrieve the user
+            user = get_user_model().objects.get(id=user_id)
+
+            # Determine the group (student or instructor)
+            if user.groups.filter(name="student").exists():
+                obj = Student.objects.get(user=user)
+                serializer_class = StudentSerializer
+            elif user.groups.filter(name="instructor").exists():
+                obj = Instructor.objects.get(user=user)
+                serializer_class = InstructorSerializer
+            else:
+                return self.custom_response(status.HTTP_400_BAD_REQUEST, 'User does not belong to a valid group (student or instructor).', None)
+
+
+            # Retrieve the session
+            session = Sessions.objects.get(id=session_id)
+
+            # Serialize the object with the session_id
+            serializer = serializer_class(obj, data={'session': session.id}, partial=True)
+            if serializer.is_valid(raise_exception=True):
+                serializer.save()
+                return self.custom_response(status.HTTP_200_OK, 'Session has been assigned to user', serializer.data)
+
+            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Failed to assign session to user', serializer.errors)
+        
+
+        except get_user_model().DoesNotExist:
+            return self.custom_response(status.HTTP_404_NOT_FOUND, 'User not found.', None)
+
+        except (Student.DoesNotExist, Instructor.DoesNotExist):
+            return self.custom_response(status.HTTP_404_NOT_FOUND, 'No corresponding student or instructor object found.', None)
+
+        except Sessions.DoesNotExist:
+            return self.custom_response(status.HTTP_404_NOT_FOUND, 'No session object found.', None)
+
+        except Exception as e:
+            return self.custom_response(status.HTTP_500_INTERNAL_SERVER_ERROR, f"An unexpected error occurred: {str(e)}", None)

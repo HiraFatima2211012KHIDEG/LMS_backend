@@ -6,20 +6,20 @@ from django.contrib.auth import (
 )
 from django.utils.translation import gettext as _
 from rest_framework import serializers
-from accounts.models import User
+from accounts.models import *
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.utils.encoding import DjangoUnicodeDecodeError, force_bytes, smart_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from django.contrib.auth.hashers import check_password
 import re
-# from accounts.utils import send_email
+from accounts.utils import send_email
 
 class UserSerializer(serializers.ModelSerializer):
     """Serializer for the user object."""
 
     class Meta:
         model = get_user_model()
-        fields = ['email', 'first_name', 'last_name','password', 'contact', 'city']
+        fields = ['id','email', 'first_name', 'last_name','password', 'contact', 'city']
         extra_kwargs = {'password': {'write_only': True, 'max_length' : 50}}
 
     def validate(self, attrs):
@@ -288,3 +288,16 @@ class UserpasswordResetSerializer(serializers.Serializer):
 
         except DjangoUnicodeDecodeError:
             raise serializers.ValidationError("Token is not valid or expired.")
+
+class StudentSerializer(serializers.ModelSerializer):
+    registration_id = serializers.CharField(read_only=True)
+    class Meta:
+        model = Student
+        fields = ['registration_id','user', 'session']
+
+
+class InstructorSerializer(serializers.ModelSerializer):
+    # registration_id = serializers.CharField(read_only=True)
+    class Meta:
+        model = Instructor
+        fields = ['user', 'session', 'created_at', 'updated_at']        

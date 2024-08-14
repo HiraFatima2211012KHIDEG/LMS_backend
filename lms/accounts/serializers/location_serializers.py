@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from ..models.models_ import City, Batch, Location, Sessions, StudentInstructor
+from ..models.models_ import City, Batch, Location, Sessions, Student
 
 
 class CitySerializer(serializers.ModelSerializer):
@@ -26,7 +26,9 @@ class SessionsSerializer(serializers.ModelSerializer):
         fields = ['location', 'no_of_students', 'batch', 'start_time', 'end_time']
 
 
-class StudentInstructorSerializer(serializers.ModelSerializer):
+class StudentSerializer(serializers.ModelSerializer):
+    registration_id = serializers.CharField(read_only=True)
     class Meta:
-        model = StudentInstructor
-        fields = ['user', 'session', 'batch']
+        model = Student
+        fields = ['registration_id','user', 'session']
+

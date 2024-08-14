@@ -5,7 +5,9 @@ from django.contrib.auth.models import (
     PermissionsMixin,
     Group
 )
-
+from course.models.models import Program
+import datetime
+from django.conf import settings
 
 class City(models.Model):
     """Cities the Programs are being offerend in."""
@@ -25,10 +27,34 @@ class Batch(models.Model):
     end_date = models.DateField()
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    
+    # term_choices = [
+    #     ('Fall', 'fall'),
+    #     ('Winter', 'winter'),
+    #     ('Spring', 'spring'),
+    #     ('Summer', 'summer'),
+    #     ('Annual', 'annual')
+    # ]
+    # term = models.CharField(max_length=10, choices=term_choices)
 
     def save(self, *args, **kwargs):
+        # Generate the batch code if not provided
         if not self.batch:
             self.batch = f"{self.city.shortname}-{str(self.year)[-2:]}"
+        
+        # # Assign the term based on the created_at month if term is not provided
+        # if not self.term:
+        #     if self.created_at and self.created_at.month in [9, 10, 11]:
+        #         self.term = 'fall'
+        #     elif self.created_at and self.created_at.month in [12, 1, 2]:
+        #         self.term = 'winter'
+        #     elif self.created_at and self.created_at.month in [3, 4, 5]:
+        #         self.term = 'spring'
+        #     elif self.created_at and self.created_at.month in [6, 7, 8]:
+        #         self.term = 'summer'
+        #     else:
+        #         self.term = 'annual'  # Default if no match
+
         super(Batch, self).save(*args, **kwargs)
 
     class Meta:
@@ -39,14 +65,27 @@ class Batch(models.Model):
 class Applications(models.Model):
     """Users of Registration Request"""
     email = models.EmailField(unique=True)
-    first_name = models.CharField(max_length=20, null=True, blank=True)
-    last_name = models.CharField(max_length=20, null=True, blank=True)
+    first_name = models.CharField(max_length=20)  # make first name and last name mandatory
+    last_name = models.CharField(max_length=20)
     contact = models.CharField(max_length=12, null=True, blank=True)
-    city = models.CharField(max_length=50, null=True, blank=True)
-    group_name = models.CharField(max_length=20, null=True, blank=True)
+    city = models.CharField(max_length=50)
+    city_abb = models.CharField(max_length=10)
+    program = models.ForeignKey(Program, on_delete=models.CASCADE)
+    group_name = models.CharField(max_length=20)
     created_at = models.DateTimeField(auto_now_add=True,null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True,null=True, blank=True)
+    year = models.IntegerField(default=datetime.date.today().year)
+    application_status_choices = [
+        ('approved', 'Approved'),
+        ('short_listed', 'Short_Listed'),
+        ('pending', 'Pending'),
+        ('removed', 'Removed')
+    ]
+    application_status = models.CharField(max_length= 15, choices= application_status_choices, default='pending') # I added 
+    #program_id should also be here
+    #area of residence.
 
+#this should have a status field.
 
 class UserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
@@ -74,6 +113,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
+    is_verified = models.BooleanField(default=False)
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = []
@@ -138,6 +178,7 @@ class Location(models.Model):
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
 
+#location should also tell when the capacity is full
 
 class Sessions(models.Model):
     """Location based sessions."""
@@ -148,22 +189,56 @@ class Sessions(models.Model):
     batch = models.ForeignKey(Batch, on_delete=models.CASCADE)
     start_time = models.DateTimeField(null=True, blank=True)
     end_time = models.DateTimeField(null=True, blank=True)
+    program = models.ForeignKey(Program, on_delete=models.CASCADE)
 
+#session should also have a program or program_id.
+#session should also have a name.
 
-
-class StudentInstructor(models.Model):
-    """Extra details of Students and Instructors in the System."""
+class Student(models.Model):
+    """Extra details of Students in the System."""
     registration_id = models.CharField(max_length=20, primary_key=True)
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     session = models.ForeignKey(Sessions, on_delete=models.CASCADE, null=True, blank=True)
-    batch = models.ForeignKey(Batch, on_delete=models.CASCADE)
+    # batch = models.ForeignKey(Batch, on_delete=models.CASCADE)
 
 
-    def save(self, *args, **kwargs):
-        if not self.registration_id:
-            batch = self.batch.batch
-            self.registration_id = f"{batch}-{self.user.id}"
-        super(StudentInstructor, self).save(*args, **kwargs)
+    # def save(self, *args, **kwargs):
+    #     if not self.registration_id:
+    #         batch = self.batch.batch
+    #         self.registration_id = f"{batch}-{self.user.id}"
+    #     super(Student, self).save(*args, **kwargs)
 
     class Meta:
-        unique_together = ('batch', 'user')
+        unique_together = ('session', 'user')
+
+class Instructor(models.Model):
+    """Extra details of Instructors in the System."""
+    session = models.ForeignKey(Sessions, on_delete=models.CASCADE, null=True, blank=True)
+    user = models.ForeignKey(
+                settings.AUTH_USER_MODEL,
+                on_delete=models.CASCADE
+                , related_name='instructor',
+                null=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
+
+
+
+# class StudentInstructor(models.Model):
+#     """Extra details of Students and Instructors in the System."""
+#     registration_id = models.CharField(max_length=20, primary_key=True)
+#     user = models.OneToOneField(User, on_delete=models.CASCADE)
+#     session = models.ForeignKey(Sessions, on_delete=models.CASCADE, null=True, blank=True)
+#     # batch = models.ForeignKey(Batch, on_delete=models.CASCADE)
+
+
+#     # def save(self, *args, **kwargs):
+#     #     if not self.registration_id:
+#     #         batch = self.batch.batch
+#     #         self.registration_id = f"{batch}-{self.user.id}"
+#     #     super(StudentInstructor, self).save(*args, **kwargs)
+
+#     class Meta:
+#         unique_together = ('session', 'user')
+
+#need discussion on instructor table, should we go with many to many field here.

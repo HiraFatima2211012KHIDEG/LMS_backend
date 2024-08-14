@@ -2,7 +2,8 @@ from django.db import models
 from django.conf import settings
 from django.core.validators import FileExtensionValidator
 from django.core.exceptions import ValidationError
-from accounts.models import User
+# from accounts.models import User
+
 import re
 
 STATUS_CHOICES = (
@@ -18,6 +19,8 @@ class Program(models.Model):
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     registration_id = models.CharField(max_length=50, null=True, blank=True)
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=0)
+    # start_date = models.DateField()
+    # end_date = models.DateField()
 
     def __str__(self):
         return self.name
