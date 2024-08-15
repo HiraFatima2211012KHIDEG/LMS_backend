@@ -32,13 +32,7 @@ class ProgramListCreateAPIView(CustomResponseMixin, APIView):
     def post(self, request, format=None):
         data = {key: value for key, value in request.data.items()}
         data['created_by'] = request.user.id
-        try:
-            student_instructor = StudentInstructor.objects.get(user=request.user)
-            data['registration_id'] = student_instructor.registration_id
-        except StudentInstructor.DoesNotExist:
-            logger.error("StudentInstructor not found for user: %s", request.user)
-            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
-
+        
         serializer = ProgramSerializer(data=data)
         if serializer.is_valid():
             serializer.save()
@@ -60,12 +54,7 @@ class ProgramDetailAPIView(CustomResponseMixin, APIView):
     def put(self, request, pk, format=None):
         data = {key: value for key, value in request.data.items()}
         data['created_by'] = request.user.id
-        try:
-            student_instructor = StudentInstructor.objects.get(user=request.user)
-            data['registration_id'] = student_instructor.registration_id
-        except StudentInstructor.DoesNotExist:
-            logger.error("StudentInstructor not found for user: %s", request.user)
-            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
+ 
 
         program = get_object_or_404(Program, pk=pk)
         serializer = ProgramSerializer(program, data=data)

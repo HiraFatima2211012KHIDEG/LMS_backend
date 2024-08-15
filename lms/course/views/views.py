@@ -56,13 +56,7 @@ class CourseListCreateAPIView(CustomResponseMixin, APIView):
     def post(self, request, format=None):
         data = {key: value for key, value in request.data.items()}
         data['created_by'] = request.user.id
-        try:
-            student_instructor = StudentInstructor.objects.get(user=request.user)
-            data['registration_id'] = student_instructor.registration_id
-        except StudentInstructor.DoesNotExist:
-            logger.error("StudentInstructor not found for user: %s", request.user)
-            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
-
+       
 
         serializer = CourseSerializer(data=data)
         if serializer.is_valid():
@@ -88,13 +82,7 @@ class CourseDetailAPIView(CustomResponseMixin, APIView):
     def put(self, request, pk, format=None):
         data = {key: value for key, value in request.data.items()}
         data['created_by'] = request.user.id
-        try:
-            student_instructor = StudentInstructor.objects.get(user=request.user)
-            data['registration_id'] = student_instructor.registration_id
-        except StudentInstructor.DoesNotExist:
-            logger.error("StudentInstructor not found for user: %s", request.user)
-            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
-
+        
 
         course = get_object_or_404(Course, pk=pk)
         serializer = CourseSerializer(course, data=data)
@@ -123,13 +111,7 @@ class ModuleListCreateAPIView(CustomResponseMixin, APIView):
     def post(self, request, format=None):
         data = {key: value for key, value in request.data.items()}
         data['created_by'] = request.user.id
-        try:
-            student_instructor = StudentInstructor.objects.get(user=request.user)
-            data['registration_id'] = student_instructor.registration_id
-        except StudentInstructor.DoesNotExist:
-            logger.error("StudentInstructor not found for user: %s", request.user)
-            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
-
+     
 
         serializer = ModuleSerializer(data=data)
         if serializer.is_valid():
@@ -154,13 +136,7 @@ class ModuleDetailAPIView(CustomResponseMixin, APIView):
     def put(self, request, pk, format=None):
         data = {key: value for key, value in request.data.items()}
         data['created_by'] = request.user.id
-        try:
-            student_instructor = StudentInstructor.objects.get(user=request.user)
-            data['registration_id'] = student_instructor.registration_id
-        except StudentInstructor.DoesNotExist:
-            logger.error("StudentInstructor not found for user: %s", request.user)
-            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
-
+      
 
         module = get_object_or_404(Module, pk=pk)
         serializer = ModuleSerializer(module, data=data)

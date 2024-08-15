@@ -6,7 +6,8 @@ from ..models.models import *
 from ..serializers import *
 from accounts.models.user_models import *
 import logging
-from rest_framework.parsers import FileUploadParser, MultiPartParser,FormParser
+from django.shortcuts import get_list_or_404
+
 
 logger = logging.getLogger(__name__)
 
@@ -33,12 +34,7 @@ class ExamListCreateAPIView(CustomResponseMixin, APIView):
         # data = request.data.copy()
         data = {key: value for key, value in request.data.items()}
         data['created_by'] = request.user.id
-        try:
-            student_instructor = StudentInstructor.objects.get(user=request.user)
-            data['registration_id'] = student_instructor.registration_id
-        except StudentInstructor.DoesNotExist:
-            logger.error("StudentInstructor not found for user: %s", request.user)
-            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
+       
         
         file_content = request.FILES.get('content', None)
         if file_content is not None:
@@ -64,12 +60,7 @@ class ExamDetailAPIView(CustomResponseMixin, APIView):
         # data = request.data.copy()
         data = {key: value for key, value in request.data.items()}
         data['created_by'] = request.user.id 
-        try:
-            student_instructor = StudentInstructor.objects.get(user=request.user)
-            data['registration_id'] = student_instructor.registration_id
-        except StudentInstructor.DoesNotExist:
-            logger.error("StudentInstructor not found for user: %s", request.user)
-            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
+       
 
         exam = get_object_or_404(Exam, pk=pk)
         file_content = request.FILES.get('content', None)
@@ -91,7 +82,6 @@ class ExamDetailAPIView(CustomResponseMixin, APIView):
 
 
 class ExamSubmissionListCreateAPIView(CustomResponseMixin, APIView):
-    parser_classes = (MultiPartParser, FormParser)
     permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request, format=None):
@@ -100,12 +90,12 @@ class ExamSubmissionListCreateAPIView(CustomResponseMixin, APIView):
         return self.custom_response(status.HTTP_200_OK, 'Exam submissions retrieved successfully', serializer.data)
 
     def post(self, request, format=None):
-        data = request.data
+        data = {key: value for key, value in request.data.items()}
         data['user'] = request.user.id
         try:
-            student_instructor = StudentInstructor.objects.get(user=request.user)
+            student_instructor = Student.objects.get(user=request.user)
             data['registration_id'] = student_instructor.registration_id
-        except StudentInstructor.DoesNotExist:
+        except Student.DoesNotExist:
             logger.error("StudentInstructor not found for user: %s", request.user)
             return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
 
@@ -124,12 +114,12 @@ class ExamSubmissionDetailAPIView(CustomResponseMixin, APIView):
         return self.custom_response(status.HTTP_200_OK, 'Exam submission retrieved successfully', serializer.data)
 
     def put(self, request, pk, format=None):
-        data = request.data
+        data = {key: value for key, value in request.data.items()}
         data['user'] = request.user.id
         try:
-            student_instructor = StudentInstructor.objects.get(user=request.user)
+            student_instructor = Student.objects.get(user=request.user)
             data['registration_id'] = student_instructor.registration_id
-        except StudentInstructor.DoesNotExist:
+        except Student.DoesNotExist:
             logger.error("StudentInstructor not found for user: %s", request.user)
             return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
 
@@ -155,14 +145,9 @@ class ExamGradingListCreateAPIView(CustomResponseMixin, APIView):
         return self.custom_response(status.HTTP_200_OK, 'Exam gradings retrieved successfully', serializer.data)
 
     def post(self, request, format=None):
-        data = request.data.copy()
+        data = {key: value for key, value in request.data.items()}
         data['graded_by'] = request.user.id
-        try:
-            student_instructor = StudentInstructor.objects.get(user=request.user)
-            data['registration_id'] = student_instructor.registration_id
-        except StudentInstructor.DoesNotExist:
-            logger.error("StudentInstructor not found for user: %s", request.user)
-            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
+       
 
         serializer = ExamGradingSerializer(data=data)
         if serializer.is_valid():
@@ -179,14 +164,9 @@ class ExamGradingDetailAPIView(CustomResponseMixin, APIView):
         return self.custom_response(status.HTTP_200_OK, 'Exam grading retrieved successfully', serializer.data)
 
     def put(self, request, pk, format=None):
-        data = request.data
+        data = {key: value for key, value in request.data.items()}
         data['graded_by'] = request.user.id
-        try:
-            student_instructor = StudentInstructor.objects.get(user=request.user)
-            data['registration_id'] = student_instructor.registration_id
-        except StudentInstructor.DoesNotExist:
-            logger.error("StudentInstructor not found for user: %s", request.user)
-            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
+       
 
         grading = get_object_or_404(ExamGrading, pk=pk)
         serializer = ExamGradingSerializer(grading, data=data)
@@ -199,3 +179,41 @@ class ExamGradingDetailAPIView(CustomResponseMixin, APIView):
         grading = get_object_or_404(ExamGrading, pk=pk)
         grading.delete()
         return self.custom_response(status.HTTP_204_NO_CONTENT, 'Exam grading deleted successfully', {})
+
+class ExamsByCourseIDAPIView(CustomResponseMixin, APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request, course_id, format=None):
+        # Fetch assignments for the given course_id
+        exams = get_list_or_404(Exam, course_id=course_id)
+        serializer = ExamSerializer(exams, many=True)
+        return self.custom_response(status.HTTP_200_OK, 'Exams retrieved successfully', serializer.data)
+
+
+
+class ExamDetailView(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request, course_id, registration_id):
+        exams = Exam.objects.filter(course_id=course_id)
+        submissions = ExamSubmission.objects.filter(exam__in=exams, registration_id=registration_id)
+        grading_ids = ExamGrading.objects.filter(exam_submission__in=submissions).values_list('exam_submission_id', flat=True)
+
+        exams_data = []
+        for exam in exams:
+            submission = submissions.filter(exam=exam).first()
+            grading = ExamGrading.objects.filter(exam_submission=submission).first() if submission else None
+
+            exam_data = {
+                'exam_name': exam.title,
+                'marks': grading.grade if grading else None,
+                'grade': grading.total_grade if grading else None,
+                'status': submission.status if submission else 'Not Submitted',
+            }
+            exams_data.append(exam_data)
+
+        return Response({
+            'status': status.HTTP_200_OK,
+            'message': 'Exams retrieved successfully.',
+            'data': exams_data
+        })
