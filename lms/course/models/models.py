@@ -2,8 +2,6 @@ from django.db import models
 from django.conf import settings
 from django.core.validators import FileExtensionValidator
 from django.core.exceptions import ValidationError
-# from accounts.models import User
-
 import re
 
 STATUS_CHOICES = (
@@ -11,19 +9,6 @@ STATUS_CHOICES = (
         (1, 'Active'),
         (2, 'Deleted'),
     )
-class Program(models.Model):
-    name = models.CharField(max_length=100)
-    short_name = models.CharField(max_length=50)
-    description = models.TextField()
-    created_at = models.DateTimeField(auto_now_add=True)
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    registration_id = models.CharField(max_length=50, null=True, blank=True)
-    status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=0)
-    # start_date = models.DateField()
-    # end_date = models.DateField()
-
-    def __str__(self):
-        return self.name
 
 
 class Course(models.Model):
@@ -54,18 +39,8 @@ class Module(models.Model):
 
 class ContentFile(models.Model):
     module = models.ForeignKey(
-        Module, related_name="contents", on_delete=models.CASCADE
+        Module, related_name="files", on_delete=models.CASCADE, null=True, blank=True
     )
-    name = models.CharField(max_length=255)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return self.name
-
-
-class ContentFile(models.Model):
-    content = models.ForeignKey(Content, related_name="files", on_delete=models.CASCADE)
     file = models.FileField(
         upload_to="material/content/",
         validators=[
@@ -113,6 +88,8 @@ class AssignmentSubmission(models.Model):
                 allowed_extensions=['pdf', "doc", "docx", "ppt", "pptx", "txt",'zip']
             )
         ],
+
+        null=True, blank=True
     )
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=0)
     submitted_at = models.DateTimeField(auto_now_add=True)
@@ -317,3 +294,9 @@ class ExamGrading(models.Model):
         return f"{self.exam_submission} - {self.grade}"
 
 
+class Weightage(models.Model):
+    course = models.ForeignKey(Course, related_name='weightage', on_delete=models.CASCADE)
+    assignments_weightage = models.FloatField(default=0,null=True, blank=True)
+    quizzes_weightage = models.FloatField(default=0,null=True, blank=True)
+    projects_weightage = models.FloatField(default=0,null=True, blank=True)
+    exams_weightage = models.FloatField(default=0,null=True, blank=True)

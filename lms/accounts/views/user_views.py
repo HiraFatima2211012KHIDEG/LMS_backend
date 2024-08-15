@@ -9,7 +9,7 @@ from drf_spectacular.utils import extend_schema
 from ..serializers.user_serializers import UserSerializer, StudentSerializer
 from ..models.user_models import Student
 import constants
-
+from .location_views import CustomResponseMixin
 
 
 class CreateUserView(generics.CreateAPIView):
@@ -482,3 +482,48 @@ class AssignSessionView(views.APIView, CustomResponseMixin):
 
         except Exception as e:
             return self.custom_response(status.HTTP_500_INTERNAL_SERVER_ERROR, f"An unexpected error occurred: {str(e)}", None)
+
+
+class CreateStudentView(generics.CreateAPIView):
+    """Create a new student/instructor in the system."""
+
+    serializer_class = StudentSerializer
+
+    def create(self, request, *args, **kwargs):
+        user = request.data.get("user")
+        session = request.data.get("session")
+        batch_id = request.data.get("batch")
+
+        try:
+            batch = Batch.objects.get(batch=batch_id)
+        except Batch.DoesNotExist:
+            return Response(
+                {"error": "Batch does not exist."}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if Student.objects.filter(user=user, batch=batch).exists():
+            return Response(
+                {"error": "This user is already registered for this batch."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            student_instructor = serializer.save()
+            return Response(
+                {
+                    "status_code": status.HTTP_201_CREATED,
+                    "message": "StudentInstructor successfully created",
+                    "response": serializer.data,
+                }
+            )
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class StudentDetailView(generics.RetrieveAPIView):
+    """Retrieve a student/instructor by registration_id."""
+
+    queryset = Student.objects.all()
+    serializer_class = StudentSerializer
+    lookup_field = "registration_id"

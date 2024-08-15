@@ -5,44 +5,53 @@ from ..models.location_models import (
     Batch,
     Location,
     Sessions,
-    # StudentInstructor,
-    Student,
 )
+from ..models.user_models import Student
 from ..serializers.location_serializers import (
     CitySerializer,
     BatchSerializer,
     LocationSerializer,
     SessionsSerializer,
     # StudentInstructorSerializer
-    StudentSerializer
-    )
+    StudentSerializer,
+)
+
 
 class CustomResponseMixin:
     def custom_response(self, status_code, message, data):
         return Response(
-            {
-                'status_code': status_code,
-                'message': message,
-                'data': data
-            },
-            status=status_code
+            {"status_code": status_code, "message": message, "data": data},
+            status=status_code,
         )
 
-class BaseLocationViewSet(CustomResponseMixin, mixins.CreateModelMixin, mixins.RetrieveModelMixin,
-                  mixins.UpdateModelMixin, mixins.DestroyModelMixin, mixins.ListModelMixin,
-                  viewsets.GenericViewSet):
+
+class BaseLocationViewSet(
+    CustomResponseMixin,
+    mixins.CreateModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.UpdateModelMixin,
+    mixins.DestroyModelMixin,
+    mixins.ListModelMixin,
+    viewsets.GenericViewSet,
+):
     # permission_classes = [permissions.IsAuthenticated]
     def create(self, request, *args, **kwargs):
         response = super().create(request, *args, **kwargs)
-        return self.custom_response(status.HTTP_201_CREATED, 'created successfully', response.data)
+        return self.custom_response(
+            status.HTTP_201_CREATED, "created successfully", response.data
+        )
 
     def update(self, request, *args, **kwargs):
         response = super().update(request, *args, **kwargs)
-        return self.custom_response(status.HTTP_200_OK, 'updated successfully', response.data)
+        return self.custom_response(
+            status.HTTP_200_OK, "updated successfully", response.data
+        )
 
     def destroy(self, request, *args, **kwargs):
         response = super().destroy(request, *args, **kwargs)
-        return self.custom_response(status.HTTP_204_NO_CONTENT, 'deleted successfully', None)
+        return self.custom_response(
+            status.HTTP_204_NO_CONTENT, "deleted successfully", None
+        )
 
 
 class CityViewSet(BaseLocationViewSet):
@@ -67,46 +76,63 @@ class SessionsViewSet(BaseLocationViewSet):
 
     def create(self, request, *args, **kwargs):
         response = super().create(request, *args, **kwargs)
-        return self.custom_response(status.HTTP_201_CREATED, 'Session created successfully', response.data)
+        return self.custom_response(
+            status.HTTP_201_CREATED, "Session created successfully", response.data
+        )
 
     def update(self, request, *args, **kwargs):
         response = super().update(request, *args, **kwargs)
-        return self.custom_response(status.HTTP_200_OK, 'Session updated successfully', response.data)
+        return self.custom_response(
+            status.HTTP_200_OK, "Session updated successfully", response.data
+        )
 
     def destroy(self, request, *args, **kwargs):
         response = super().destroy(request, *args, **kwargs)
-        return self.custom_response(status.HTTP_204_NO_CONTENT, 'Session deleted successfully', None)
+        return self.custom_response(
+            status.HTTP_204_NO_CONTENT, "Session deleted successfully", None
+        )
 
 
 class CreateStudentView(generics.CreateAPIView):
     """Create a new student/instructor in the system."""
+
     serializer_class = StudentSerializer
 
     def create(self, request, *args, **kwargs):
-        user = request.data.get('user')
-        session = request.data.get('session')
-        batch_id = request.data.get('batch')
+        user = request.data.get("user")
+        session = request.data.get("session")
+        batch_id = request.data.get("batch")
 
         try:
             batch = Batch.objects.get(batch=batch_id)
         except Batch.DoesNotExist:
-            return Response({'error': 'Batch does not exist.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "Batch does not exist."}, status=status.HTTP_400_BAD_REQUEST
+            )
 
         if Student.objects.filter(user=user, batch=batch).exists():
-            return Response({'error': 'This user is already registered for this batch.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "This user is already registered for this batch."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
             student_instructor = serializer.save()
-            return Response({'status_code': status.HTTP_201_CREATED,
-                  'message': 'Student successfully created',
-                  'response': serializer.data})
+            return Response(
+                {
+                    "status_code": status.HTTP_201_CREATED,
+                    "message": "Student successfully created",
+                    "response": serializer.data,
+                }
+            )
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class StudentInstructorDetailView(generics.RetrieveAPIView):
     """Retrieve a student/instructor by registration_id."""
+
     queryset = Student.objects.all()
     serializer_class = StudentSerializer
-    lookup_field = 'registration_id'
+    lookup_field = "registration_id"

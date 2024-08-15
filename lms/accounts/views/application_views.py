@@ -20,7 +20,7 @@ from drf_spectacular.utils import extend_schema
 from ..serializers.user_serializers import (
     UserSerializer,
 )
-from ..models.models_ import AccessControl
+from ..models.user_models import AccessControl
 import constants
 from django.db import transaction
 from accounts.utils import send_email
@@ -47,13 +47,13 @@ class CreateApplicationView(generics.CreateAPIView):
 
 # class EmailVerificationToken(AccessToken):
 #     lifetime = timedelta(minutes=10)
-    
+
 #     @classmethod
 #     def for_application(cls, application):
 #         token = cls()
 #         token['user_id'] = application.id  # Store application ID
 #         token['user_email'] = application.email  # Store application email
-#         return token    
+#         return token
 
 class ApplicationProcessView(views.APIView, CustomResponseMixin):
     """View to handle application status"""
@@ -69,14 +69,14 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
         # Validate group_name
         if group_name not in ["student", "instructor"]:
             return self.custom_response(status.HTTP_400_BAD_REQUEST, "Invalid group_name. Choices are 'student' and 'instructor'.", None)
-        
+
         try:
             # Query the applications based on the provided program_id and group_name
             applications = Applications.objects.filter(program=program_id, group_name=group_name)
             if not applications.exists():
                 return self.custom_response(status.HTTP_404_NOT_FOUND, "No applications found for the provided program ID and group_name.", None)
-            
-            
+
+
             serializer = ApplicationSerializer(applications, many=True)
             return self.custom_response(status.HTTP_200_OK, 'Applications fetched successfully.', serializer.data)
 
@@ -114,7 +114,7 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
                     if application_status in ["short_listed", "removed"]:
                         serializer.save()
                         return self.custom_response(status.HTTP_200_OK, f'Application status has been changed to {application_status}.', serializer.data)
-                    
+
                     elif application_status == "approved":
 
                         token = self.create_signed_token(application_id, application.email)
@@ -123,14 +123,14 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
                         body = (f"Congratulations {application.first_name} {application.last_name}!\n"
                                 f"You are requested to complete the selection process by verifying your account. "
                                 f"Please click the following link to proceed.\n{verification_link}")
-                        
+
                         email_data = {
                             "email_subject": "Verify your account",
                             "body": body,
                             "to_email": application.email,
                         }
                         send_email(email_data)
-                        serializer.save()                        
+                        serializer.save()
                         return self.custom_response(status.HTTP_200_OK, 'User registered successfully, and email sent.', None)
 
         except Exception as e:
@@ -160,7 +160,7 @@ class VerifyEmailandSetPasswordView(views.APIView, CustomResponseMixin):
             return self.custom_response(status.HTTP_400_BAD_REQUEST, 'password is required.', None)
         if not password2:
             return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Confirm password is required.', None)
-        
+
         signer = TimestampSigner()
         try:
             with transaction.atomic():
@@ -178,7 +178,7 @@ class VerifyEmailandSetPasswordView(views.APIView, CustomResponseMixin):
                 existing_user = get_user_model().objects.filter(email=email).first()
                 if existing_user:
                     return self.custom_response(status.HTTP_400_BAD_REQUEST, 'User already verified', None)
-                
+
                 # Retrieve the application and create a user
                 application = Applications.objects.get(id=user_id)
                 user_data = {
@@ -190,7 +190,7 @@ class VerifyEmailandSetPasswordView(views.APIView, CustomResponseMixin):
                     'is_verified': True
                 }
                 user = get_user_model().objects.create_user(**user_data)
-                
+
                 # Create StudentInstructor record based on group_name
                 if application.group_name == "student":
                     city_abb = application.city_abb
@@ -207,22 +207,22 @@ class VerifyEmailandSetPasswordView(views.APIView, CustomResponseMixin):
                     )
                 else:
                     return self.custom_response(status.HTTP_400_BAD_REQUEST, "Invalid group_name.", None)
-                
+
                 # Set the password using SetPasswordSerializer
                 password_data = {'password': password, 'password2': password2}
                 serializer = SetPasswordSerializer(data=password_data, context={'user': user})
                 if serializer.is_valid(raise_exception=True):
                     serializer.save()
                 else:
-                    return self.custom_response(status.HTTP_400_BAD_REQUEST, "Verification failed.", serializer.errors)                              
+                    return self.custom_response(status.HTTP_400_BAD_REQUEST, "Verification failed.", serializer.errors)
 
-                return self.custom_response(status.HTTP_200_OK, "Email verified and user created successfully.", serializer.data)                              
-        
+                return self.custom_response(status.HTTP_200_OK, "Email verified and user created successfully.", serializer.data)
+
         except SignatureExpired:
                 return self.custom_response(status.HTTP_400_BAD_REQUEST, 'The reset link has expired.', None)
         except BadSignature:
             return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Invalid token or data tampering detected.', None)
-        
+
         except Applications.DoesNotExist:
             return self.custom_response(status.HTTP_400_BAD_REQUEST, 'User not found.', None)
 
@@ -246,7 +246,7 @@ class ResendVerificationEmail(views.APIView):
             body = (f"Congratulations {applicant.first_name} {applicant.last_name}!\n"
                     f"You are requested to complete the selection process by verifying your account. "
                     f"Please click the following link to proceed.\n{verification_link}")
-            
+
             email_data = {
                 "email_subject": "Verify your account",
                 "body": body,
@@ -319,7 +319,7 @@ class ResendVerificationEmail(views.APIView):
 #                 #         f"Welcome to xloop lms.You have been enrolled in {user_program} program with batch no # {user_batch_name}."
 #                 #         f"You are requested to attend your classes in {user_location_name} center. "
 #                 #         f"Please click the following link to verify your account.\n{link}")
-                
+
 #                 # email_data = {
 #                 #     "email_subject": "Verify your account",
 #                 #     "body": body,
@@ -359,7 +359,7 @@ class ResendVerificationEmail(views.APIView):
 
 
 
-        
+
 
 
 

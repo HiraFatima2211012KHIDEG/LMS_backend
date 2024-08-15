@@ -5,25 +5,39 @@ from django.contrib.auth.models import (
     PermissionsMixin,
     Group
 )
-from django.contrib.auth import get_user_model
+from course.models.program_model import Program
+import datetime
+from django.conf import settings
 from .location_models import (
     Sessions,
     Batch
 )
-from django.conf import settings
 
 
 class Applications(models.Model):
     """Users of Registration Request"""
     email = models.EmailField(unique=True)
-    first_name = models.CharField(max_length=20, null=True, blank=True)
-    last_name = models.CharField(max_length=20, null=True, blank=True)
+    first_name = models.CharField(max_length=20)  # make first name and last name mandatory
+    last_name = models.CharField(max_length=20)
     contact = models.CharField(max_length=12, null=True, blank=True)
-    city = models.CharField(max_length=50, null=True, blank=True)
-    group_name = models.CharField(max_length=20, null=True, blank=True)
+    city = models.CharField(max_length=50)
+    city_abb = models.CharField(max_length=10)
+    program = models.ForeignKey(Program, on_delete=models.CASCADE, null=True)
+    group_name = models.CharField(max_length=20)
     created_at = models.DateTimeField(auto_now_add=True,null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True,null=True, blank=True)
+    year = models.IntegerField(default=datetime.date.today().year)
+    application_status_choices = [
+        ('approved', 'Approved'),
+        ('short_listed', 'Short_Listed'),
+        ('pending', 'Pending'),
+        ('removed', 'Removed')
+    ]
+    application_status = models.CharField(max_length= 15, choices= application_status_choices, default='pending') # I added
+    #program_id should also be here
+    #area of residence.
 
+#this should have a status field.
 
 class UserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
@@ -51,6 +65,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
+    is_verified = models.BooleanField(default=False)
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = []
@@ -110,17 +125,25 @@ class Student(models.Model):
     registration_id = models.CharField(max_length=20, primary_key=True)
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     session = models.ForeignKey(Sessions, on_delete=models.CASCADE, null=True, blank=True)
-    batch = models.ForeignKey(Batch, on_delete=models.CASCADE)
+    # batch = models.ForeignKey(Batch, on_delete=models.CASCADE)
 
 
+    # def save(self, *args, **kwargs):
+    #     if not self.registration_id:
+    #         batch = self.batch.batch
+    #         self.registration_id = f"{batch}-{self.user.id}"
+    #     super(Student, self).save(*args, **kwargs)
+
+    class Meta:
+        unique_together = ('session', 'user')
     def save(self, *args, **kwargs):
         if not self.registration_id:
             batch = self.batch.batch
             self.registration_id = f"{batch}-{self.user.id}"
         super(Student, self).save(*args, **kwargs)
 
-    class Meta:
-        unique_together = ('batch', 'user')
+    # class Meta:
+    #     unique_together = ('batch', 'user')
 
 class Instructor(models.Model):
     """Extra details of Instructors in the System."""
@@ -132,3 +155,24 @@ class Instructor(models.Model):
                 null=True)
     created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
+
+
+
+# class StudentInstructor(models.Model):
+#     """Extra details of Students and Instructors in the System."""
+#     registration_id = models.CharField(max_length=20, primary_key=True)
+#     user = models.OneToOneField(User, on_delete=models.CASCADE)
+#     session = models.ForeignKey(Sessions, on_delete=models.CASCADE, null=True, blank=True)
+#     # batch = models.ForeignKey(Batch, on_delete=models.CASCADE)
+
+
+#     # def save(self, *args, **kwargs):
+#     #     if not self.registration_id:
+#     #         batch = self.batch.batch
+#     #         self.registration_id = f"{batch}-{self.user.id}"
+#     #     super(StudentInstructor, self).save(*args, **kwargs)
+
+#     class Meta:
+#         unique_together = ('session', 'user')
+
+#need discussion on instructor table, should we go with many to many field here.

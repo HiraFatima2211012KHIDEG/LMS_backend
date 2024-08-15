@@ -14,7 +14,7 @@ class Attendance(models.Model):
         Student, on_delete=models.CASCADE, related_name="student"
     )
     date = models.DateField(auto_now_add=True)
-    course = models.ForeignKey(Course, on_delete=models.CASCADE)
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, null=True)
     status = models.CharField(
         max_length=10,
         choices=[("Present", "Present"), ("Absent", "Absent"), ("Leave", "Leave")],
