@@ -3,96 +3,126 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 from course.models.models import *
 from course.serializers import *
+from accounts.models.user_models import *
 from django.contrib.auth import get_user_model
 from rest_framework.authtoken.models import Token
 from rest_framework_simplejwt.tokens import RefreshToken
 import io
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.utils import timezone
+
 User = get_user_model()
 
 
-# class ProgramAPITests(APITestCase):
-    
-#     def setUp(self):
-#         self.user = User.objects.create_user(email='admin@example.com', password='password')
-        
-#         # Obtain JWT tokens
-#         refresh = RefreshToken.for_user(self.user)
-#         self.access_token = str(refresh.access_token)
-        
-#         # Set JWT token in client
-#         self.client.credentials(HTTP_AUTHORIZATION='Bearer ' + self.access_token)
-        
-#         self.program1 = Program.objects.create(
-#             name='Program 1',
-#             short_name='P1',
-#             description='Description for Program 1',
-#             created_by=self.user
-#         )
-#         self.program2 = Program.objects.create(
-#             name='Program 2',
-#             short_name='P2',
-#             description='Description for Program 2',
-#             created_by=self.user
-#         )
-#         self.list_create_url = reverse('program-list-create')
-#         self.detail_url = lambda pk: reverse('program-detail', args=[pk])
-    
-#     def test_list_programs(self):
-#         response = self.client.get(self.list_create_url)
-#         programs = Program.objects.all()
-#         serializer = ProgramSerializer(programs, many=True)
-#         self.assertEqual(response.status_code, status.HTTP_200_OK)
-#         self.assertEqual(response.data['status_code'], status.HTTP_200_OK)
-#         self.assertEqual(response.data['response'], serializer.data)
-    
-#     def test_create_program(self):
-#         data = {
-#             'name': 'Program 3',
-#             'short_name': 'P3',
-#             'description': 'Description for Program 3',
-#             'status': 0
-#         }
-#         response = self.client.post(self.list_create_url, data, format='json')
-#         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-#         self.assertEqual(response.data['response']['name'], 'Program 3')
-    
-#     def test_retrieve_program(self):
-#         response = self.client.get(self.detail_url(self.program1.pk))
-#         serializer = ProgramSerializer(self.program1)
-#         self.assertEqual(response.status_code, status.HTTP_200_OK)
-#         self.assertEqual(response.data['response'], serializer.data)
-    
-#     def test_update_program(self):
-#         data = {
-#             'name': 'Updated Program 1',
-#             'short_name': 'UP1',
-#             'description': 'Updated description',
-#         }
-#         response = self.client.put(self.detail_url(self.program1.pk), data, format='json')
-#         self.assertEqual(response.status_code, status.HTTP_200_OK)
-#         self.assertEqual(response.data['response']['name'], 'Updated Program 1')
-    
-#     def test_delete_program(self):
-#         response = self.client.delete(self.detail_url(self.program2.pk))
-#         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
-#         self.assertFalse(Program.objects.filter(pk=self.program2.pk).exists())
+class ProgramAPITests(APITestCase):
+    def setUp(self):
+        group_names = ['admin', 'HOD', 'instructor', 'student']
+        for name in group_names:
+            Group.objects.get_or_create(name=name)
 
+        # Create necessary application entries
+        self.application = Applications.objects.create(
+            email="admin@example.com",
+            first_name="Maaz",
+            last_name="Javaid",
+            contact="1234567890",
+            city="Karachi",
+            group_name='student'
+        )
+
+        # Create user
+        self.user = User.objects.create_user(
+            email="admin@example.com", password="password"
+        )
+
+        # Create StudentInstructor entry
+        # Assume 'session' and 'batch' are available in your test environment or create mock instances
+        self.session = Sessions.objects.create(name='Test Session')
+        self.batch = Batch.objects.create(batch='Test Batch')
+        StudentInstructor.objects.create(
+            user=self.user,
+            session=self.session,
+            batch=self.batch
+        )
+
+
+        # Obtain JWT tokens
+        refresh = RefreshToken.for_user(self.user)
+        self.access_token = str(refresh.access_token)
+
+        # Set JWT token in client
+        self.client.credentials(HTTP_AUTHORIZATION="Bearer " + self.access_token)
+
+        self.program1 = Program.objects.create(
+            name="Program 1",
+            short_description="P1",
+            about="Description for Program 1",
+            created_by=self.user,
+        )
+        self.program2 = Program.objects.create(
+            name="Program 2",
+            short_description="P2",
+            about="Description for Program 2",
+            created_by=self.user,
+        )
+        self.list_create_url = reverse("program-list-create")
+        self.detail_url = lambda pk: reverse("program-detail", args=[pk])
+
+    def test_list_programs(self):
+        response = self.client.get(self.list_create_url)
+        programs = Program.objects.all()
+        serializer = ProgramSerializer(programs, many=True)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["status_code"], status.HTTP_200_OK)
+        self.assertEqual(response.data["response"], serializer.data)
+
+    def test_create_program(self):
+        data = {
+            "name": "Program 3",
+            "short_description": "P3",
+            "about": "Description for Program 3",
+            "status": 0,
+        }
+        response = self.client.post(self.list_create_url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["response"]["name"], "Program 3")
+
+    def test_retrieve_program(self):
+        response = self.client.get(self.detail_url(self.program1.pk))
+        serializer = ProgramSerializer(self.program1)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["response"], serializer.data)
+
+    def test_update_program(self):
+        data = {
+            "name": "Updated Program 1",
+            "short_description": "UP1",
+            "about": "Updated description",
+        }
+        response = self.client.put(
+            self.detail_url(self.program1.pk), data, format="json"
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["response"]["name"], "Updated Program 1")
+
+    def test_delete_program(self):
+        response = self.client.delete(self.detail_url(self.program2.pk))
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Program.objects.filter(pk=self.program2.pk).exists())
 
 
 # class CourseAPITests(APITestCase):
 
 #     def setUp(self):
 #         self.user = User.objects.create_user(email='admin@example.com', password='password')
-        
+
 #         # Obtain JWT tokens
 #         refresh = RefreshToken.for_user(self.user)
 #         self.access_token = str(refresh.access_token)
-        
+
 #         # Set JWT token in client
 #         self.client.credentials(HTTP_AUTHORIZATION='Bearer ' + self.access_token)
-        
+
 #         self.program = Program.objects.create(
 #             name='Program for Courses',
 #             short_name='PFC',
@@ -162,14 +192,14 @@ User = get_user_model()
 
 #     def setUp(self):
 #         self.user = User.objects.create_user(email='admin@example.com', password='password')
-        
+
 #         # Obtain JWT tokens
 #         refresh = RefreshToken.for_user(self.user)
 #         self.access_token = str(refresh.access_token)
-        
+
 #         # Set JWT token in client
 #         self.client.credentials(HTTP_AUTHORIZATION='Bearer ' + self.access_token)
-        
+
 #         self.program = Program.objects.create(
 #             name='Program for Modules',
 #             short_name='PFM',
@@ -240,7 +270,7 @@ User = get_user_model()
 
 
 # class ToggleActiveStatusAPITests(APITestCase):
-    
+
 #     def setUp(self):
 #         self.user = User.objects.create_user(email='admin@example.com', password='password')
 #         refresh = RefreshToken.for_user(self.user)
@@ -267,44 +297,42 @@ User = get_user_model()
 #             created_by=self.user
 #         )
 #         self.toggle_url = lambda model_name, pk: reverse('toggle_active_status', args=[model_name, pk])
-    
+
 #     def test_toggle_program_active_status(self):
 #         response = self.client.patch(self.toggle_url('programs', self.program.pk))
 #         self.program.refresh_from_db()
 #         self.assertEqual(response.status_code, status.HTTP_200_OK)
 #         self.assertNotEqual(self.program.is_active, True)
-    
+
 #     def test_toggle_course_active_status(self):
 #         response = self.client.patch(self.toggle_url('courses', self.course.pk))
 #         self.course.refresh_from_db()
 #         self.assertEqual(response.status_code, status.HTTP_200_OK)
 #         self.assertNotEqual(self.course.is_active, True)
-    
+
 #     def test_toggle_module_active_status(self):
 #         response = self.client.patch(self.toggle_url('modules', self.module.pk))
 #         self.module.refresh_from_db()
 #         self.assertEqual(response.status_code, status.HTTP_200_OK)
 #         self.assertNotEqual(self.module.is_active, True)
-    
+
 #     def test_invalid_model_name(self):
 #         response = self.client.patch(self.toggle_url('invalid_model', self.program.pk))
 #         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 #         self.assertEqual(response.data['message'], 'Invalid model name')
 
 
-
-
 # class ContentAPITestCase(APITestCase):
 #     def setUp(self):
 #         self.user = User.objects.create_user(email='admin@example.com', password='password')
-        
+
 #         # Obtain JWT tokens
 #         refresh = RefreshToken.for_user(self.user)
 #         self.access_token = str(refresh.access_token)
-        
+
 #         # Set JWT token in client
 #         self.client.credentials(HTTP_AUTHORIZATION='Bearer ' + self.access_token)
-        
+
 
 #         # Create a Course instance
 #         self.course = Course.objects.create(name='Test Course', description='Test Course Description',
@@ -347,7 +375,6 @@ User = get_user_model()
 #         response = self.client.delete(url)
 #         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
 #         self.assertEqual(Content.objects.count(), 0)
-
 
 
 # class ContentFileAPITestCase(APITestCase):
@@ -396,7 +423,7 @@ User = get_user_model()
 #         response = self.client.put(url, updated_data, format='multipart')
 #         self.assertEqual(response.status_code, status.HTTP_200_OK)
 #         content_file.refresh_from_db()
-        
+
 #         # Check that the new file is indeed present
 #         self.assertTrue(content_file.file.name.startswith('content/new_file'))
 #         self.assertTrue(content_file.file.name.endswith('.pdf'))
@@ -409,10 +436,9 @@ User = get_user_model()
 #         self.assertEqual(ContentFile.objects.count(), 0)
 
 
-
 # class AssignmentAPITests(APITestCase):
-    
-  
+
+
 #     def setUp(self):
 #         self.user = User.objects.create_user(email='admin@example.com', password='password')
 #         refresh = RefreshToken.for_user(self.user)
@@ -444,7 +470,7 @@ User = get_user_model()
 #         )
 #         self.list_create_url = reverse('assignment-list-create')
 #         self.detail_url = lambda pk: reverse('assignment-detail', args=[pk])
-    
+
 #     def test_list_assignments(self):
 #         response = self.client.get(self.list_create_url)
 #         assignments = Assignment.objects.all()
@@ -452,7 +478,7 @@ User = get_user_model()
 #         self.assertEqual(response.status_code, status.HTTP_200_OK)
 #         self.assertEqual(response.data['status_code'], status.HTTP_200_OK)
 #         self.assertEqual(response.data['response'], serializer.data)
-    
+
 #     def test_create_assignment(self):
 #         file = SimpleUploadedFile("content.txt", b"file content", content_type="text/plain")
 #         data = {
@@ -468,29 +494,27 @@ User = get_user_model()
 #         response = self.client.post(self.list_create_url, data, format='multipart')  # Use multipart format for file uploads
 #         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 #         self.assertEqual(response.data['response']['question'], 'New assignment?')
-        
+
 #     def test_retrieve_assignment(self):
 #         response = self.client.get(self.detail_url(self.assignment1.pk))
 #         serializer = AssignmentSerializer(self.assignment1)
 #         self.assertEqual(response.status_code, status.HTTP_200_OK)
 #         self.assertEqual(response.data['response'], serializer.data)
-    
+
 #     def test_update_assignment(self):
 #         data = {
 #             'question': 'Updated question?',
 #             'description': 'Updated description',
 #         }
 #         response = self.client.put(self.detail_url(self.assignment1.pk), data, format='json')
-#         print(response) 
+#         print(response)
 #         self.assertEqual(response.status_code, status.HTTP_200_OK)
 #         self.assertEqual(response.data['response']['question'], 'Updated question?')
-    
+
 #     def test_delete_assignment(self):
 #         response = self.client.delete(self.detail_url(self.assignment2.pk))
 #         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
 #         self.assertFalse(Assignment.objects.filter(pk=self.assignment2.pk).exists())
-
-
 
 
 # class AssignmentSubmissionAPITests(APITestCase):
@@ -530,7 +554,7 @@ User = get_user_model()
 #     #     response = self.client.get(self.list_create_url)
 #     #     print(response)
 #     #     submissions = AssignmentSubmission.objects.all()
-        
+
 #     #     serializer = AssignmentSubmissionSerializer(submissions, many=True)
 #     #     print(serializer.data)
 #     #     self.assertEqual(response.status_code, status.HTTP_200_OK)

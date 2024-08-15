@@ -1,7 +1,7 @@
 from django.test import TestCase
 from django.contrib.auth.models import Group, Permission
 from django.contrib.contenttypes.models import ContentType
-from ..models.models_ import AccessControl, Applications
+from ..models.user_models import AccessControl, Applications
 
 MODEL = 'applications'
 class AccessControlTestCase(TestCase):

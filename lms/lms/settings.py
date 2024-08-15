@@ -26,7 +26,7 @@ SECRET_KEY = 'django-insecure-y$aw0745t@#7s@v8c&^_fr&sh$snyd^32*jn_8p2436#acbql(
 # SECURITY WARNING: don't run with debug turned on in production!
 # DEBUG = True
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1','https://80n6nqm0-3001.inc1.devtunnels.ms/']
+ALLOWED_HOSTS = ['*']
 # settings.py
 DEBUG = True
 
@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'core',
     'course',
     #  'django_extensions',
+    'django_extensions'
 ]
 
 MIDDLEWARE = [
@@ -89,14 +90,15 @@ WSGI_APPLICATION = 'lms.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
+        'HOST': os.getenv('DB_HOST'),
+        'NAME': os.getenv('DB_NAME'),
+        'USER': os.getenv('DB_USER'),
+        'PASSWORD': os.getenv('DB_PASSWORD'),
         # 'HOST': 'localhost',
         # 'NAME': 'test',
         # 'USER': 'postgres',
         # 'PASSWORD': 'password',
-        'HOST': os.environ.get('DB_HOST'),
-        'NAME': os.environ.get('DB_NAME'),
-        'USER': os.environ.get('DB_USER'),
-        'PASSWORD': os.environ.get('DB_PASSWORD'),
+
     }
 }
 
@@ -155,11 +157,15 @@ REST_FRAMEWORK = {
 }
 
 SPECTACULAR_SETTINGS = {
+    'TITLE': 'Learning Management System API',
+    'DESCRIPTION': 'Learning Management System for virtual, onsite, blended delivery of training and post training access to the system.',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
     'COMPONENT_SPLIT_REQUEST': True
 }
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": datetime.timedelta(hours=2),
+    "ACCESS_TOKEN_LIFETIME": datetime.timedelta(hours=8),
     "REFRESH_TOKEN_LIFETIME": datetime.timedelta(days=1),
     "ALGORITHM": "HS256",
     "SIGNING_KEY": SECRET_KEY,

@@ -5,7 +5,7 @@ from django.shortcuts import get_object_or_404
 from ..models.models import *
 from ..serializers import *
 from rest_framework.parsers import MultiPartParser, FormParser
-from accounts.models.models_ import *
+from accounts.models.user_models import *
 import logging
 
 logger = logging.getLogger(__name__)
@@ -29,16 +29,21 @@ class ProjectListCreateAPIView(CustomResponseMixin,APIView):
         return self.custom_response(status.HTTP_200_OK, 'Projects retrieved successfully', serializer.data)
 
     def post(self, request, format=None):
-        data = request.data
-        data['created_by'] = request.user.id 
+        data = {key: value for key, value in request.data.items()}
+        data['created_by'] = request.user.id
         try:
             student_instructor = StudentInstructor.objects.get(user=request.user)
             data['registration_id'] = student_instructor.registration_id
         except StudentInstructor.DoesNotExist:
             logger.error("StudentInstructor not found for user: %s", request.user)
             return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
+        file_content = request.FILES.get('content', None)
+        if file_content is not None:
+            data['content'] = file_content
+        else:
+            data['content'] = None
 
-        serializer = ProjectSerializer(data=request.data)
+        serializer = ProjectSerializer(data=data)
         if serializer.is_valid():
             serializer.save()
             return self.custom_response(status.HTTP_201_CREATED, 'Project created successfully', serializer.data)
@@ -53,7 +58,7 @@ class ProjectDetailAPIView(CustomResponseMixin, APIView):
         return self.custom_response(status.HTTP_200_OK, 'Project retrieved successfully', serializer.data)
 
     def put(self, request, pk, format=None):
-        data = request.data
+        data = {key: value for key, value in request.data.items()}
         data['created_by'] = request.user.id
         try:
             student_instructor = StudentInstructor.objects.get(user=request.user)
@@ -63,6 +68,11 @@ class ProjectDetailAPIView(CustomResponseMixin, APIView):
             return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
 
         project = get_object_or_404(Project, pk=pk)
+        file_content = request.FILES.get('content', None)
+        if file_content is not None:
+            data['content'] = file_content
+        else:
+            data['content'] = None
         serializer = ProjectSerializer(project, data=data)
         if serializer.is_valid():
             serializer.save()

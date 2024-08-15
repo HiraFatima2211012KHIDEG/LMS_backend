@@ -12,7 +12,9 @@ from .views.location_views import (
     CreateStudentView,
     StudentInstructorDetailView
 )
+from .views.attendance_views import *
 from rest_framework_simplejwt.views import  TokenObtainPairView, TokenRefreshView
+
 
 urlpatterns = [
     path('applications/', CreateApplicationView.as_view(), name='create-application'),
@@ -31,7 +33,7 @@ urlpatterns = [
     path('cities/', CityViewSet.as_view({'get': 'list', 'post': 'create'}), name='city-list-create'),
     path('cities/<int:pk>/', CityViewSet.as_view({'get': 'retrieve', 'put': 'update', 'delete': 'destroy'}), name='city-detail'),
     path('batch/', BatchViewSet.as_view({'get': 'list', 'post': 'create'}), name='batch-list-create'),
-    path('batch/<int:pk>/', BatchViewSet.as_view({'get': 'retrieve', 'put': 'update', 'delete': 'destroy'}), name='batch-detail'),
+    path('batch/<str:pk>/', BatchViewSet.as_view({'get': 'retrieve', 'put': 'update', 'delete': 'destroy'}), name='batch-detail'),
     path('location/', LocationViewSet.as_view({'get': 'list', 'post': 'create'}), name='location-list-create'),
     path('location/<int:pk>/', LocationViewSet.as_view({'get': 'retrieve', 'put': 'update', 'delete': 'destroy'}), name='location-detail'),
     path('session/', SessionsViewSet.as_view({'get': 'list', 'post': 'create'}), name='session-list-create'),
@@ -41,5 +43,10 @@ urlpatterns = [
     path('verify-email/', VerifyEmailandSetPasswordView.as_view(), name='verify-email'),
     path('resend-verification-email/', ResendVerificationEmail.as_view(), name='resend-verification-email'),
     path('assign-session/<int:user_id>/<int:session_id>/', user_views.AssignSessionView.as_view(), name='assign-session')
+    path('student/', user_views.CreateStudentInstructorView.as_view(), name='create-student-instructor'),
+    path('student/<str:registration_id>/', user_views.StudentInstructorDetailView.as_view(), name='detail-student-instructor'),
+    path('attendance/', AttendanceListCreateView.as_view({'get': 'list', 'post': 'create'}), name='attendance-list-create'),
+    path('attendance/<int:pk>/', AttendanceDetailView.as_view({'get': 'retrieve', 'put': 'update', 'delete': 'destroy'}), name='attendance-detail'),
+    path('attendance/user/<str:registration_id>/', UserAttendanceListView.as_view(), name='user-attendance-list'),
 
 ]

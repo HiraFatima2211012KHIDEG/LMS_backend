@@ -5,8 +5,10 @@ from rest_framework import status,permissions
 from django.shortcuts import get_object_or_404
 from ..models.models import *
 from ..serializers import *
-from accounts.models.models_ import *
+from accounts.models.user_models import *
 import logging
+from django.shortcuts import get_list_or_404
+
 
 logger = logging.getLogger(__name__)
 class CustomResponseMixin:
@@ -28,7 +30,7 @@ class QuizListCreateAPIView(CustomResponseMixin, APIView):
         return self.custom_response(status.HTTP_200_OK, 'Quizzes retrieved successfully', serializer.data)
 
     def post(self, request, format=None):
-        data = request.data
+        data = {key: value for key, value in request.data.items()}
         data['created_by'] = request.user.id
         try:
             student_instructor = StudentInstructor.objects.get(user=request.user)
@@ -36,7 +38,11 @@ class QuizListCreateAPIView(CustomResponseMixin, APIView):
         except StudentInstructor.DoesNotExist:
             logger.error("StudentInstructor not found for user: %s", request.user)
             return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
-
+        file_content = request.FILES.get('content', None)
+        if file_content is not None:
+            data['content'] = file_content
+        else:
+            data['content'] = None
         serializer = QuizzesSerializer(data=data)
         if serializer.is_valid():
             serializer.save()
@@ -53,7 +59,7 @@ class QuizDetailAPIView(CustomResponseMixin, APIView):
         return self.custom_response(status.HTTP_200_OK, 'Quiz retrieved successfully', serializer.data)
 
     def put(self, request, pk, format=None):
-        data = request.data
+        data = {key: value for key, value in request.data.items()}
         data['created_by'] = request.user.id
         try:
             student_instructor = StudentInstructor.objects.get(user=request.user)
@@ -63,6 +69,11 @@ class QuizDetailAPIView(CustomResponseMixin, APIView):
             return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
 
         quiz = get_object_or_404(Quizzes, pk=pk)
+        file_content = request.FILES.get('content', None)
+        if file_content is not None:
+            data['content'] = file_content
+        else:
+            data['content'] = None
         serializer = QuizzesSerializer(quiz, data=data)
         if serializer.is_valid():
             serializer.save()
@@ -185,3 +196,11 @@ class QuizGradingDetailAPIView(CustomResponseMixin, APIView):
         grading.delete()
         return self.custom_response(status.HTTP_204_NO_CONTENT, 'Quiz grading deleted successfully', {})
     
+class QuizzesByCourseIDAPIView(CustomResponseMixin, APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request, course_id, format=None):
+        # Fetch assignments for the given course_id
+        quizzes = get_list_or_404(Quizzes, course_id=course_id)
+        serializer = QuizzesSerializer(quizzes, many=True)
+        return self.custom_response(status.HTTP_200_OK, 'Quizzes retrieved successfully', serializer.data)

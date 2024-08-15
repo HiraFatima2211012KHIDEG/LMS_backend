@@ -27,11 +27,9 @@ class Program(models.Model):
 
 
 class Course(models.Model):
-    program = models.ForeignKey(
-        Program, on_delete=models.CASCADE, related_name="courses", null=True, blank=True
-    )
     name = models.CharField(max_length=100)
-    description = models.TextField()
+    short_description = models.TextField()
+    about = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     registration_id = models.CharField(max_length=50, null=True, blank=True)
@@ -54,14 +52,7 @@ class Module(models.Model):
     def __str__(self):
         return self.name
 
-
-# def validate_video_url(value):
-#     """Validator to ensure the URL is a valid video URL."""
-#     if value and not re.match(r'^.*\.(mp4|avi|mov|mkv)$', value):
-#         raise ValidationError('Invalid video URL. Only .mp4, .avi, .mov, and .mkv files are allowed.')
-
-
-class Content(models.Model):
+class ContentFile(models.Model):
     module = models.ForeignKey(
         Module, related_name="contents", on_delete=models.CASCADE
     )
@@ -84,7 +75,6 @@ class ContentFile(models.Model):
         ],
     )
 
-
 class Assignment(models.Model):
     # module = models.ForeignKey(Module, on_delete=models.CASCADE)
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
@@ -104,7 +94,7 @@ class Assignment(models.Model):
         null=True, blank=True
     )
     due_date = models.DateTimeField()
-    
+
 
     def __str__(self):
         return self.question
@@ -124,10 +114,11 @@ class AssignmentSubmission(models.Model):
             )
         ],
     )
+    status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=0)
     submitted_at = models.DateTimeField(auto_now_add=True)
     resubmission = models.BooleanField(default=False)
     comments = models.TextField(null=True, blank=True)
-    
+
 
     def __str__(self):
         return f"{self.user} - {self.assignment}"
@@ -185,10 +176,11 @@ class QuizSubmission(models.Model):
             )
         ],
     )
+    status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=0)
     quiz_submitted_at = models.DateTimeField(auto_now_add=True)
     resubmission = models.BooleanField(default=False)
     comments = models.TextField(null=True, blank=True)
-    
+
 
     def __str__(self):
         return f"{self.user} - {self.quiz}"
@@ -245,10 +237,11 @@ class ProjectSubmission(models.Model):
             )
         ],
     )
+    status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=0)
     project_submitted_at = models.DateTimeField(auto_now_add=True)
     resubmission = models.BooleanField(default=False)
     comments = models.TextField(null=True, blank=True)
-    
+
 
     def __str__(self):
         return f"{self.user} - {self.project}"
@@ -265,3 +258,62 @@ class ProjectGrading(models.Model):
 
     def __str__(self):
         return f"{self.project_submissions} - {self.grade}"
+
+
+class Exam(models.Model):
+    course = models.ForeignKey(Course, related_name='exams', on_delete=models.CASCADE)
+    title = models.CharField(max_length=255)
+    description = models.TextField()
+    content = models.FileField(
+        upload_to="material/exam/",
+        validators=[
+            FileExtensionValidator(
+                allowed_extensions=["pdf", "doc", "docx", "ppt", "pptx", "txt", "zip"]
+            )
+        ],
+        null=True, blank=True
+    )
+    due_date = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=0)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    registration_id = models.CharField(max_length=50, null=True, blank=True)
+
+    def __str__(self):
+        return self.title
+
+class ExamSubmission(models.Model):
+    exam = models.ForeignKey(
+        Exam, related_name="exam_submissions", on_delete=models.CASCADE
+    )
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    registration_id = models.CharField(max_length=50, null=True, blank=True)
+    exam_submitted_file = models.FileField(
+        upload_to="material/exam_submissions/",
+        validators=[
+            FileExtensionValidator(
+                allowed_extensions=["pdf", "doc", "docx", "ppt", "pptx", "txt", "zip"]
+            )
+        ],
+    )
+    status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=0)
+    exam_submitted_at = models.DateTimeField(auto_now_add=True)
+    resubmission = models.BooleanField(default=False)
+    comments = models.TextField(null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.user} - {self.exam}"
+
+class ExamGrading(models.Model):
+    exam_submission = models.ForeignKey(ExamSubmission, on_delete=models.CASCADE)
+    grade = models.DecimalField(max_digits=10, decimal_places=2, null=True)
+    total_grade = models.DecimalField(max_digits=10, decimal_places=2, null=True)
+    feedback = models.TextField(null=True, blank=True)
+    graded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    registration_id = models.CharField(max_length=50, null=True, blank=True)
+    graded_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.exam_submission} - {self.grade}"
+
+

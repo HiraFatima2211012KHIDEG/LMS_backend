@@ -1,5 +1,11 @@
 from rest_framework import serializers
 from ..models.models_ import City, Batch, Location, Sessions, Student
+from ..models.location_models import (
+    City,
+    Batch,
+    Location,
+    Sessions
+)
 
 
 class CitySerializer(serializers.ModelSerializer):
@@ -9,15 +15,16 @@ class CitySerializer(serializers.ModelSerializer):
 
 
 class BatchSerializer(serializers.ModelSerializer):
+    batch = serializers.CharField(read_only=True)
     class Meta:
         model = Batch
-        fields = ['city', 'year', 'no_of_students', 'start_date', 'end_date']
+        fields = ['batch', 'city', 'year', 'no_of_students', 'start_date', 'end_date']
 
 
 class LocationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Location
-        fields = ['name', 'shortname', 'capacity', 'city']
+        fields = ['id', 'name', 'shortname', 'capacity', 'city']
 
 
 class SessionsSerializer(serializers.ModelSerializer):
@@ -32,3 +39,4 @@ class StudentSerializer(serializers.ModelSerializer):
         model = Student
         fields = ['registration_id','user', 'session']
 
+        fields = ['id', 'location', 'no_of_students', 'batch', 'start_time', 'end_time']

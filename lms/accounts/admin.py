@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth import get_user_model
-from .models.models_ import Applications, AccessControl, Student, Sessions, City, Location, Batch
+from .models.user_models import Applications, AccessControl, Student
+from .models.location_models import City,Location, Sessions, Batch
 
 
 class UserAdmin(admin.ModelAdmin):
@@ -15,7 +16,3 @@ admin.site.register(Sessions)
 admin.site.register(City)
 admin.site.register(Batch)
 admin.site.register(Location)
-
-
-
-

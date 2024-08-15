@@ -13,6 +13,8 @@ from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from django.contrib.auth.hashers import check_password
 import re
 from accounts.utils import send_email
+from ..models.user_models import Student
+# from accounts.utils import send_email
 
 class UserSerializer(serializers.ModelSerializer):
     """Serializer for the user object."""
@@ -186,7 +188,7 @@ class SetPasswordSerializer(serializers.Serializer):
 
 class ResetPasswordSerializer(serializers.Serializer):
     """Serializer for requesting a password reset email."""
-    
+
     email = serializers.EmailField()
 
     def validate_email(self, value):
@@ -195,7 +197,7 @@ class ResetPasswordSerializer(serializers.Serializer):
         """
         if not User.objects.filter(email=value).exists():
             raise serializers.ValidationError("You are not a registered user")
-        
+
         user = User.objects.get(email=value)
         uid = urlsafe_base64_encode(force_bytes(user.id))
         token = PasswordResetTokenGenerator().make_token(user)
@@ -213,7 +215,7 @@ class ResetPasswordSerializer(serializers.Serializer):
         # send_email.apply_async(args=[data, "reset_password.html"], countdown=3)
 
         return value
-            
+
 
 class UserpasswordResetSerializer(serializers.Serializer):
     """
@@ -232,13 +234,13 @@ class UserpasswordResetSerializer(serializers.Serializer):
     def validate_password(self, value):
         """
         Validate the password for required complexity.
-        
+
         Args:
             value (str): The new password to validate.
-        
+
         Returns:
             str: The validated password.
-        
+
         Raises:
             serializers.ValidationError: If the password does not meet complexity requirements.
         """
@@ -255,13 +257,13 @@ class UserpasswordResetSerializer(serializers.Serializer):
     def validate(self, data):
         """
         Validate that the passwords match and the token is valid.
-        
+
         Args:
             data (dict): The input data containing passwords and reset token details.
-        
+
         Returns:
             dict: The validated data.
-        
+
         Raises:
             serializers.ValidationError: If validation fails for any reason.
         """
@@ -278,16 +280,17 @@ class UserpasswordResetSerializer(serializers.Serializer):
             user = User.objects.get(id=id)
             if not PasswordResetTokenGenerator().check_token(user, token):
                 raise serializers.ValidationError("Token is not valid or expired.")
-            
+
             if user and check_password(password, user.password):
                 raise serializers.ValidationError("New password cannot be the same as the old one.")
-            
+
             user.set_password(password)
             user.save()
             return data
 
         except DjangoUnicodeDecodeError:
             raise serializers.ValidationError("Token is not valid or expired.")
+
 
 class StudentSerializer(serializers.ModelSerializer):
     registration_id = serializers.CharField(read_only=True)
@@ -300,4 +303,4 @@ class InstructorSerializer(serializers.ModelSerializer):
     # registration_id = serializers.CharField(read_only=True)
     class Meta:
         model = Instructor
-        fields = ['user', 'session', 'created_at', 'updated_at']        
+        fields = ['user', 'session', 'created_at', 'updated_at']
