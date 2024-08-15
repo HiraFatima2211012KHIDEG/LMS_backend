@@ -204,3 +204,31 @@ class QuizzesByCourseIDAPIView(CustomResponseMixin, APIView):
         quizzes = get_list_or_404(Quizzes, course_id=course_id)
         serializer = QuizzesSerializer(quizzes, many=True)
         return self.custom_response(status.HTTP_200_OK, 'Quizzes retrieved successfully', serializer.data)
+    
+
+class QuizDetailView(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request, course_id, registration_id):
+        quizzes = Quizzes.objects.filter(course_id=course_id)
+        submissions = QuizSubmission.objects.filter(quiz__in=quizzes, registration_id=registration_id)
+        grading_ids = QuizGrading.objects.filter(quiz_submissions__in=submissions).values_list('quiz_submissions_id', flat=True)
+
+        quizzes_data = []
+        for quiz in quizzes:
+            submission = submissions.filter(quiz=quiz).first()
+            grading = QuizGrading.objects.filter(quiz_submissions=submission).first() if submission else None
+
+            quiz_data = {
+                'quiz_name': quiz.question,
+                'marks': grading.grade if grading else None,
+                'grade': grading.total_grade if grading else None,
+                'status': submission.status if submission else 'Not Submitted',
+            }
+            quizzes_data.append(quiz_data)
+
+        return Response({
+            'status': status.HTTP_200_OK,
+            'message': 'Quizzes retrieved successfully.',
+            'data': quizzes_data
+        })

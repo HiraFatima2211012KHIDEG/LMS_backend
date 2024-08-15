@@ -102,6 +102,16 @@ class AssignmentSerializer(serializers.ModelSerializer):
             "status",
         ]
 
+class AssignmentPendingSerializer(serializers.ModelSerializer):
+    course_name = serializers.CharField(source='course.name', read_only=True)
+
+    class Meta:
+        model = Assignment
+        fields = ['id', 'course_name', 'question', 'description', 'created_at', 'due_date', 'status', 'content']
+
+
+
+
 
 class AssignmentSubmissionSerializer(serializers.ModelSerializer):
     class Meta:

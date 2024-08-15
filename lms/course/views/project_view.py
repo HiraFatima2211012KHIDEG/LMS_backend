@@ -210,3 +210,31 @@ class ProjectsByCourseIDAPIView(CustomResponseMixin, APIView):
         projects = get_list_or_404(Project, course_id=course_id)
         serializer = ProjectSerializer(projects, many=True)
         return self.custom_response(status.HTTP_200_OK, 'Projects retrieved successfully', serializer.data)
+
+
+class ProjectDetailView(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request, course_id, registration_id):
+        projects = Project.objects.filter(course_id=course_id)
+        submissions = ProjectSubmission.objects.filter(project__in=projects, registration_id=registration_id)
+        grading_ids = ProjectGrading.objects.filter(project_submissions__in=submissions).values_list('project_submissions_id', flat=True)
+
+        projects_data = []
+        for project in projects:
+            submission = submissions.filter(project=project).first()
+            grading = ProjectGrading.objects.filter(project_submissions=submission).first() if submission else None
+
+            project_data = {
+                'project_name': project.title,
+                'marks': grading.grade if grading else None,
+                'grade': grading.total_grade if grading else None,
+                'status': submission.status if submission else 'Not Submitted',
+            }
+            projects_data.append(project_data)
+
+        return Response({
+            'status': status.HTTP_200_OK,
+            'message': 'Projects retrieved successfully.',
+            'data': projects_data
+        })

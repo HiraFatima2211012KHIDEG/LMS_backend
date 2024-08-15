@@ -347,34 +347,33 @@ class StudentScoresSummaryAPIView(APIView):
         projects_percentage = calculate_percentage(projects_sum, projects_total_grades, projects_weightage)
         exams_percentage = calculate_percentage(exams_sum, exams_total_grades, exams_weightage)
 
-        # Structuring the response
+
         return Response({
-            'grades': {
-                'assignments_grades': assignments_sum,
-                'quizzes_grades': quizzes_sum,
-                'projects_grades': projects_sum,
-                'exams_grades': exams_sum,
+            'assignments': {
+                'grades': assignments_sum,
+                'total_grades': assignments_total_grades,
+                'weightage': assignments_weightage,
+                'percentage': assignments_percentage
             },
-            'total_grades': {
-                'assignments_total_grades': assignments_total_grades,
-                'quizzes_total_grades': quizzes_total_grades,
-                'projects_total_grades': projects_total_grades,
-                'exams_total_grades': exams_total_grades,
+            'quizzes': {
+                'grades': quizzes_sum,
+                'total_grades': quizzes_total_grades,
+                'weightage': quizzes_weightage,
+                'percentage': quizzes_percentage
             },
-            'weightage': {
-                'assignments_weightage': assignments_weightage,
-                'quizzes_weightage': quizzes_weightage,
-                'projects_weightage': projects_weightage,
-                'exams_weightage': exams_weightage,
+            'projects': {
+                'grades': projects_sum,
+                'total_grades': projects_total_grades,
+                'weightage': projects_weightage,
+                'percentage': projects_percentage
             },
-            'percentage': {
-                'assignments_percentage': assignments_percentage,
-                'quizzes_percentage': quizzes_percentage,
-                'projects_percentage': projects_percentage,
-                'exams_percentage': exams_percentage,
+            'exams': {
+                'grades': exams_sum,
+                'total_grades': exams_total_grades,
+                'weightage': exams_weightage,
+                'percentage': exams_percentage
             }
         }, status=status.HTTP_200_OK)
-
 
 class AssignmentProgressAPIView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
@@ -462,7 +461,7 @@ class PendingAssignmentsView(CustomResponseMixin, APIView):
 
     def get(self, request, program_id, registration_id):
         pending_assignments = get_pending_assignments_for_student(program_id, registration_id)
-        serializer = AssignmentSerializer(pending_assignments, many=True)
+        serializer = AssignmentPendingSerializer(pending_assignments, many=True)
 
         if not pending_assignments:
             return self.custom_response(
@@ -476,3 +475,32 @@ class PendingAssignmentsView(CustomResponseMixin, APIView):
             'Pending assignments retrieved successfully.',
             serializer.data
         )
+
+
+
+class AssignmentDetailView(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+    
+    def get(self, request, course_id, registration_id):
+        assignments = Assignment.objects.filter(course_id=course_id)
+        submissions = AssignmentSubmission.objects.filter(assignment__in=assignments, registration_id=registration_id)
+        # grading_ids = Grading.objects.filter(submission__in=submissions).values_list('submission_id', flat=True)
+        
+        assignments_data = []
+        for assignment in assignments:
+            submission = submissions.filter(assignment=assignment).first()
+            grading = Grading.objects.filter(submission=submission).first() if submission else None
+            
+            assignment_data = {
+                'assignment_name': assignment.question,
+                'marks': grading.grade if grading else None,
+                'grade': grading.total_grade if grading else None,
+                'status': submission.status if submission else 'Not Submitted',
+            }
+            assignments_data.append(assignment_data)
+        
+        return Response({
+            'status': status.HTTP_200_OK,
+            'message': 'Assignments retrieved successfully.',
+            'data': assignments_data
+        })

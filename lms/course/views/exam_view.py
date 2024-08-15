@@ -208,3 +208,32 @@ class ExamsByCourseIDAPIView(CustomResponseMixin, APIView):
         exams = get_list_or_404(Exam, course_id=course_id)
         serializer = ExamSerializer(exams, many=True)
         return self.custom_response(status.HTTP_200_OK, 'Exams retrieved successfully', serializer.data)
+
+
+
+class ExamDetailView(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request, course_id, registration_id):
+        exams = Exam.objects.filter(course_id=course_id)
+        submissions = ExamSubmission.objects.filter(exam__in=exams, registration_id=registration_id)
+        grading_ids = ExamGrading.objects.filter(exam_submission__in=submissions).values_list('exam_submission_id', flat=True)
+
+        exams_data = []
+        for exam in exams:
+            submission = submissions.filter(exam=exam).first()
+            grading = ExamGrading.objects.filter(exam_submission=submission).first() if submission else None
+
+            exam_data = {
+                'exam_name': exam.title,
+                'marks': grading.grade if grading else None,
+                'grade': grading.total_grade if grading else None,
+                'status': submission.status if submission else 'Not Submitted',
+            }
+            exams_data.append(exam_data)
+
+        return Response({
+            'status': status.HTTP_200_OK,
+            'message': 'Exams retrieved successfully.',
+            'data': exams_data
+        })
