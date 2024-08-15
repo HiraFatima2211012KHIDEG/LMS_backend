@@ -442,24 +442,33 @@ class CourseProgressAPIView(CustomResponseMixin,APIView):
             'progress_percentage': progress_percentage
         }, status=status.HTTP_200_OK)
 
-
-def get_pending_assignments_for_student(course_id, registration_id):
-
-    all_assignments = Assignment.objects.filter(course_id=course_id)
+def get_pending_assignments_for_student(program_id, registration_id):
+    # Get all courses under the program
+    courses = Course.objects.filter(program__id=program_id)
+    
+    # Get all assignments across these courses
+    all_assignments = Assignment.objects.filter(course__in=courses)
+    
+    # Get all submitted assignments by the student
     submitted_assignments = AssignmentSubmission.objects.filter(
-        assignment__course_id=course_id,
+        assignment__course__in=courses,
         registration_id=registration_id
     ).values_list('assignment_id', flat=True)
+    
+    # Filter out submitted assignments and only keep the pending ones
     pending_assignments = all_assignments.exclude(id__in=submitted_assignments).filter(
         due_date__gte=timezone.now()
     ).order_by('due_date')
+    
     return pending_assignments
 
 class PendingAssignmentsView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
-    def get(self, request, course_id, registration_id):
-        pending_assignments = get_pending_assignments_for_student(course_id, registration_id)
+
+    def get(self, request, program_id, registration_id):
+        pending_assignments = get_pending_assignments_for_student(program_id, registration_id)
         serializer = AssignmentSerializer(pending_assignments, many=True)
+
         if not pending_assignments:
             return self.custom_response(
                 status.HTTP_200_OK,
