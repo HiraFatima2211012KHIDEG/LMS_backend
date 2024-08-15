@@ -443,19 +443,14 @@ class CourseProgressAPIView(CustomResponseMixin,APIView):
         }, status=status.HTTP_200_OK)
 
 def get_pending_assignments_for_student(program_id, registration_id):
-    # Get all courses under the program
     courses = Course.objects.filter(program__id=program_id)
     
-    # Get all assignments across these courses
     all_assignments = Assignment.objects.filter(course__in=courses)
-    
-    # Get all submitted assignments by the student
     submitted_assignments = AssignmentSubmission.objects.filter(
         assignment__course__in=courses,
         registration_id=registration_id
     ).values_list('assignment_id', flat=True)
     
-    # Filter out submitted assignments and only keep the pending ones
     pending_assignments = all_assignments.exclude(id__in=submitted_assignments).filter(
         due_date__gte=timezone.now()
     ).order_by('due_date')
