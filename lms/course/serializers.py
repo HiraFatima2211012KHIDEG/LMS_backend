@@ -4,6 +4,12 @@ from .models.program_model import *
 
 
 class CourseSerializer(serializers.ModelSerializer):
+    skills = serializers.PrimaryKeyRelatedField(
+        many=True, queryset=Skill.objects.all()
+    )
+    # instructors = serializers.PrimaryKeyRelatedField(
+    #     many=True, queryset=Instructor.objects.all()
+    # )
     class Meta:
         model = Course
         fields = [
@@ -13,10 +19,13 @@ class CourseSerializer(serializers.ModelSerializer):
             "about",
             "created_at",
             "created_by",
-            "registration_id",
             "credit_hours",
+            "skills",
+            "instructors",
             "status",
         ]
+
+
 
 
 class ProgramSerializer(serializers.ModelSerializer):
@@ -32,7 +41,6 @@ class ProgramSerializer(serializers.ModelSerializer):
             "short_description",
             "about",
             "created_by",
-            "registration_id",
             "status",
             "courses",
             "picture",
@@ -70,7 +78,6 @@ class ModuleSerializer(serializers.ModelSerializer):
             "course",
             "description",
             "created_by",
-            "registration_id",
             "status",
             "files",
         ]
@@ -94,7 +101,6 @@ class AssignmentSerializer(serializers.ModelSerializer):
             "course",
             "created_at",
             "created_by",
-            "registration_id",
             "question",
             "description",
             "content",
@@ -140,7 +146,6 @@ class GradingSerializer(serializers.ModelSerializer):
             "total_grade",
             "feedback",
             "graded_by",
-            "registration_id",
             "graded_at",
         ]
 
@@ -153,7 +158,6 @@ class QuizzesSerializer(serializers.ModelSerializer):
             "course",
             "created_at",
             "created_by",
-            "registration_id",
             "question",
             "description",
             "content",
@@ -193,7 +197,6 @@ class QuizGradingSerializer(serializers.ModelSerializer):
             "total_grade",
             "feedback",
             "graded_by",
-            "registration_id",
             "graded_at",
         ]
 
@@ -206,7 +209,6 @@ class ProjectSerializer(serializers.ModelSerializer):
             "course",
             "created_at",
             "created_by",
-            "registration_id",
             "title",
             "description",
             "content",
@@ -246,7 +248,6 @@ class ProjectGradingSerializer(serializers.ModelSerializer):
             "total_grade",
             "feedback",
             "graded_by",
-            "registration_id",
             "graded_at",
         ]
 

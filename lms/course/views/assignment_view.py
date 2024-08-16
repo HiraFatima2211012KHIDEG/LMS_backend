@@ -403,7 +403,7 @@ class CourseProgressAPIView(CustomResponseMixin,APIView):
             logger.error("StudentInstructor not found for user: %s", user)
             return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
         total_modules = Module.objects.filter(course=course).count()
-        attendance_records = Attendance.objects.filter(session=course, status="Present")
+        attendance_records = Attendance.objects.filter(course=course,student=registration_id, status="Present")
         total_attendance = attendance_records.count()
 
         

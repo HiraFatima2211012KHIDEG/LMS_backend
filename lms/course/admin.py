@@ -3,6 +3,7 @@ from .models.models import *
 from .models.program_model import *
 
 admin.site.register(Program)
+admin.site.register(Skill)
 admin.site.register(Course)
 admin.site.register(Module)
 admin.site.register(ContentFile)
@@ -18,3 +19,4 @@ admin.site.register(ProjectGrading)
 admin.site.register(Exam)
 admin.site.register(ExamSubmission)
 admin.site.register(ExamGrading)
+admin.site.register(Weightage)

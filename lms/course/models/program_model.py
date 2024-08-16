@@ -9,7 +9,6 @@ class Program(models.Model):
     short_description = models.TextField()
     about = models.TextField()
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    registration_id = models.CharField(max_length=50, null=True, blank=True)
     courses = models.ManyToManyField(Course)
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=0)
     picture = models.ImageField(upload_to='material/program_pictures/', blank=True, null=True)

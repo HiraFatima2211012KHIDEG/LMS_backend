@@ -1,5 +1,5 @@
 from django.db import models
-
+# from course.models.program_model import Program
 
 class City(models.Model):
     """Cities the Programs are being offerend in."""
@@ -7,7 +7,8 @@ class City(models.Model):
     shortname = models.CharField(max_length=3)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
-
+    def __str__(self):
+        return f"{self.city}"
 
 class Batch(models.Model):
     """Batches of cities."""
@@ -27,7 +28,8 @@ class Batch(models.Model):
 
     class Meta:
         unique_together = ('city', 'year')
-
+    def __str__(self):
+        return f"{self.batch}"
 
 class Location(models.Model):
     """Available locations in cities."""
@@ -38,16 +40,21 @@ class Location(models.Model):
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
 
+    def __str__(self):
+        return f"{self.name} - {self.shortname} - {self.city}"
 
 class Sessions(models.Model):
     """Location based sessions."""
     location = models.ForeignKey(Location, on_delete=models.CASCADE)
     no_of_students = models.IntegerField()
     is_active = models.BooleanField(default=True)
+    program = models.ForeignKey('course.Program', on_delete=models.CASCADE, null=True,blank=True)
     created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
     batch = models.ForeignKey(Batch, on_delete=models.CASCADE)
     start_time = models.DateTimeField(null=True, blank=True)
     end_time = models.DateTimeField(null=True, blank=True)
+    def __str__(self):
+        return f"{self.batch} - {self.location} - {self.no_of_students}"
 
 
 # class Batch(models.Model):

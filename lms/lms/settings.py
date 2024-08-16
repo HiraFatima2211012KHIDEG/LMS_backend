@@ -90,17 +90,27 @@ WSGI_APPLICATION = 'lms.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        # 'HOST': os.getenv('DB_HOST'),
-        # 'NAME': os.getenv('DB_NAME'),
-        # 'USER': os.getenv('DB_USER'),
-        # 'PASSWORD': os.getenv('DB_PASSWORD'),
-        'HOST': 'localhost',
-        'NAME': 'test',
-        'USER': 'postgres',
-        'PASSWORD': 'password',
+        'HOST': os.getenv('DB_HOST'),
+        'NAME': os.getenv('DB_NAME'),
+        'USER': os.getenv('DB_USER'),
+        'PASSWORD': os.getenv('DB_PASSWORD'),
+        # 'HOST': 'localhost',
+        # 'NAME': 'test',
+        # 'USER': 'postgres',
+        # 'PASSWORD': 'password',
 
     }
 }
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': 'LMS',
+#         'USER': 'maazjavaid',
+#         'PASSWORD': 'Maaz12..',
+#         'HOST': 'localhost',
+#         'PORT': '5432',
+#     }
+# }
 
 
 # Password validation

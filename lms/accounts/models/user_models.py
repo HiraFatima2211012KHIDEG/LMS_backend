@@ -38,6 +38,8 @@ class Applications(models.Model):
     #area of residence.
 
 #this should have a status field.
+    def __str__(self):
+        return f"{self.email} - {self.city} - {self.program}"
 
 class UserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
@@ -123,7 +125,7 @@ class AccessControl(models.Model):
 class Student(models.Model):
     """Extra details of Students in the System."""
     registration_id = models.CharField(max_length=20, primary_key=True)
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    user = models.OneToOneField(User, on_delete=models.CASCADE, null = True, blank = True)
     session = models.ForeignKey(Sessions, on_delete=models.CASCADE, null=True, blank=True)
     # batch = models.ForeignKey(Batch, on_delete=models.CASCADE)
 
@@ -142,20 +144,23 @@ class Student(models.Model):
             self.registration_id = f"{batch}-{self.user.id}"
         super(Student, self).save(*args, **kwargs)
 
+    def __str__(self):
+        return f"{self.user} - {self.registration_id}"
     # class Meta:
     #     unique_together = ('batch', 'user')
 
 class Instructor(models.Model):
-    """Extra details of Instructors in the System."""
-    session = models.ForeignKey(Sessions, on_delete=models.CASCADE, null=True, blank=True)
+    session = models.ForeignKey(Sessions, on_delete=models.CASCADE, null=True, blank=True)  
     user = models.ForeignKey(
                 settings.AUTH_USER_MODEL,
-                on_delete=models.CASCADE
-                , related_name='instructor',
+                on_delete=models.CASCADE,
+                related_name='instructor',
                 null=True)
     created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
 
+    def __str__(self):
+        return str(self.user)
 
 
 # class StudentInstructor(models.Model):

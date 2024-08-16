@@ -1,7 +1,9 @@
 from django.db import models
 from django.conf import settings
 from django.core.validators import FileExtensionValidator
-from django.core.exceptions import ValidationError
+# from django.core.exceptions import ValidationError
+# from accounts.models.user_models import Instructor
+
 import re
 
 STATUS_CHOICES = (
@@ -11,15 +13,23 @@ STATUS_CHOICES = (
     )
 
 
+class Skill(models.Model):
+    skill_name=models.CharField(max_length=100)
+
+    def __str__(self):
+        return self.skill_name
+
 class Course(models.Model):
     name = models.CharField(max_length=100)
     short_description = models.TextField()
     about = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    registration_id = models.CharField(max_length=50, null=True, blank=True)
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=0)
     credit_hours = models.IntegerField()
+    skills = models.ManyToManyField('Skill',  blank=True)
+    instructors = models.ManyToManyField('accounts.Instructor', blank=True) 
+
 
     def __str__(self):
         return self.name
@@ -31,7 +41,6 @@ class Module(models.Model):
     description = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    registration_id = models.CharField(max_length=50, null=True, blank=True)
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=0)
 
     def __str__(self):
@@ -58,7 +67,6 @@ class Assignment(models.Model):
     question = models.TextField(null=True, blank=True)
     description = models.TextField(null=True, blank=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,null=True, blank=True)
-    registration_id = models.CharField(max_length=50, null=True, blank=True)
     content = models.FileField(
         upload_to="material/assignments/",
         validators=[
@@ -108,7 +116,6 @@ class Grading(models.Model):
     total_grade=models.DecimalField(max_digits=10, decimal_places=2, null=True)
     feedback = models.TextField(null=True, blank=True)
     graded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    registration_id = models.CharField(max_length=50, null=True, blank=True)
     graded_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -121,7 +128,6 @@ class Quizzes(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    registration_id = models.CharField(max_length=50, null=True, blank=True)
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=0)
     question = models.TextField(null=True, blank=True)
     description = models.TextField(null=True, blank=True)
@@ -170,7 +176,6 @@ class QuizGrading(models.Model):
     total_grade=models.DecimalField(max_digits=10, decimal_places=2, null=True)
     feedback = models.TextField(null=True, blank=True)
     graded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    registration_id = models.CharField(max_length=50, null=True, blank=True)
     graded_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -195,7 +200,6 @@ class Project(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=0)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    registration_id = models.CharField(max_length=50, null=True, blank=True)
 
     def __str__(self):
         return self.title
@@ -231,7 +235,6 @@ class ProjectGrading(models.Model):
     total_grade=models.DecimalField(max_digits=10, decimal_places=2, null=True)
     feedback = models.TextField(null=True, blank=True)
     graded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    registration_id = models.CharField(max_length=50, null=True, blank=True)
     graded_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -255,7 +258,6 @@ class Exam(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=0)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    registration_id = models.CharField(max_length=50, null=True, blank=True)
 
     def __str__(self):
         return self.title
@@ -288,7 +290,6 @@ class ExamGrading(models.Model):
     total_grade = models.DecimalField(max_digits=10, decimal_places=2, null=True)
     feedback = models.TextField(null=True, blank=True)
     graded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    registration_id = models.CharField(max_length=50, null=True, blank=True)
     graded_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
