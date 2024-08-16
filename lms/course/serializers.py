@@ -279,6 +279,14 @@ class AssignmentProgressSerializer(serializers.Serializer):
     progress_percentage = serializers.FloatField()
 
 
+class QuizProgressSerializer(serializers.Serializer):
+    user_id = serializers.IntegerField()
+    student_id = serializers.CharField()
+    course_id = serializers.IntegerField()
+    total_quiz = serializers.IntegerField()
+    submitted_quiz = serializers.IntegerField()
+    progress_percentage = serializers.FloatField()
+
 class CourseProgressSerializer(serializers.Serializer):
     user_id = serializers.IntegerField()
     student_id = serializers.IntegerField()

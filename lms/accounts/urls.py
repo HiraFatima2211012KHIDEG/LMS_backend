@@ -47,6 +47,6 @@ urlpatterns = [
     path('student/<str:registration_id>/', user_views.StudentDetailView.as_view(), name='detail-student-instructor'),
     path('attendance/', AttendanceListCreateView.as_view({'get': 'list', 'post': 'create'}), name='attendance-list-create'),
     path('attendance/<int:pk>/', AttendanceDetailView.as_view({'get': 'retrieve', 'put': 'update', 'delete': 'destroy'}), name='attendance-detail'),
-    path('attendance/user/<str:registration_id>/', UserAttendanceListView.as_view(), name='user-attendance-list'),
+    path('attendance/course/<int:course_id>/user/<str:registration_id>/', UserAttendanceListView.as_view(), name='user-attendance-list'),
 
 ]

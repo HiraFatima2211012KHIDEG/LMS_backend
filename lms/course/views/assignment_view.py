@@ -11,7 +11,7 @@ from django.shortcuts import get_list_or_404
 from django.db.models import Sum
 from decimal import Decimal
 from django.utils import timezone
-
+from rest_framework import status
 logger = logging.getLogger(__name__)
 
 class CustomResponseMixin:
@@ -93,20 +93,21 @@ class AssignmentSubmissionCreateAPIView(CustomResponseMixin, APIView):
         serializer = AssignmentSubmissionSerializer(assignments, many=True)
         return self.custom_response(status.HTTP_200_OK, 'Assignment submissions retrieved successfully', serializer.data)
 
+
     def post(self, request, format=None):
         data = {key: value for key, value in request.data.items()}
         data['user'] = request.user.id
+        
         try:
             student_instructor = Student.objects.get(user=request.user)
             data['registration_id'] = student_instructor.registration_id
         except Student.DoesNotExist:
             logger.error("StudentInstructor not found for user: %s", request.user)
             return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
-        # file_content = request.FILES.get('submitted_file', None)
-        # if file_content is not None:
-        #     data['submitted_file'] = file_content
-        # else:
-        #     data['submitted_file'] = None
+        
+       
+        data['status'] = 1
+        print("Data to be saved:", data) 
         serializer = AssignmentSubmissionSerializer(data=data)
         if serializer.is_valid():
             serializer.save()
@@ -389,6 +390,40 @@ class AssignmentProgressAPIView(CustomResponseMixin, APIView):
         serializer = AssignmentProgressSerializer(progress_data)
         return self.custom_response(status.HTTP_200_OK, 'Assignment progress retrieved successfully', serializer.data)
 
+class QuizProgressAPIView(CustomResponseMixin, APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request, course_id, format=None):
+        user = request.user
+        course = get_object_or_404(Course, id=course_id)
+  
+        try:
+            student_instructor = Student.objects.get(user=user)
+            registration_id = student_instructor.registration_id
+        except Student.DoesNotExist:
+            logger.error("StudentInstructor not found for user: %s", user)
+            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
+        
+        total_quiz = Quizzes.objects.filter(course=course).count()
+        submitted_quiz = QuizSubmission.objects.filter(user=user, quiz__course=course).count()
+
+        if total_quiz == 0:
+            progress_percentage = 0
+        else:
+            progress_percentage = (submitted_quiz / total_quiz) * 100
+
+        progress_data = {
+            'user_id': user.id,
+            'student_id': registration_id,
+            'course_id': course_id,
+            'total_quiz': total_quiz,
+            'submitted_quiz': submitted_quiz,
+            'progress_percentage': progress_percentage
+        }
+
+        serializer = QuizProgressSerializer(progress_data)
+        return self.custom_response(status.HTTP_200_OK, 'Quiz progress retrieved successfully', serializer.data)
+
 class CourseProgressAPIView(CustomResponseMixin,APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
@@ -457,25 +492,31 @@ class PendingAssignmentsView(CustomResponseMixin, APIView):
         )
 
 
-
 class AssignmentDetailView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
     
     def get(self, request, course_id, registration_id):
         assignments = Assignment.objects.filter(course_id=course_id)
         submissions = AssignmentSubmission.objects.filter(assignment__in=assignments, registration_id=registration_id)
-        # grading_ids = Grading.objects.filter(submission__in=submissions).values_list('submission_id', flat=True)
         
         assignments_data = []
         for assignment in assignments:
             submission = submissions.filter(assignment=assignment).first()
             grading = Grading.objects.filter(submission=submission).first() if submission else None
             
+            if submission:
+                if submission.status == 1:  
+                    submission_status = 'Submitted'
+                else:
+                    submission_status = 'Not Submitted'  
+            else:
+                submission_status = 'Not Submitted'
+            
             assignment_data = {
                 'assignment_name': assignment.question,
                 'marks': grading.grade if grading else None,
                 'grade': grading.total_grade if grading else None,
-                'status': submission.status if submission else 'Not Submitted',
+                'status': submission_status,
             }
             assignments_data.append(assignment_data)
         

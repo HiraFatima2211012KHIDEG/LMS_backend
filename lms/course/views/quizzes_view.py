@@ -92,7 +92,8 @@ class QuizSubmissionCreateAPIView(CustomResponseMixin, APIView):
         except Student.DoesNotExist:
             logger.error("StudentInstructor not found for user: %s", request.user)
             return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
-
+        data['status'] = 1
+        print(data)
         serializer = QuizSubmissionSerializer(data=data)
         if serializer.is_valid():
             serializer.save()
@@ -185,25 +186,31 @@ class QuizzesByCourseIDAPIView(CustomResponseMixin, APIView):
         serializer = QuizzesSerializer(quizzes, many=True)
         return self.custom_response(status.HTTP_200_OK, 'Quizzes retrieved successfully', serializer.data)
     
-
 class QuizDetailView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request, course_id, registration_id):
         quizzes = Quizzes.objects.filter(course_id=course_id)
         submissions = QuizSubmission.objects.filter(quiz__in=quizzes, registration_id=registration_id)
-        grading_ids = QuizGrading.objects.filter(quiz_submissions__in=submissions).values_list('quiz_submissions_id', flat=True)
-
+        
         quizzes_data = []
         for quiz in quizzes:
             submission = submissions.filter(quiz=quiz).first()
             grading = QuizGrading.objects.filter(quiz_submissions=submission).first() if submission else None
-
+            
+            if submission:
+                if submission.status == 1:  
+                    submission_status = 'Submitted'
+                else:
+                    submission_status = 'Not Submitted'  
+            else:
+                submission_status = 'Not Submitted'
+            
             quiz_data = {
                 'quiz_name': quiz.question,
                 'marks': grading.grade if grading else None,
                 'grade': grading.total_grade if grading else None,
-                'status': submission.status if submission else 'Not Submitted',
+                'status': submission_status,
             }
             quizzes_data.append(quiz_data)
 

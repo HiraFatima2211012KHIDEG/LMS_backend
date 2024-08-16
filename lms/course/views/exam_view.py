@@ -98,7 +98,7 @@ class ExamSubmissionListCreateAPIView(CustomResponseMixin, APIView):
         except Student.DoesNotExist:
             logger.error("StudentInstructor not found for user: %s", request.user)
             return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
-
+        data['status'] = 1
         serializer = ExamSubmissionSerializer(data=data)
         if serializer.is_valid():
             serializer.save()
@@ -203,12 +203,18 @@ class ExamDetailView(APIView):
         for exam in exams:
             submission = submissions.filter(exam=exam).first()
             grading = ExamGrading.objects.filter(exam_submission=submission).first() if submission else None
-
+            if submission:
+                if submission.status == 1:  
+                    submission_status = 'Submitted'
+                else:
+                    submission_status = 'Not Submitted'  
+            else:
+                submission_status = 'Not Submitted'
             exam_data = {
                 'exam_name': exam.title,
                 'marks': grading.grade if grading else None,
                 'grade': grading.total_grade if grading else None,
-                'status': submission.status if submission else 'Not Submitted',
+                'status': submission_status,
             }
             exams_data.append(exam_data)
 

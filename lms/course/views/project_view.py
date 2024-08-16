@@ -96,7 +96,7 @@ class ProjectSubmissionListCreateAPIView(CustomResponseMixin, APIView):
         except Student.DoesNotExist:
             logger.error("StudentInstructor not found for user: %s", request.user)
             return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
-
+        data['status'] = 1
         serializer = ProjectSubmissionSerializer(data=data)
         if serializer.is_valid():
             serializer.save(user=request.user)
@@ -204,12 +204,18 @@ class ProjectDetailView(APIView):
         for project in projects:
             submission = submissions.filter(project=project).first()
             grading = ProjectGrading.objects.filter(project_submissions=submission).first() if submission else None
-
+            if submission:
+                if submission.status == 1:  
+                    submission_status = 'Submitted'
+                else:
+                    submission_status = 'Not Submitted'  
+            else:
+                submission_status = 'Not Submitted'
             project_data = {
                 'project_name': project.title,
                 'marks': grading.grade if grading else None,
                 'grade': grading.total_grade if grading else None,
-                'status': submission.status if submission else 'Not Submitted',
+                'status': submission_status,
             }
             projects_data.append(project_data)
 

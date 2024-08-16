@@ -62,6 +62,7 @@ urlpatterns = [
     path('exams/<int:course_id>/student/<str:registration_id>/', ExamDetailView.as_view(), name='exam-detail'),
 
     path('courses/<int:course_id>/assignment-progress/', AssignmentProgressAPIView.as_view(), name='assignment-progress'),
+    path('courses/<int:course_id>/quiz-progress/', QuizProgressAPIView.as_view(), name='quiz-progress'),
     path('course/<int:course_id>/course-progress/', CourseProgressAPIView.as_view(), name='course-progress'),
     path('weightages/', WeightageListCreateAPIView.as_view(), name='weightage-list-create'),
     path('weightages/<int:pk>/', WeightageDetailAPIView.as_view(), name='weightage-detail'),
