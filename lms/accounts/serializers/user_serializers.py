@@ -71,18 +71,11 @@ class UserLoginSerializer(serializers.Serializer):
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
-    registration_id = serializers.SerializerMethodField()
-
     class Meta:
         model = User
-        fields = ['id', 'first_name', 'last_name', 'contact', 'city', 'registration_id']
+        fields = ['id', 'first_name', 'last_name', 'contact', 'city']
 
-    def get_registration_id(self, obj):
-        try:
-            student_instructor = Student.objects.get(user=obj)
-            return student_instructor.registration_id
-        except Student.DoesNotExist:
-            return None
+
 
 
 class UserProfileUpdateSerializer(serializers.ModelSerializer):
@@ -301,11 +294,11 @@ class UserpasswordResetSerializer(serializers.Serializer):
 
 
 class StudentSerializer(serializers.ModelSerializer):
-    registration_id = serializers.CharField(read_only=True)
+    # registration_id = serializers.CharField(read_only=True)
+
     class Meta:
         model = Student
-        fields = ['registration_id','user', 'session']
-
+        fields = ['registration_id', 'user', 'session']
 
 class InstructorSerializer(serializers.ModelSerializer):
     # registration_id = serializers.CharField(read_only=True)

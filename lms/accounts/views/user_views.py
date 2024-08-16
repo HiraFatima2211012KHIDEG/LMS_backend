@@ -10,7 +10,7 @@ from ..serializers.user_serializers import UserSerializer, StudentSerializer
 from ..models.user_models import Student
 import constants
 from .location_views import CustomResponseMixin
-
+from ..serializers.location_serializers import *
 
 class CreateUserView(generics.CreateAPIView):
     """Create a new user in the system."""
@@ -35,90 +35,91 @@ class UserLoginView(views.APIView):
     """
     View to handle user login and generate authentication tokens.
     """
-
     @extend_schema(
         request=UserLoginSerializer,
         responses={
-            200: "Login Successful.",
-            400: "Bad Request.",
-            401: "Unauthorized.",
-        },
+            200: 'Login Successful.',
+            400: 'Bad Request.',
+            401: 'Unauthorized.',
+        }
     )
     def post(self, request):
         """
         Handle POST requests for user login.
-
         This method processes the login request by validating the provided credentials.
         If valid, it authenticates the user and generates authentication tokens.
-
         Args:
             request (Request): The HTTP request object containing the login data.
-
         Returns:
             Response: A Response object with authentication tokens if successful,
                       or error details if validation fails.
         """
         data = request.data
-        if "email" not in data:
+        if 'email' not in data:
             return Response(
-                {
-                    "status_code": status.HTTP_400_BAD_REQUEST,
-                    "message": "Email is not provided.",
-                }
-            )
-        if "password" not in data:
+                {'status_code' : status.HTTP_400_BAD_REQUEST,
+                 'message' : 'Email is not provided.'}
+                 )
+        if 'password' not in data:
             return Response(
-                {
-                    "status_code": status.HTTP_400_BAD_REQUEST,
-                    "message": "Password is not provided.",
-                }
-            )
-        data["email"] = data.get("email", "").lower()
+                {'status_code' : status.HTTP_400_BAD_REQUEST,
+                 'message' : 'Password is not provided.'}
+                 )
+        data['email'] = data.get('email', '').lower()
         serializer = UserLoginSerializer(data=data)
         if serializer.is_valid(raise_exception=True):
             user = authenticate(
-                email=serializer.validated_data["email"],
-                password=serializer.validated_data["password"],
+                email=serializer.validated_data["email"], password=serializer.validated_data["password"]
             )
             if user is not None:
                 tokens = self.get_tokens_for_user(user)
                 user_group = Group.objects.get(user=user.id)
                 permission = self.get_group_permissions(user_group.id)
                 user_profile = UserProfileSerializer(user)
-                return Response(
-                    {
-                        "status_code": status.HTTP_200_OK,
-                        "message": "Login Successful.",
-                        "response": {
-                            "token": tokens,
-                            "Group": user_group.name,
-                            "user": user_profile.data,
-                            "permissions": permission,
-                        },
+                user_serializer = None
+                session_data = None  # Initialize session_data as None
+                if user_group.name == 'student':
+                    student = Student.objects.get(user=user.id)
+                    user_serializer = StudentSerializer(student)
+                    session = user_serializer.data.get('session', None)
+                    if session is not None:
+                        session_instance = Sessions.objects.get(id=session)
+                        session_data = SessionsSerializer(session_instance)
+                elif user_group.name == 'instructor':
+                    instructor = Instructor.objects.get(user=user.id)
+                    user_serializer = InstructorSerializer(instructor)
+                    session = user_serializer.data.get('session', None)
+                    if session is not None:
+                        session_instance = Sessions.objects.get(id=session)
+                        session_data = SessionsSerializer(session_instance)
+                return Response({
+                    'status_code': status.HTTP_200_OK,
+                    'message': 'Login Successful.',
+                    'response': {
+                        'token': tokens,
+                        'Group': user_group.name,
+                        'User': user_profile.data,
+                        'permissions': permission,
+                        'user_data': user_serializer.data if user_serializer else None,
+                        'session': session_data.data if session_data else None
                     }
-                )
+                })
             else:
-                return Response(
-                    {
-                        "status_code": status.HTTP_401_UNAUTHORIZED,
-                        "message": "Invalid credentials.",
-                    },
+                return Response({
+                        'status_code' : status.HTTP_401_UNAUTHORIZED,
+                        'message': 'Invalid credentials.'
+                        },
                 )
-        return Response(
-            {
-                "status_code": status.HTTP_400_BAD_REQUEST,
-                "message": "Unable to login.",
-                "response": serializer.errors,
-            }
-        )
-
+        return Response({
+                        'status_code' : status.HTTP_400_BAD_REQUEST,
+                        'message': 'Unable to login.',
+                        'response' : serializer.errors
+        })
     def get_tokens_for_user(self, user):
         """
         Generate JWT tokens for the authenticated user.
-
         Args:
             user (User): The authenticated user object.
-
         Returns:
             dict: A dictionary containing the refresh and access tokens.
         """
@@ -130,16 +131,13 @@ class UserLoginView(views.APIView):
             }
         except Exception as e:
             raise Exception(f"Error generating tokens: {str(e)}")
-
     def get_group_permissions(self, group_id):
         """Retrieve all the permissions related to a user group"""
         permissions_dict = {}
         access_controls = AccessControl.objects.filter(group_id=group_id)
-
         for access_control in access_controls:
             model_name = access_control.model
-            permissions_value = ""
-
+            permissions_value = ''
             if access_control.create:
                 permissions_value += constants.CREATE
             if access_control.read:
@@ -148,11 +146,8 @@ class UserLoginView(views.APIView):
                 permissions_value += constants.UPDATE
             if access_control.remove:
                 permissions_value += constants.DELETE
-
             permissions_dict[model_name] = permissions_value
-
         return permissions_dict
-
 
 class UserProfileView(views.APIView):
     """

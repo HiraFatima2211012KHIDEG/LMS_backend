@@ -12,10 +12,10 @@ from ..serializers.location_serializers import (
     BatchSerializer,
     LocationSerializer,
     SessionsSerializer,
-    # StudentInstructorSerializer
-    StudentSerializer,
-)
 
+
+)
+from ..serializers.user_serializers import *
 
 class CustomResponseMixin:
     def custom_response(self, status_code, message, data):
