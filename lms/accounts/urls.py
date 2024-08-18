@@ -9,8 +9,7 @@ from .views.location_views import (
     BatchViewSet,
     LocationViewSet,
     SessionsViewSet,
-    CreateStudentView,
-    StudentInstructorDetailView
+    CreateBatchLocationSessionView
 )
 from .views.attendance_views import *
 from rest_framework_simplejwt.views import  TokenObtainPairView, TokenRefreshView
@@ -38,15 +37,18 @@ urlpatterns = [
     path('location/<int:pk>/', LocationViewSet.as_view({'get': 'retrieve', 'put': 'update', 'delete': 'destroy'}), name='location-detail'),
     path('session/', SessionsViewSet.as_view({'get': 'list', 'post': 'create'}), name='session-list-create'),
     path('session/<int:pk>/', SessionsViewSet.as_view({'get': 'retrieve', 'put': 'update', 'delete': 'destroy'}), name='session-detail'),
-    path('student-instructor/', CreateStudentView.as_view(), name='create-student-instructor'),
-    path('student-instructor/<str:registration_id>/', StudentInstructorDetailView.as_view(), name='detail-student-instructor'),
+    # path('student/', CreateStudentView.as_view(), name='create-student'),
+    # path('student/<str:registration_id>/', StudentInstructorDetailView.as_view(), name='detail-student'),
     path('verify-email/', VerifyEmailandSetPasswordView.as_view(), name='verify-email'),
     path('resend-verification-email/', ResendVerificationEmail.as_view(), name='resend-verification-email'),
     path('assign-session/<int:user_id>/<int:session_id>/', user_views.AssignSessionView.as_view(), name='assign-session'),
-    path('student/', user_views.CreateStudentView.as_view(), name='create-student-instructor'),
-    path('student/<str:registration_id>/', user_views.StudentDetailView.as_view(), name='detail-student-instructor'),
+    path('student/', user_views.CreateStudentView.as_view(), name='create-student'),
+    path('student/<str:registration_id>/', user_views.StudentDetailView.as_view(), name='detail-student'),
+    path('students', user_views.StudentListView.as_view(), name='all-students'),
+    path('instructors', user_views.InstructorListView.as_view(), name='all-instructors'),
     path('attendance/', AttendanceListCreateView.as_view({'get': 'list', 'post': 'create'}), name='attendance-list-create'),
     path('attendance/<int:pk>/', AttendanceDetailView.as_view({'get': 'retrieve', 'put': 'update', 'delete': 'destroy'}), name='attendance-detail'),
     path('attendance/user/<str:registration_id>/', UserAttendanceListView.as_view(), name='user-attendance-list'),
+    path('create-batch-location-session/', CreateBatchLocationSessionView.as_view(), name='create-batch-location-session'),
 
 ]

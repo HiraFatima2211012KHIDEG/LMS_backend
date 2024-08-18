@@ -10,8 +10,8 @@ import datetime
 from django.conf import settings
 from .location_models import (
     Sessions,
-    Batch
 )
+from utils.custom import STATUS_CHOICES
 
 
 class Applications(models.Model):
@@ -125,54 +125,33 @@ class Student(models.Model):
     registration_id = models.CharField(max_length=20, primary_key=True)
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     session = models.ForeignKey(Sessions, on_delete=models.CASCADE, null=True, blank=True)
-    # batch = models.ForeignKey(Batch, on_delete=models.CASCADE)
+    status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=1)
 
 
-    # def save(self, *args, **kwargs):
-    #     if not self.registration_id:
-    #         batch = self.batch.batch
-    #         self.registration_id = f"{batch}-{self.user.id}"
-    #     super(Student, self).save(*args, **kwargs)
-
-    class Meta:
-        unique_together = ('session', 'user')
     def save(self, *args, **kwargs):
         if not self.registration_id:
             batch = self.batch.batch
             self.registration_id = f"{batch}-{self.user.id}"
         super(Student, self).save(*args, **kwargs)
 
-    # class Meta:
-    #     unique_together = ('batch', 'user')
+    class Meta:
+        unique_together = ('session', 'user')
+
+
 
 class Instructor(models.Model):
     """Extra details of Instructors in the System."""
+    id = models.CharField(max_length=255, primary_key=True, editable=False)
     session = models.ForeignKey(Sessions, on_delete=models.CASCADE, null=True, blank=True)
-    user = models.ForeignKey(
-                settings.AUTH_USER_MODEL,
-                on_delete=models.CASCADE
-                , related_name='instructor',
-                null=True)
+    status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=1)
     created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
 
+    def save(self, *args, **kwargs):
+        if self.user:
+            self.id = self.user.email
+        super(Instructor, self).save(*args, **kwargs)
 
+    def __str__(self):
+        return self.id
 
-# class StudentInstructor(models.Model):
-#     """Extra details of Students and Instructors in the System."""
-#     registration_id = models.CharField(max_length=20, primary_key=True)
-#     user = models.OneToOneField(User, on_delete=models.CASCADE)
-#     session = models.ForeignKey(Sessions, on_delete=models.CASCADE, null=True, blank=True)
-#     # batch = models.ForeignKey(Batch, on_delete=models.CASCADE)
-
-
-#     # def save(self, *args, **kwargs):
-#     #     if not self.registration_id:
-#     #         batch = self.batch.batch
-#     #         self.registration_id = f"{batch}-{self.user.id}"
-#     #     super(StudentInstructor, self).save(*args, **kwargs)
-
-#     class Meta:
-#         unique_together = ('session', 'user')
-
-#need discussion on instructor table, should we go with many to many field here.

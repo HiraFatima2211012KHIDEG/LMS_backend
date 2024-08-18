@@ -9,7 +9,7 @@ from drf_spectacular.utils import extend_schema
 from ..serializers.user_serializers import UserSerializer, StudentSerializer
 from ..models.user_models import Student
 import constants
-from .location_views import CustomResponseMixin
+from utils.custom import CustomResponseMixin
 
 
 class CreateUserView(generics.CreateAPIView):
@@ -485,7 +485,7 @@ class AssignSessionView(views.APIView, CustomResponseMixin):
 
 
 class CreateStudentView(generics.CreateAPIView):
-    """Create a new student/instructor in the system."""
+    """Create a new student in the system."""
 
     serializer_class = StudentSerializer
 
@@ -513,7 +513,7 @@ class CreateStudentView(generics.CreateAPIView):
             return Response(
                 {
                     "status_code": status.HTTP_201_CREATED,
-                    "message": "StudentInstructor successfully created",
+                    "message": "Student successfully created",
                     "response": serializer.data,
                 }
             )
@@ -527,3 +527,24 @@ class StudentDetailView(generics.RetrieveAPIView):
     queryset = Student.objects.all()
     serializer_class = StudentSerializer
     lookup_field = "registration_id"
+
+
+class StudentListView(CustomResponseMixin, generics.ListAPIView):
+    queryset = Student.objects.all()
+    serializer_class = StudentSerializer
+
+    def list(self, request, *args, **kwargs):
+        response = super().list(request, *args, **kwargs)
+        return self.custom_response(
+            status.HTTP_200_OK, "Students retrieved successfully", response.data
+        )
+
+class InstructorListView(CustomResponseMixin, generics.ListAPIView):
+    queryset = Instructor.objects.all()
+    serializer_class = InstructorSerializer
+
+    def list(self, request, *args, **kwargs):
+        response = super().list(request, *args, **kwargs)
+        return self.custom_response(
+            status.HTTP_200_OK, "Instructors retrieved successfully", response.data
+        )

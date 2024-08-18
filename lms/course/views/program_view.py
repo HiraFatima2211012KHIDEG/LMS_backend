@@ -4,8 +4,11 @@ from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from django.conf import settings
 from ..models.program_model import Program
+from ..models.models import Course
 from accounts.models.user_models import *
 from ..serializers import *
+from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import serializers
 
 import logging
 class CustomResponseMixin:
@@ -33,9 +36,9 @@ class ProgramListCreateAPIView(CustomResponseMixin, APIView):
         data = {key: value for key, value in request.data.items()}
         data['created_by'] = request.user.id
         try:
-            student_instructor = StudentInstructor.objects.get(user=request.user)
+            student_instructor = Student.objects.get(user=request.user)
             data['registration_id'] = student_instructor.registration_id
-        except StudentInstructor.DoesNotExist:
+        except Student.DoesNotExist:
             logger.error("StudentInstructor not found for user: %s", request.user)
             return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
 
@@ -61,9 +64,9 @@ class ProgramDetailAPIView(CustomResponseMixin, APIView):
         data = {key: value for key, value in request.data.items()}
         data['created_by'] = request.user.id
         try:
-            student_instructor = StudentInstructor.objects.get(user=request.user)
+            student_instructor = Student.objects.get(user=request.user)
             data['registration_id'] = student_instructor.registration_id
-        except StudentInstructor.DoesNotExist:
+        except Student.DoesNotExist:
             logger.error("StudentInstructor not found for user: %s", request.user)
             return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
 
@@ -93,3 +96,60 @@ class ProgramCoursesAPIView(CustomResponseMixin, APIView):
         courses = program.courses.all()
         serializer = CourseSerializer(courses, many=True)
         return self.custom_response(status.HTTP_200_OK, 'Courses retrieved successfully', serializer.data)
+
+
+
+class CreateProgramView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        request=inline_serializer(
+            name='ProgramCreateRequest',
+            fields={
+                'name': serializers.CharField(max_length=255),
+                'short_description': serializers.CharField(),
+                'about': serializers.CharField(),
+                'courses': serializers.ListField(
+                    child=serializers.IntegerField(),
+                    allow_empty=False,
+                    help_text="List of course IDs to be associated with the program"
+                ),
+                'status': serializers.ChoiceField(choices=[(0, 'Inactive'), (1, 'Active')]),
+                'picture': serializers.ImageField(required=False, allow_null=True)
+            }
+        ),
+        responses={
+            201: ProgramSerializer,
+            400: "Bad Request.",
+            401: "Unauthorized.",
+        },
+        description="Create a new Program by providing course IDs and other required details."
+    )
+    def post(self, request, *args, **kwargs):
+        course_ids = request.data.get('courses')
+        if not course_ids:
+            return Response({"detail": "Courses list cannot be empty."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            courses = Course.objects.filter(id__in=course_ids)
+            if len(courses) != len(course_ids):
+                return Response({"detail": "One or more course IDs are invalid."}, status=status.HTTP_400_BAD_REQUEST)
+        except Course.DoesNotExist:
+            return Response({"detail": "Invalid course IDs provided."}, status=status.HTTP_400_BAD_REQUEST)
+        program_data = {
+            'name': request.data.get('name'),
+            'short_description': request.data.get('short_description'),
+            'about': request.data.get('about'),
+            'created_by': request.user.id,
+            'courses': [],
+            'status': request.data.get('status', 0),
+            'picture': request.data.get('picture', None)
+        }
+
+        program_serializer = ProgramSerializer(data=program_data)
+        if program_serializer.is_valid():
+            program = program_serializer.save()
+            program.courses.set(courses)
+            return Response(ProgramSerializer(program).data, status=status.HTTP_201_CREATED)
+        else:
+            return Response(program_serializer.errors, status=status.HTTP_400_BAD_REQUEST)

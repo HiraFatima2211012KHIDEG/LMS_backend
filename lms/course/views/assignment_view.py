@@ -36,7 +36,7 @@ class AssignmentListCreateAPIView(CustomResponseMixin, APIView):
     def post(self, request, format=None):
         data = {key: value for key, value in request.data.items()}
 
-        data['created_by'] = request.user.id 
+        data['created_by'] = request.user.id
         try:
             student_instructor = StudentInstructor.objects.get(user=request.user)
             data['registration_id'] = student_instructor.registration_id
@@ -62,11 +62,11 @@ class AssignmentDetailAPIView(CustomResponseMixin,APIView):
         assignment = get_object_or_404(Assignment, pk=pk)
         serializer = AssignmentSerializer(assignment)
         return self.custom_response(status.HTTP_200_OK, 'Assignment retrieved successfully', serializer.data)
-    
+
 
     def put(self, request, pk, format=None):
         data = {key: value for key, value in request.data.items()}
-        data['created_by'] = request.user.id 
+        data['created_by'] = request.user.id
         try:
             student_instructor = StudentInstructor.objects.get(user=request.user)
             data['registration_id'] = student_instructor.registration_id
@@ -116,10 +116,10 @@ class AssignmentSubmissionCreateAPIView(CustomResponseMixin, APIView):
             serializer.save()
             return self.custom_response(status.HTTP_201_CREATED, 'Assignment submission created successfully', serializer.data)
         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error creating assignment submission', serializer.errors)
-    
+
 class AssignmentSubmissionDetailAPIView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
-    
+
     def get(self, request, pk, format=None):
         submission = get_object_or_404(AssignmentSubmission, pk=pk)
         serializer = AssignmentSubmissionSerializer(submission)
@@ -140,7 +140,7 @@ class AssignmentSubmissionDetailAPIView(CustomResponseMixin, APIView):
         if serializer.is_valid():
             serializer.save()
             return self.custom_response(status.HTTP_200_OK, 'Assignment submission updated successfully', serializer.data)
-    
+
         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error updating assignment submission', serializer.errors)
 
     def delete(self, request, pk, format=None):
@@ -173,9 +173,9 @@ class AssignmentGradingListCreateAPIView(CustomResponseMixin,APIView):
         if serializer.is_valid():
             serializer.save()
             return self.custom_response(status.HTTP_201_CREATED, 'Grading created successfully', serializer.data)
-        
+
         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error creating grading', serializer.errors)
-    
+
 
 class AssignmentGradingDetailAPIView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
@@ -234,14 +234,14 @@ class AssignmentProgressAPIView(CustomResponseMixin, APIView):
     def get(self, request, course_id, format=None):
         user = request.user
         course = get_object_or_404(Course, id=course_id)
-  
+
         try:
             student_instructor = StudentInstructor.objects.get(user=user)
             registration_id = student_instructor.registration_id
         except StudentInstructor.DoesNotExist:
             logger.error("StudentInstructor not found for user: %s", user)
             return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
-        
+
         total_assignments = Assignment.objects.filter(course=course).count()
         submitted_assignments = AssignmentSubmission.objects.filter(user=user, assignment__course=course).count()
 
@@ -268,7 +268,7 @@ class CourseProgressAPIView(CustomResponseMixin,APIView):
     def get(self, request, course_id,  format=None):
         user = request.user
         course = get_object_or_404(Course, pk=course_id)
-  
+
         try:
             student_instructor = StudentInstructor.objects.get(user=user)
             registration_id = student_instructor.registration_id
@@ -279,7 +279,7 @@ class CourseProgressAPIView(CustomResponseMixin,APIView):
         attendance_records = Attendance.objects.filter(session=course, status="Present")
         total_attendance = attendance_records.count()
 
-        
+
         if total_modules > 0:
             progress_percentage = (total_attendance / total_modules) * 100
         else:

@@ -30,7 +30,7 @@ from rest_framework_simplejwt.exceptions import TokenError
 from django.core.signing import TimestampSigner
 import base64
 from django.core.signing import TimestampSigner, SignatureExpired, BadSignature
-from .location_views import CustomResponseMixin
+from utils.custom import CustomResponseMixin
 
 class CreateApplicationView(generics.CreateAPIView):
     """Create a new user in the application."""

@@ -1,4 +1,5 @@
 from django.db import models
+from utils.custom import STATUS_CHOICES
 
 
 class City(models.Model):
@@ -6,6 +7,7 @@ class City(models.Model):
     city = models.CharField(max_length=50)
     shortname = models.CharField(max_length=3)
     is_active = models.BooleanField(default=True)
+    status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=1)
     created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
 
 
@@ -17,7 +19,7 @@ class Batch(models.Model):
     no_of_students = models.IntegerField()
     start_date = models.DateField()
     end_date = models.DateField()
-    is_active = models.BooleanField(default=True)
+    status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=1)
     created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
 
     def save(self, *args, **kwargs):
@@ -35,7 +37,7 @@ class Location(models.Model):
     shortname = models.CharField(max_length=3)
     city = models.ForeignKey(City, on_delete=models.CASCADE)
     capacity = models.IntegerField()
-    is_active = models.BooleanField(default=True)
+    status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=1)
     created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
 
 
@@ -43,11 +45,11 @@ class Sessions(models.Model):
     """Location based sessions."""
     location = models.ForeignKey(Location, on_delete=models.CASCADE)
     no_of_students = models.IntegerField()
-    is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
     batch = models.ForeignKey(Batch, on_delete=models.CASCADE)
     start_time = models.DateTimeField(null=True, blank=True)
     end_time = models.DateTimeField(null=True, blank=True)
+    status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=1)
 
 
 # class Batch(models.Model):
