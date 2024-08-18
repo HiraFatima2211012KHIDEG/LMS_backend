@@ -83,21 +83,53 @@ class QuizSubmissionCreateAPIView(CustomResponseMixin, APIView):
         serializer = QuizSubmissionSerializer(quiz_submissions, many=True)
         return self.custom_response(status.HTTP_200_OK, 'Quiz submissions retrieved successfully', serializer.data)
 
+    # def post(self, request, format=None):
+    #     data = {key: value for key, value in request.data.items()}
+    #     data['user'] = request.user.id
+    #     try:
+    #         student_instructor = Student.objects.get(user=request.user)
+    #         data['registration_id'] = student_instructor.registration_id
+    #     except Student.DoesNotExist:
+    #         logger.error("StudentInstructor not found for user: %s", request.user)
+    #         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
+    #     data['status'] = 1
+    #     print(data)
+    #     serializer = QuizSubmissionSerializer(data=data)
+    #     if serializer.is_valid():
+    #         serializer.save()
+    #         return self.custom_response(status.HTTP_201_CREATED, 'Quiz submission created successfully', serializer.data)
+    #     return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error creating quiz submission', serializer.errors)
     def post(self, request, format=None):
         data = {key: value for key, value in request.data.items()}
         data['user'] = request.user.id
+        
         try:
             student_instructor = Student.objects.get(user=request.user)
             data['registration_id'] = student_instructor.registration_id
         except Student.DoesNotExist:
             logger.error("StudentInstructor not found for user: %s", request.user)
             return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
+        
+        quiz_id = data.get('quiz')
+        if not quiz_id:
+            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Quiz ID is required', {})
+        
+        # Check if the student has already submitted this quiz
+        existing_submission = QuizSubmission.objects.filter(
+            user=request.user,
+            quiz_id=quiz_id
+        ).first()
+        
+        if existing_submission:
+            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'You have already submitted this quiz', {})
+        
         data['status'] = 1
         print(data)
         serializer = QuizSubmissionSerializer(data=data)
         if serializer.is_valid():
             serializer.save()
             return self.custom_response(status.HTTP_201_CREATED, 'Quiz submission created successfully', serializer.data)
+        
         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error creating quiz submission', serializer.errors)
 
 

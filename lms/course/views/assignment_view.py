@@ -94,25 +94,57 @@ class AssignmentSubmissionCreateAPIView(CustomResponseMixin, APIView):
         return self.custom_response(status.HTTP_200_OK, 'Assignment submissions retrieved successfully', serializer.data)
 
 
+    # def post(self, request, format=None):
+    #     data = {key: value for key, value in request.data.items()}
+    #     data['user'] = request.user.id
+        
+    #     try:
+    #         student_instructor = Student.objects.get(user=request.user)
+    #         data['registration_id'] = student_instructor.registration_id
+    #     except Student.DoesNotExist:
+    #         logger.error("StudentInstructor not found for user: %s", request.user)
+    #         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
+        
+       
+    #     data['status'] = 1
+    #     serializer = AssignmentSubmissionSerializer(data=data)
+    #     if serializer.is_valid():
+    #         serializer.save()
+    #         return self.custom_response(status.HTTP_201_CREATED, 'Assignment submission created successfully', serializer.data)
+    #     return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error creating assignment submission', serializer.errors)
     def post(self, request, format=None):
         data = {key: value for key, value in request.data.items()}
         data['user'] = request.user.id
-        
+
         try:
             student_instructor = Student.objects.get(user=request.user)
             data['registration_id'] = student_instructor.registration_id
         except Student.DoesNotExist:
             logger.error("StudentInstructor not found for user: %s", request.user)
             return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
+
+        assignment_id = data.get('assignment')
+        if not assignment_id:
+            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Assignment ID is required', {})
         
-       
+        # Check if the student has already submitted this assignment
+        existing_submission = AssignmentSubmission.objects.filter(
+            user=request.user,
+            assignment_id=assignment_id
+        ).first()
+        
+        if existing_submission:
+            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'You have already submitted this assignment', {})
+        
         data['status'] = 1
         print("Data to be saved:", data) 
         serializer = AssignmentSubmissionSerializer(data=data)
         if serializer.is_valid():
             serializer.save()
             return self.custom_response(status.HTTP_201_CREATED, 'Assignment submission created successfully', serializer.data)
+        
         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error creating assignment submission', serializer.errors)
+
     
 class AssignmentSubmissionDetailAPIView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
@@ -447,14 +479,20 @@ class CourseProgressAPIView(CustomResponseMixin,APIView):
         else:
             progress_percentage = 0
 
-        return Response({
+
+        progress_data = {
             'course_id': course_id,
             'user_id': user.id,
             'student_id': registration_id,
             'total_modules': total_modules,
             'total_attendance': total_attendance,
             'progress_percentage': progress_percentage
-        }, status=status.HTTP_200_OK)
+        }
+
+        serializer = CourseProgressSerializer(progress_data)
+
+        # Use the `.data` attribute to access the serialized data
+        return self.custom_response(status.HTTP_200_OK, 'Course progress retrieved successfully', serializer.data)
 
 def get_pending_assignments_for_student(program_id, registration_id):
     courses = Course.objects.filter(program__id=program_id)

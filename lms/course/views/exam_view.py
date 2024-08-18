@@ -89,20 +89,52 @@ class ExamSubmissionListCreateAPIView(CustomResponseMixin, APIView):
         serializer = ExamSubmissionSerializer(submissions, many=True)
         return self.custom_response(status.HTTP_200_OK, 'Exam submissions retrieved successfully', serializer.data)
 
+    # def post(self, request, format=None):
+    #     data = {key: value for key, value in request.data.items()}
+    #     data['user'] = request.user.id
+    #     try:
+    #         student_instructor = Student.objects.get(user=request.user)
+    #         data['registration_id'] = student_instructor.registration_id
+    #     except Student.DoesNotExist:
+    #         logger.error("StudentInstructor not found for user: %s", request.user)
+    #         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
+    #     data['status'] = 1
+    #     serializer = ExamSubmissionSerializer(data=data)
+    #     if serializer.is_valid():
+    #         serializer.save()
+    #         return self.custom_response(status.HTTP_201_CREATED, 'Exam submission created successfully', serializer.data)
+    #     return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error creating exam submission', serializer.errors)
+
     def post(self, request, format=None):
         data = {key: value for key, value in request.data.items()}
         data['user'] = request.user.id
+        
         try:
             student_instructor = Student.objects.get(user=request.user)
             data['registration_id'] = student_instructor.registration_id
         except Student.DoesNotExist:
             logger.error("StudentInstructor not found for user: %s", request.user)
             return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
+        
+        exam_id = data.get('exam')
+        if not exam_id:
+            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Exam ID is required', {})
+        
+        # Check if the student has already submitted this exam
+        existing_submission = ExamSubmission.objects.filter(
+            user=request.user,
+            exam_id=exam_id
+        ).first()
+        
+        if existing_submission:
+            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'You have already submitted this exam', {})
+        
         data['status'] = 1
         serializer = ExamSubmissionSerializer(data=data)
         if serializer.is_valid():
             serializer.save()
             return self.custom_response(status.HTTP_201_CREATED, 'Exam submission created successfully', serializer.data)
+        
         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error creating exam submission', serializer.errors)
 
 class ExamSubmissionDetailAPIView(CustomResponseMixin, APIView):
@@ -184,8 +216,11 @@ class ExamsByCourseIDAPIView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request, course_id, format=None):
-        # Fetch assignments for the given course_id
-        exams = get_list_or_404(Exam, course_id=course_id)
+        exams = Exam.objects.filter(course_id=course_id)
+        
+        if not exams.exists():
+            return self.custom_response(status.HTTP_200_OK, 'No exams found', {})
+        
         serializer = ExamSerializer(exams, many=True)
         return self.custom_response(status.HTTP_200_OK, 'Exams retrieved successfully', serializer.data)
 

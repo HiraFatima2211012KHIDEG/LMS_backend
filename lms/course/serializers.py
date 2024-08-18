@@ -289,7 +289,7 @@ class QuizProgressSerializer(serializers.Serializer):
 
 class CourseProgressSerializer(serializers.Serializer):
     user_id = serializers.IntegerField()
-    student_id = serializers.IntegerField()
+    student_id = serializers.CharField()
     course_id = serializers.IntegerField()
     total_modules = serializers.IntegerField()
     total_attendance = serializers.IntegerField()

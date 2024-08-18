@@ -87,21 +87,54 @@ class ProjectSubmissionListCreateAPIView(CustomResponseMixin, APIView):
         serializer = ProjectSubmissionSerializer(project_submissions, many=True)
         return self.custom_response(status.HTTP_200_OK, 'Project submissions retrieved successfully', serializer.data)
 
+    # def post(self, request, format=None):
+    #     data = {key: value for key, value in request.data.items()}
+    #     data['user'] = request.user.id
+    #     try:
+    #         student_instructor = Student.objects.get(user=request.user)
+    #         data['registration_id'] = student_instructor.registration_id
+    #     except Student.DoesNotExist:
+    #         logger.error("StudentInstructor not found for user: %s", request.user)
+    #         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
+    #     data['status'] = 1
+    #     serializer = ProjectSubmissionSerializer(data=data)
+    #     if serializer.is_valid():
+    #         serializer.save(user=request.user)
+    #         return self.custom_response(status.HTTP_201_CREATED, 'Project submission created successfully', serializer.data)
+    #     return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error creating project submission', serializer.errors)
+
     def post(self, request, format=None):
         data = {key: value for key, value in request.data.items()}
         data['user'] = request.user.id
+        
         try:
             student_instructor = Student.objects.get(user=request.user)
             data['registration_id'] = student_instructor.registration_id
         except Student.DoesNotExist:
             logger.error("StudentInstructor not found for user: %s", request.user)
             return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
+        
+        project_id = data.get('project')
+        if not project_id:
+            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Project ID is required', {})
+        
+        # Check if the student has already submitted this project
+        existing_submission = ProjectSubmission.objects.filter(
+            user=request.user,
+            project_id=project_id
+        ).first()
+        
+        if existing_submission:
+            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'You have already submitted this project', {})
+        
         data['status'] = 1
         serializer = ProjectSubmissionSerializer(data=data)
         if serializer.is_valid():
             serializer.save(user=request.user)
             return self.custom_response(status.HTTP_201_CREATED, 'Project submission created successfully', serializer.data)
+        
         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error creating project submission', serializer.errors)
+
 
 class ProjectSubmissionDetailAPIView(CustomResponseMixin, APIView):
     permission_classes = [permissions.IsAuthenticated]
