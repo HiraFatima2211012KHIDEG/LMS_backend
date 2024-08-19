@@ -205,7 +205,8 @@ class ProjectGradingDetailAPIView(CustomResponseMixin, APIView):
         serializer = ProjectGradingSerializer(project_grading, data=data, partial=True)
         if serializer.is_valid():
             serializer.save(graded_by=request.user)
-            return self.custom_response(status.HTTP_200_OK, 'Project grading updated successfully', serializer.data)
+            return self.custom_response(status.HTTP_200_OK
+                                        , 'Project grading updated successfully', serializer.data)
         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error updating project grading', serializer.errors)
 
 
@@ -219,8 +220,10 @@ class ProjectsByCourseIDAPIView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request, course_id, format=None):
-        # Fetch assignments for the given course_id
-        projects = get_list_or_404(Project, course_id=course_id)
+
+        projects=Project.objects.filter(course_id=course_id)
+        if not projects.exists():
+            return self.custom_response(status.HTTP_200_OK, 'No projects found', {})
         serializer = ProjectSerializer(projects, many=True)
         return self.custom_response(status.HTTP_200_OK, 'Projects retrieved successfully', serializer.data)
 

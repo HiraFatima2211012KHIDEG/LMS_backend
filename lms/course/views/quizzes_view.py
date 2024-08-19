@@ -213,8 +213,10 @@ class QuizzesByCourseIDAPIView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request, course_id, format=None):
-        # Fetch assignments for the given course_id
-        quizzes = get_list_or_404(Quizzes, course_id=course_id)
+        quizzes = Quizzes.objects.filter(course_id=course_id)
+        
+        if not quizzes.exists():
+            return self.custom_response(status.HTTP_200_OK, 'No quizzes found', {})
         serializer = QuizzesSerializer(quizzes, many=True)
         return self.custom_response(status.HTTP_200_OK, 'Quizzes retrieved successfully', serializer.data)
     

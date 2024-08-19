@@ -237,8 +237,10 @@ class AssignmentsByCourseIDAPIView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request, course_id, format=None):
-        # Fetch assignments for the given course_id
-        assignments = get_list_or_404(Assignment, course_id=course_id)
+        assignments = Assignment.objects.filter(course_id=course_id)
+        
+        if not assignments.exists():
+            return self.custom_response(status.HTTP_200_OK, 'No quizzes found', {})
         serializer = AssignmentSerializer(assignments, many=True)
         return self.custom_response(status.HTTP_200_OK, 'Assignments retrieved successfully', serializer.data)
 
@@ -536,7 +538,6 @@ class AssignmentDetailView(APIView):
     def get(self, request, course_id, registration_id):
         assignments = Assignment.objects.filter(course_id=course_id)
         submissions = AssignmentSubmission.objects.filter(assignment__in=assignments, registration_id=registration_id)
-        
         assignments_data = []
         for assignment in assignments:
             submission = submissions.filter(assignment=assignment).first()
