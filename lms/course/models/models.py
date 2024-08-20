@@ -83,6 +83,12 @@ class Assignment(models.Model):
         return self.question
 
 
+ASSESMENT_STATUS_CHOICES = (
+        (0, 'Not Submitted'),
+        (1, 'Submitted'),
+        (2, 'Pending'),
+    )
+
 class AssignmentSubmission(models.Model):
     assignment = models.ForeignKey(
         Assignment, related_name="submissions", on_delete=models.CASCADE
@@ -100,7 +106,7 @@ class AssignmentSubmission(models.Model):
 
         null=True, blank=True
     )
-    status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=0)
+    status = models.PositiveSmallIntegerField(choices=ASSESMENT_STATUS_CHOICES, default=0)
     submitted_at = models.DateTimeField(auto_now_add=True)
     resubmission = models.BooleanField(default=False)
     comments = models.TextField(null=True, blank=True)
@@ -160,7 +166,7 @@ class QuizSubmission(models.Model):
             )
         ],
     )
-    status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=0)
+    status = models.PositiveSmallIntegerField(choices=ASSESMENT_STATUS_CHOICES, default=0)
     quiz_submitted_at = models.DateTimeField(auto_now_add=True)
     resubmission = models.BooleanField(default=False)
     comments = models.TextField(null=True, blank=True)
@@ -219,7 +225,7 @@ class ProjectSubmission(models.Model):
             )
         ],
     )
-    status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=0)
+    status = models.PositiveSmallIntegerField(choices=ASSESMENT_STATUS_CHOICES, default=0)
     project_submitted_at = models.DateTimeField(auto_now_add=True)
     resubmission = models.BooleanField(default=False)
     comments = models.TextField(null=True, blank=True)
@@ -276,7 +282,7 @@ class ExamSubmission(models.Model):
             )
         ],
     )
-    status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=0)
+    status = models.PositiveSmallIntegerField(choices=ASSESMENT_STATUS_CHOICES, default=0)
     exam_submitted_at = models.DateTimeField(auto_now_add=True)
     resubmission = models.BooleanField(default=False)
     comments = models.TextField(null=True, blank=True)

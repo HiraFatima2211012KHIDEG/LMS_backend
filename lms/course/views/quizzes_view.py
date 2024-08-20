@@ -1,4 +1,3 @@
-
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status,permissions
@@ -7,8 +6,7 @@ from ..models.models import *
 from ..serializers import *
 from accounts.models.user_models import *
 import logging
-from django.shortcuts import get_list_or_404
-
+from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 class CustomResponseMixin:
@@ -213,12 +211,42 @@ class QuizzesByCourseIDAPIView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request, course_id, format=None):
+        user = request.user
         quizzes = Quizzes.objects.filter(course_id=course_id)
         
         if not quizzes.exists():
             return self.custom_response(status.HTTP_200_OK, 'No quizzes found', {})
-        serializer = QuizzesSerializer(quizzes, many=True)
-        return self.custom_response(status.HTTP_200_OK, 'Quizzes retrieved successfully', serializer.data)
+
+        quizzes_data = []
+        for quiz in quizzes:
+            submission = QuizSubmission.objects.filter(quiz=quiz, user=user).first()
+            
+            # Determine submission status
+            if submission:
+                if submission.status == 1:  # Submitted
+                    submission_status = 'Submitted'
+                else:
+                    submission_status = 'Pending'  # Status is pending if not yet graded
+            else:
+                if timezone.now() > quiz.due_date:
+                    submission_status = 'Not Submitted'  # Due date has passed without submission
+                else:
+                    submission_status = 'Pending'  # Due date has not passed, and not yet submitted
+            
+            quiz_data = {
+                'question': quiz.question,
+                'description': quiz.description,
+                'due_date': quiz.due_date,
+                'quiz_created_at': quiz.created_at,
+                'submission_status': submission_status,
+                'submitted_at': submission.quiz_submitted_at if submission else None,
+                'submitted_file': submission.quiz_submitted_file.url if submission and submission.quiz_submitted_file else None,
+                'resubmission': submission.resubmission if submission else False,
+            }
+            quizzes_data.append(quiz_data)
+
+        return self.custom_response(status.HTTP_200_OK, 'Quizzes retrieved successfully', quizzes_data)
+
     
 class QuizDetailView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
@@ -233,17 +261,21 @@ class QuizDetailView(APIView):
             grading = QuizGrading.objects.filter(quiz_submissions=submission).first() if submission else None
             
             if submission:
-                if submission.status == 1:  
+                if submission.status == 1: 
                     submission_status = 'Submitted'
                 else:
-                    submission_status = 'Not Submitted'  
+                    submission_status = 'Pending'  
             else:
-                submission_status = 'Not Submitted'
-            
+                if timezone.now() > quiz.due_date:
+                    submission_status = 'Not Submitted'  
+                else:
+                    submission_status = 'Pending'  
+
             quiz_data = {
                 'quiz_name': quiz.question,
-                'marks': grading.grade if grading else None,
-                'grade': grading.total_grade if grading else None,
+                'marks_obtain': grading.grade if grading else None,
+                'total_marks': grading.total_grade if grading else None,
+                'remarks': grading.feedback if grading else None,
                 'status': submission_status,
             }
             quizzes_data.append(quiz_data)

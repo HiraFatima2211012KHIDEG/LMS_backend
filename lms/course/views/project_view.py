@@ -7,7 +7,7 @@ from ..serializers import *
 from rest_framework.parsers import MultiPartParser, FormParser
 from accounts.models.user_models import *
 import logging
-from django.shortcuts import get_list_or_404
+from django.utils import timezone
 
 
 logger = logging.getLogger(__name__)
@@ -216,16 +216,48 @@ class ProjectGradingDetailAPIView(CustomResponseMixin, APIView):
         return self.custom_response(status.HTTP_204_NO_CONTENT, 'Project grading deleted successfully', {})
 
 
+
 class ProjectsByCourseIDAPIView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request, course_id, format=None):
-
-        projects=Project.objects.filter(course_id=course_id)
+        user = request.user
+        projects = Project.objects.filter(course_id=course_id)
+        
         if not projects.exists():
             return self.custom_response(status.HTTP_200_OK, 'No projects found', {})
-        serializer = ProjectSerializer(projects, many=True)
-        return self.custom_response(status.HTTP_200_OK, 'Projects retrieved successfully', serializer.data)
+        
+        projects_data = []
+        for project in projects:
+            submission = ProjectSubmission.objects.filter(project=project, user=user).first()
+            
+            # Determine submission status
+            if submission:
+                if submission.status == 1:  # Submitted
+                    submission_status = 'Submitted'
+                else:
+                    submission_status = 'Pending'  # Status is pending if not yet graded
+            else:
+                if timezone.now() > project.due_date:
+                    submission_status = 'Not Submitted'  # Due date has passed without submission
+                else:
+                    submission_status = 'Pending'  # Due date has not passed, and not yet submitted
+            
+            project_data = {
+                'question': project.title,
+                'description': project.description,
+                'due_date': project.due_date,
+                'project_created_at': project.created_at,
+                'submission_status': submission_status,
+                'submitted_at': submission.project_submitted_at if submission else None,
+                'submitted_file': submission.project_submitted_file.url if submission and submission.project_submitted_file else None,
+                'resubmission': submission.resubmission if submission else False,
+                'comments': submission.comments if submission else None,
+            }
+            projects_data.append(project_data)
+        
+        return self.custom_response(status.HTTP_200_OK, 'Projects retrieved successfully', projects_data)
+
 
 
 class ProjectDetailView(APIView):
@@ -241,16 +273,22 @@ class ProjectDetailView(APIView):
             submission = submissions.filter(project=project).first()
             grading = ProjectGrading.objects.filter(project_submissions=submission).first() if submission else None
             if submission:
-                if submission.status == 1:  
+                if submission.status == 1: 
                     submission_status = 'Submitted'
                 else:
-                    submission_status = 'Not Submitted'  
+                    submission_status = 'Pending' 
             else:
-                submission_status = 'Not Submitted'
+                if timezone.now() > project.due_date:
+                    submission_status = 'Not Submitted'  
+                else:
+                    submission_status = 'Pending'
+                    
+
             project_data = {
                 'project_name': project.title,
-                'marks': grading.grade if grading else None,
-                'grade': grading.total_grade if grading else None,
+                'marks_obtain': grading.grade if grading else None,
+                'total_marks': grading.total_grade if grading else None,
+                'remarks': grading.feedback if grading else None,
                 'status': submission_status,
             }
             projects_data.append(project_data)

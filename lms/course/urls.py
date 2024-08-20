@@ -8,6 +8,8 @@ from .views.exam_view import *
 from .views.program_view import *
 from .views.weightage_view import *
 
+
+
 urlpatterns = [
     path('programs/', ProgramListCreateAPIView.as_view(), name='program-list-create'),
     path('programs/<int:pk>/', ProgramDetailAPIView.as_view(), name='program-detail'),
@@ -29,7 +31,7 @@ urlpatterns = [
     path('assignments_grading/<int:pk>/', AssignmentGradingDetailAPIView.as_view(), name='grading-detail'),
     path('assignments/course/<int:course_id>/', AssignmentsByCourseIDAPIView.as_view(), name='assignments-by-course-id'),
     path('assignments/<int:course_id>/course/<str:registration_id>/total_score/', StudentScoresSummaryAPIView.as_view(), name='users-score-assignment'),
-    path('programs/<int:program_id>/students/<str:registration_id>/pending-assignments/', PendingAssignmentsView.as_view(), name='pending-assignments'),
+    path('programs/<int:program_id>/students/<str:registration_id>/pending-assignments/', UnifiedPendingItemsView.as_view(), name='pending-assignments'),
     path('assignments/<int:course_id>/student/<str:registration_id>/', AssignmentDetailView.as_view(), name='assignment-detail'),
    
     # path('assignments/<str:registration_id>/submissions/', StudentsWhoSubmittedAssignmentAPIView.as_view(), name='users-who-submitted-assignment'),

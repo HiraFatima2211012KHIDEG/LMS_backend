@@ -70,13 +70,29 @@ class UserLoginSerializer(serializers.Serializer):
     # password = serializers.CharField(style = {'input_type' : 'password'}, write_only = True)
 
 
+# class UserProfileSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = User
+#         fields = ['id', 'first_name', 'last_name', 'contact', 'city']
+
 class UserProfileSerializer(serializers.ModelSerializer):
+    registration_id = serializers.CharField(source='student.registration_id', read_only=True)
+    email = serializers.EmailField(read_only=True)
+    program = serializers.SerializerMethodField()
+
     class Meta:
         model = User
-        fields = ['id', 'first_name', 'last_name', 'contact', 'city']
+        fields = [
+            'id', 'first_name', 'last_name', 'contact', 'city', 
+            'registration_id', 'email', 'program'
+        ]
 
-
-
+    def get_program(self, obj):
+        try:
+            application = Applications.objects.get(email=obj.email)
+            return application.program.name
+        except Applications.DoesNotExist:
+            return None
 
 class UserProfileUpdateSerializer(serializers.ModelSerializer):
     """Serializer for updating user profile."""

@@ -6,7 +6,7 @@ from ..models.models import *
 from ..serializers import *
 from accounts.models.user_models import *
 import logging
-from django.shortcuts import get_list_or_404
+from django.utils import timezone
 
 
 logger = logging.getLogger(__name__)
@@ -216,13 +216,42 @@ class ExamsByCourseIDAPIView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request, course_id, format=None):
+        user = request.user
         exams = Exam.objects.filter(course_id=course_id)
         
         if not exams.exists():
             return self.custom_response(status.HTTP_200_OK, 'No exams found', {})
         
-        serializer = ExamSerializer(exams, many=True)
-        return self.custom_response(status.HTTP_200_OK, 'Exams retrieved successfully', serializer.data)
+        exams_data = []
+        for exam in exams:
+            submission = ExamSubmission.objects.filter(exam=exam, user=user).first()
+            
+            # Determine submission status
+            if submission:
+                if submission.status == 1:  # Submitted
+                    submission_status = 'Submitted'
+                else:
+                    submission_status = 'Pending'  # Status is pending if not yet graded
+            else:
+                if timezone.now() > exam.due_date:
+                    submission_status = 'Not Submitted'  # Due date has passed without submission
+                else:
+                    submission_status = 'Pending'  # Due date has not passed, and not yet submitted
+            
+            exam_data = {
+                'question': exam.title,
+                'description': exam.description,
+                'due_date': exam.due_date,
+                'exam_created_at': exam.created_at,
+                'submission_status': submission_status,
+                'submitted_at': submission.exam_submitted_at if submission else None,
+                'exam_submitted_file': submission.exam_submitted_file.url if submission and submission.exam_submitted_file else None,
+                'resubmission': submission.resubmission if submission else False,
+            }
+            exams_data.append(exam_data)
+
+        return self.custom_response(status.HTTP_200_OK, 'Exams retrieved successfully', exams_data)
+
 
 
 
@@ -239,16 +268,20 @@ class ExamDetailView(APIView):
             submission = submissions.filter(exam=exam).first()
             grading = ExamGrading.objects.filter(exam_submission=submission).first() if submission else None
             if submission:
-                if submission.status == 1:  
+                if submission.status == 1: 
                     submission_status = 'Submitted'
                 else:
-                    submission_status = 'Not Submitted'  
+                    submission_status = 'Pending'  
             else:
-                submission_status = 'Not Submitted'
+                if timezone.now() > exam.due_date:
+                    submission_status = 'Not Submitted'  
+                else:
+                    submission_status = 'Pending'  
             exam_data = {
                 'exam_name': exam.title,
-                'marks': grading.grade if grading else None,
-                'grade': grading.total_grade if grading else None,
+                'marks_obtain': grading.grade if grading else None,
+                'total_marks': grading.total_grade if grading else None,
+                'remarks': grading.feedback if grading else None,
                 'status': submission_status,
             }
             exams_data.append(exam_data)

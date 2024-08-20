@@ -108,17 +108,35 @@ class AssignmentSerializer(serializers.ModelSerializer):
             "status",
         ]
 
+
 class AssignmentPendingSerializer(serializers.ModelSerializer):
     course_name = serializers.CharField(source='course.name', read_only=True)
-
+    type = serializers.CharField(default='assignment')
     class Meta:
         model = Assignment
-        fields = ['id', 'course_name', 'question', 'description', 'created_at', 'due_date', 'status', 'content']
+        fields = ['id','type', 'course_name', 'question', 'description', 'created_at', 'due_date', 'status', 'content']
 
+class QuizPendingSerializer(serializers.ModelSerializer):
+    course_name = serializers.CharField(source='course.name', read_only=True)
+    type = serializers.CharField(default='quiz')
+    class Meta:
+        model = Quizzes
+        fields = ['id', 'type', 'course_name', 'question', 'description', 'created_at', 'due_date', 'status', 'content']
 
+class ProjectPendingSerializer(serializers.ModelSerializer):
+    course_name = serializers.CharField(source='course.name', read_only=True)
+    type = serializers.CharField(default='project')
+    class Meta:
+        model = Project
+        fields = ['id','type',  'course_name', 'title', 'description', 'created_at', 'due_date', 'status', 'content']
 
-
-
+class ExamPendingSerializer(serializers.ModelSerializer):
+    course_name = serializers.CharField(source='course.name', read_only=True)
+    type = serializers.CharField(default='exam')
+    class Meta:
+        model = Exam
+        fields = ['id','type',  'course_name', 'title', 'description', 'created_at', 'due_date', 'status', 'content']
+        
 class AssignmentSubmissionSerializer(serializers.ModelSerializer):
     class Meta:
         model = AssignmentSubmission

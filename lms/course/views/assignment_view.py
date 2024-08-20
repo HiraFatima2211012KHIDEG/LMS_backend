@@ -233,16 +233,56 @@ class AssignmentGradingDetailAPIView(CustomResponseMixin, APIView):
         grading.delete()
         return self.custom_response(status.HTTP_204_NO_CONTENT, 'Project grading deleted successfully', {})
 
+# class AssignmentsByCourseIDAPIView(CustomResponseMixin, APIView):
+#     permission_classes = (permissions.IsAuthenticated,)
+
+#     def get(self, request, course_id, format=None):
+#         assignments = Assignment.objects.filter(course_id=course_id)
+        
+#         if not assignments.exists():
+#             return self.custom_response(status.HTTP_200_OK, 'No quizzes found', {})
+#         serializer = AssignmentSerializer(assignments, many=True)
+#         return self.custom_response(status.HTTP_200_OK, 'Assignments retrieved successfully', serializer.data)
 class AssignmentsByCourseIDAPIView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request, course_id, format=None):
+        user = request.user
         assignments = Assignment.objects.filter(course_id=course_id)
         
         if not assignments.exists():
-            return self.custom_response(status.HTTP_200_OK, 'No quizzes found', {})
-        serializer = AssignmentSerializer(assignments, many=True)
-        return self.custom_response(status.HTTP_200_OK, 'Assignments retrieved successfully', serializer.data)
+            return self.custom_response(status.HTTP_200_OK, 'No assignments found', {})
+
+        assignments_data = []
+        for assignment in assignments:
+            submission = AssignmentSubmission.objects.filter(assignment=assignment, user=user).first()
+            
+            # Determine submission status
+            if submission:
+                if submission.status == 1:  # Submitted
+                    submission_status = 'Submitted'
+                else:
+                    submission_status = 'Pending'  # Status is pending if not yet graded
+            else:
+                if timezone.now() > assignment.due_date:
+                    submission_status = 'Not Submitted'  # Due date has passed without submission
+                else:
+                    submission_status = 'Pending'  # Due date has not passed, and not yet submitted
+            
+            assignment_data = {
+                'question': assignment.question,
+                'description': assignment.description,
+                'due_date': assignment.due_date,
+                'assignment_created_at': assignment.created_at,
+                'submission_status': submission_status,
+                'submitted_at': submission.submitted_at if submission else None,
+                'submitted_file': submission.submitted_file.url if submission and submission.submitted_file else None,
+                'resubmission': submission.resubmission if submission else False,
+            }
+            assignments_data.append(assignment_data)
+
+        return self.custom_response(status.HTTP_200_OK, 'Assignments retrieved successfully', assignments_data)
+
 
 class StudentsWhoSubmittedAssignmentAPIView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
@@ -492,46 +532,98 @@ class CourseProgressAPIView(CustomResponseMixin,APIView):
         }
 
         serializer = CourseProgressSerializer(progress_data)
-
-        # Use the `.data` attribute to access the serialized data
         return self.custom_response(status.HTTP_200_OK, 'Course progress retrieved successfully', serializer.data)
 
 def get_pending_assignments_for_student(program_id, registration_id):
     courses = Course.objects.filter(program__id=program_id)
-    
     all_assignments = Assignment.objects.filter(course__in=courses)
     submitted_assignments = AssignmentSubmission.objects.filter(
         assignment__course__in=courses,
         registration_id=registration_id
     ).values_list('assignment_id', flat=True)
-    
     pending_assignments = all_assignments.exclude(id__in=submitted_assignments).filter(
         due_date__gte=timezone.now()
     ).order_by('due_date')
-    
     return pending_assignments
 
-class PendingAssignmentsView(CustomResponseMixin, APIView):
+def get_pending_quizzes_for_student(program_id, registration_id):
+    courses = Course.objects.filter(program__id=program_id)
+    all_quizzes = Quizzes.objects.filter(course__in=courses)
+    submitted_quizzes = QuizSubmission.objects.filter(
+        quiz__course__in=courses,
+        registration_id=registration_id
+    ).values_list('quiz_id', flat=True)
+    pending_quizzes = all_quizzes.exclude(id__in=submitted_quizzes).filter(
+        due_date__gte=timezone.now()
+    ).order_by('due_date')
+    return pending_quizzes
+
+def get_pending_exams_for_student(program_id, registration_id):
+    courses = Course.objects.filter(program__id=program_id)
+    all_exams = Exam.objects.filter(course__in=courses)
+    submitted_exams = ExamSubmission.objects.filter(
+        exam__course__in=courses,
+        registration_id=registration_id
+    ).values_list('exam_id', flat=True)
+    pending_exams = all_exams.exclude(id__in=submitted_exams).filter(
+        due_date__gte=timezone.now()
+    ).order_by('due_date')
+    return pending_exams
+
+def get_pending_projects_for_student(program_id, registration_id):
+    courses = Course.objects.filter(program__id=program_id)
+    all_projects = Project.objects.filter(course__in=courses)
+    submitted_projects = ProjectSubmission.objects.filter(
+        project__course__in=courses,
+        registration_id=registration_id
+    ).values_list('project_id', flat=True)
+    pending_projects = all_projects.exclude(id__in=submitted_projects).filter(
+        due_date__gte=timezone.now()
+    ).order_by('due_date')
+    return pending_projects
+
+
+
+class UnifiedPendingItemsView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request, program_id, registration_id):
+        # Fetch pending items
         pending_assignments = get_pending_assignments_for_student(program_id, registration_id)
-        serializer = AssignmentPendingSerializer(pending_assignments, many=True)
+        pending_quizzes = get_pending_quizzes_for_student(program_id, registration_id)
+        pending_exams = get_pending_exams_for_student(program_id, registration_id)
+        pending_projects = get_pending_projects_for_student(program_id, registration_id)
 
-        if not pending_assignments:
+        # Serialize the data
+        assignment_serializer = AssignmentPendingSerializer(pending_assignments, many=True)
+        quiz_serializer = QuizPendingSerializer(pending_quizzes, many=True)
+        exam_serializer = ExamPendingSerializer(pending_exams, many=True)
+        project_serializer = ProjectPendingSerializer(pending_projects, many=True)
+
+        # Combine and sort the results
+        combined_results = []
+        combined_results.extend(assignment_serializer.data)
+        combined_results.extend(quiz_serializer.data)
+        combined_results.extend(exam_serializer.data)
+        combined_results.extend(project_serializer.data)
+
+        # Sort combined results by due_date
+        sorted_results = sorted(combined_results, key=lambda x: x.get('due_date'))
+
+        # Return the response
+        if not sorted_results:
             return self.custom_response(
                 status.HTTP_200_OK,
-                'All assignments have been submitted.',
+                'All items have been submitted or there are no pending items.',
                 data=[]
             )
 
         return self.custom_response(
             status.HTTP_200_OK,
-            'Pending assignments retrieved successfully.',
-            serializer.data
+            'Pending items retrieved successfully.',
+            data={'items': sorted_results}
         )
-
-
+    
 class AssignmentDetailView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
     
@@ -544,17 +636,21 @@ class AssignmentDetailView(APIView):
             grading = Grading.objects.filter(submission=submission).first() if submission else None
             
             if submission:
-                if submission.status == 1:  
+                if submission.status == 1: 
                     submission_status = 'Submitted'
                 else:
-                    submission_status = 'Not Submitted'  
+                    submission_status = 'Pending' 
             else:
-                submission_status = 'Not Submitted'
-            
+                if timezone.now() > assignment.due_date:
+                    submission_status = 'Not Submitted'  
+                else:
+                    submission_status = 'Pending'  
+
             assignment_data = {
                 'assignment_name': assignment.question,
-                'marks': grading.grade if grading else None,
-                'grade': grading.total_grade if grading else None,
+                'marks_obtain': grading.grade if grading else None,
+                'total_marks': grading.total_grade if grading else None,
+                'remarks': grading.feedback if grading else None,
                 'status': submission_status,
             }
             assignments_data.append(assignment_data)
