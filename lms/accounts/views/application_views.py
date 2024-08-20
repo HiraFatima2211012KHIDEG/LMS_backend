@@ -58,7 +58,7 @@ class CreateApplicationView(generics.CreateAPIView):
 class ApplicationProcessView(views.APIView, CustomResponseMixin):
     """View to handle application status"""
 
-    permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
+    # permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
 
     def get(self, request, program_id=None):
         if program_id is None:

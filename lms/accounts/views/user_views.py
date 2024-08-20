@@ -85,19 +85,40 @@ class UserLoginView(views.APIView):
             )
             if user is not None:
                 tokens = self.get_tokens_for_user(user)
-                user_group = Group.objects.get(user = user.id)
+                user_group = Group.objects.get(user=user.id)
                 permission = self.get_group_permissions(user_group.id)
                 user_profile = UserProfileSerializer(user)
+                user_serializer = None
+                session_data = None  # Initialize session_data as None
+
+                if user_group.name == 'student':
+                    student = Student.objects.get(user=user.id)
+                    user_serializer = StudentSerializer(student)
+                    session = user_serializer.data.get('session', None) 
+                    if session is not None:
+                        session_instance = Sessions.objects.get(id=session)
+                        session_data = SessionsSerializer(session_instance)
+                elif user_group.name == 'instructor':
+                    instructor = Instructor.objects.get(user=user.id)
+                    user_serializer = InstructorSerializer(instructor)
+                    session = user_serializer.data.get('session', None) 
+                    if session is not None:
+                        session_instance = Sessions.objects.get(id=session)
+                        session_data = SessionsSerializer(session_instance)
+
                 return Response({
-                        'status_code' : status.HTTP_200_OK,
-                        'message': 'Login Successful.',
-                        'response' : {
-                            'token' : tokens,
-                            'Group' : user_group.name,
-                            'User' : user_profile.data,
-                            'permissions' : permission
-                        }
-                        })
+                    'status_code': status.HTTP_200_OK,
+                    'message': 'Login Successful.',
+                    'response': {
+                        'token': tokens,
+                        'Group': user_group.name,
+                        'User': user_profile.data,
+                        'permissions': permission,
+                        'user_data': user_serializer.data if user_serializer else None,
+                        'session': session_data.data if session_data else None
+                    }
+                })
+
             else:
                 return Response({
                         'status_code' : status.HTTP_401_UNAUTHORIZED,

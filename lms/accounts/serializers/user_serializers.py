@@ -13,6 +13,7 @@ from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from django.contrib.auth.hashers import check_password
 import re
 from accounts.utils import send_email
+# from .location_serializers import SessionsSerializer
 
 class UserSerializer(serializers.ModelSerializer):
     """Serializer for the user object."""
@@ -69,10 +70,30 @@ class UserLoginSerializer(serializers.Serializer):
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
+    registration_id = serializers.CharField(source='student.registration_id', read_only=True)
+    email = serializers.EmailField(read_only=True)
+    program = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ['first_name', 'last_name','contact', 'city']
+        fields = [
+            'id', 'first_name', 'last_name', 'contact', 'city', 
+            'registration_id', 'email', 'program'
+        ]
+
+    def get_program(self, obj):
+        try:
+            application = Applications.objects.get(email=obj.email)
+            return application.program.name
+        except Applications.DoesNotExist:
+            return None
+
+    # def get_registration_id(self, obj):
+    #     try:
+    #         student_instructor = Student.objects.get(user=obj)
+    #         return student_instructor.registration_id
+    #     except Student.DoesNotExist:
+    #         return None
 
 
 class UserProfileUpdateSerializer(serializers.ModelSerializer):
@@ -291,6 +312,7 @@ class UserpasswordResetSerializer(serializers.Serializer):
 
 class StudentSerializer(serializers.ModelSerializer):
     registration_id = serializers.CharField(read_only=True)
+    # session = SessionsSerializer()
     class Meta:
         model = Student
         fields = ['registration_id','user', 'session']
