@@ -1,15 +1,11 @@
 """
 Views for the Accounts Applications API.
 """
+
 from rest_framework import generics
 from ..serializers.application_serializers import ApplicationSerializer
 from ..serializers.location_serializers import *
-from rest_framework import (
-    views,
-    status,
-    generics,
-    permissions
-    )
+from rest_framework import views, status, generics, permissions
 from rest_framework.response import Response
 from ..serializers.user_serializers import *
 from django.contrib.auth import authenticate
@@ -32,18 +28,27 @@ import base64
 from django.core.signing import TimestampSigner, SignatureExpired, BadSignature
 from utils.custom import CustomResponseMixin
 
+
 class CreateApplicationView(generics.CreateAPIView):
     """Create a new user in the application."""
+
     serializer_class = ApplicationSerializer
 
     def perform_create(self, serializer):
-        email = serializer.validated_data.get('email').lower()
-        city = serializer.validated_data.get('city').title()
-        city_abb = serializer.validated_data.get('city_abb').upper()
-        first_name = serializer.validated_data.get('first_name').title()
-        last_name = serializer.validated_data.get('last_name').title()
-        group_name = serializer.validated_data.get('group_name').lower()
-        serializer.save(email=email, city=city, city_abb=city_abb, first_name=first_name, last_name=last_name,group_name=group_name)
+        email = serializer.validated_data.get("email").lower()
+        city = serializer.validated_data.get("city").title()
+        # city_abb = serializer.validated_data.get('city_abb').upper()
+        first_name = serializer.validated_data.get("first_name").title()
+        last_name = serializer.validated_data.get("last_name").title()
+        group_name = serializer.validated_data.get("group_name").lower()
+        serializer.save(
+            email=email,
+            city=city,
+            first_name=first_name,
+            last_name=last_name,
+            group_name=group_name,
+        )
+
 
 # class EmailVerificationToken(AccessToken):
 #     lifetime = timedelta(minutes=10)
@@ -55,6 +60,7 @@ class CreateApplicationView(generics.CreateAPIView):
 #         token['user_email'] = application.email  # Store application email
 #         return token
 
+
 class ApplicationProcessView(views.APIView, CustomResponseMixin):
     """View to handle application status"""
 
@@ -62,67 +68,106 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
 
     def get(self, request, program_id=None):
         if program_id is None:
-            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Program_id is not provided.', None)
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST, "Program_id is not provided.", None
+            )
 
-        group_name = request.query_params.get('group_name')
+        group_name = request.query_params.get("group_name")
 
         # Validate group_name
         if group_name not in ["student", "instructor"]:
-            return self.custom_response(status.HTTP_400_BAD_REQUEST, "Invalid group_name. Choices are 'student' and 'instructor'.", None)
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST,
+                "Invalid group_name. Choices are 'student' and 'instructor'.",
+                None,
+            )
 
         try:
             # Query the applications based on the provided program_id and group_name
-            applications = Applications.objects.filter(program=program_id, group_name=group_name)
+            applications = Applications.objects.filter(
+                program=program_id, group_name=group_name
+            )
             if not applications.exists():
-                return self.custom_response(status.HTTP_404_NOT_FOUND, "No applications found for the provided program ID and group_name.", None)
-
+                return self.custom_response(
+                    status.HTTP_404_NOT_FOUND,
+                    "No applications found for the provided program ID and group_name.",
+                    None,
+                )
 
             serializer = ApplicationSerializer(applications, many=True)
-            return self.custom_response(status.HTTP_200_OK, 'Applications fetched successfully.', serializer.data)
+            return self.custom_response(
+                status.HTTP_200_OK,
+                "Applications fetched successfully.",
+                serializer.data,
+            )
 
         except Exception as e:
             # Catch any unexpected exceptions and log them if necessary
-            return self.custom_response(status.HTTP_500_INTERNAL_SERVER_ERROR, f'An error occurred: {str(e)}', None)
+            return self.custom_response(
+                status.HTTP_500_INTERNAL_SERVER_ERROR,
+                f"An error occurred: {str(e)}",
+                None,
+            )
 
     def patch(self, request):
         data = request.data
-        application_id = request.query_params.get('application_id')
+        application_id = request.query_params.get("application_id")
 
         if not application_id:
-            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Application ID is not provided.', None)
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST, "Application ID is not provided.", None
+            )
 
-        if 'application_status' not in data:
-            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Application status is not provided.', None)
+        if "application_status" not in data:
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST, "Application status is not provided.", None
+            )
 
         try:
             application = Applications.objects.get(id=application_id)
             print(application)
             print(application.program)
         except Applications.DoesNotExist:
-            return self.custom_response(status.HTTP_404_NOT_FOUND, 'No application object found for this application ID.', None)
+            return self.custom_response(
+                status.HTTP_404_NOT_FOUND,
+                "No application object found for this application ID.",
+                None,
+            )
 
-
-        application_status = data.get('application_status').lower()
+        application_status = data.get("application_status").lower()
         if application_status not in ["short_listed", "approved", "removed"]:
-            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Invalid application status.', None)
-
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST, "Invalid application status.", None
+            )
 
         try:
             with transaction.atomic():
-                serializer = ApplicationSerializer(application, data={'application_status': application_status}, partial=True)
+                serializer = ApplicationSerializer(
+                    application,
+                    data={"application_status": application_status},
+                    partial=True,
+                )
                 if serializer.is_valid(raise_exception=True):
                     if application_status in ["short_listed", "removed"]:
                         serializer.save()
-                        return self.custom_response(status.HTTP_200_OK, f'Application status has been changed to {application_status}.', serializer.data)
+                        return self.custom_response(
+                            status.HTTP_200_OK,
+                            f"Application status has been changed to {application_status}.",
+                            serializer.data,
+                        )
 
                     elif application_status == "approved":
 
-                        token = self.create_signed_token(application_id, application.email)
+                        token = self.create_signed_token(
+                            application_id, application.email
+                        )
                         print(token)
                         verification_link = f"http://localhost:3000/?token={str(token)}"
-                        body = (f"Congratulations {application.first_name} {application.last_name}!\n"
-                                f"You are requested to complete the selection process by verifying your account. "
-                                f"Please click the following link to proceed.\n{verification_link}")
+                        body = (
+                            f"Congratulations {application.first_name} {application.last_name}!\n"
+                            f"You are requested to complete the selection process by verifying your account. "
+                            f"Please click the following link to proceed.\n{verification_link}"
+                        )
 
                         email_data = {
                             "email_subject": "Verify your account",
@@ -131,13 +176,20 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
                         }
                         send_email(email_data)
                         serializer.save()
-                        return self.custom_response(status.HTTP_200_OK, 'User registered successfully, and email sent.', None)
+                        return self.custom_response(
+                            status.HTTP_200_OK,
+                            "User registered successfully, and email sent.",
+                            None,
+                        )
 
         except Exception as e:
-            return self.custom_response(status.HTTP_500_INTERNAL_SERVER_ERROR, f'An error occurred: {str(e)}', None)
+            return self.custom_response(
+                status.HTTP_500_INTERNAL_SERVER_ERROR,
+                f"An error occurred: {str(e)}",
+                None,
+            )
 
-
-    def create_signed_token(self,id, email):
+    def create_signed_token(self, id, email):
         signer = TimestampSigner()
         # Combine the user_id and email into a single string
         data = f"{id}:{email}"
@@ -147,19 +199,27 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
         signed_token = signer.sign(encoded_data)
         return signed_token
 
+
 class VerifyEmailandSetPasswordView(views.APIView, CustomResponseMixin):
 
     permission_classes = [permissions.AllowAny]
+
     def post(self, request):
-        token = request.data.get('token')
-        password = request.data.get('password')
-        password2 = request.data.get('password2')
+        token = request.data.get("token")
+        password = request.data.get("password")
+        password2 = request.data.get("password2")
         if not token:
-            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Token is required.', None)
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST, "Token is required.", None
+            )
         if not password:
-            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'password is required.', None)
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST, "password is required.", None
+            )
         if not password2:
-            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Confirm password is required.', None)
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST, "Confirm password is required.", None
+            )
 
         signer = TimestampSigner()
         try:
@@ -177,17 +237,19 @@ class VerifyEmailandSetPasswordView(views.APIView, CustomResponseMixin):
                 user_id, email = decoded_data.split(":")
                 existing_user = get_user_model().objects.filter(email=email).first()
                 if existing_user:
-                    return self.custom_response(status.HTTP_400_BAD_REQUEST, 'User already verified', None)
+                    return self.custom_response(
+                        status.HTTP_400_BAD_REQUEST, "User already verified", None
+                    )
 
                 # Retrieve the application and create a user
                 application = Applications.objects.get(id=user_id)
                 user_data = {
-                    'email': application.email,
-                    'first_name': application.first_name,
-                    'last_name': application.last_name,
-                    'contact': application.contact,
-                    'city': application.city,
-                    'is_verified': True
+                    "email": application.email,
+                    "first_name": application.first_name,
+                    "last_name": application.last_name,
+                    "contact": application.contact,
+                    "city": application.city,
+                    "is_verified": True,
                 }
                 user = get_user_model().objects.create_user(**user_data)
 
@@ -197,55 +259,74 @@ class VerifyEmailandSetPasswordView(views.APIView, CustomResponseMixin):
                     year = str(application.year)[-2:]
                     batch = f"{city_abb}-{year}"
                     Student.objects.create(
-                        user=user,
-                        registration_id=f"{batch}-{user.id}"
+                        user=user, registration_id=f"{batch}-{user.id}"
                     )
                 elif application.group_name == "instructor":
                     # Handle instructor logic if needed
-                    Instructor.objects.create(
-                        user = user
-                    )
+                    Instructor.objects.create(user=user)
                 else:
-                    return self.custom_response(status.HTTP_400_BAD_REQUEST, "Invalid group_name.", None)
+                    return self.custom_response(
+                        status.HTTP_400_BAD_REQUEST, "Invalid group_name.", None
+                    )
 
                 # Set the password using SetPasswordSerializer
-                password_data = {'password': password, 'password2': password2}
-                serializer = SetPasswordSerializer(data=password_data, context={'user': user})
+                password_data = {"password": password, "password2": password2}
+                serializer = SetPasswordSerializer(
+                    data=password_data, context={"user": user}
+                )
                 if serializer.is_valid(raise_exception=True):
                     serializer.save()
                 else:
-                    return self.custom_response(status.HTTP_400_BAD_REQUEST, "Verification failed.", serializer.errors)
+                    return self.custom_response(
+                        status.HTTP_400_BAD_REQUEST,
+                        "Verification failed.",
+                        serializer.errors,
+                    )
 
-                return self.custom_response(status.HTTP_200_OK, "Email verified and user created successfully.", serializer.data)
+                return self.custom_response(
+                    status.HTTP_200_OK,
+                    "Email verified and user created successfully.",
+                    serializer.data,
+                )
 
         except SignatureExpired:
-                return self.custom_response(status.HTTP_400_BAD_REQUEST, 'The reset link has expired.', None)
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST, "The reset link has expired.", None
+            )
         except BadSignature:
-            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Invalid token or data tampering detected.', None)
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST,
+                "Invalid token or data tampering detected.",
+                None,
+            )
 
         except Applications.DoesNotExist:
-            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'User not found.', None)
-
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST, "User not found.", None
+            )
 
 
 class ResendVerificationEmail(views.APIView):
 
     permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
 
-
     def post(self, request):
-        email = request.data.get('email')
+        email = request.data.get("email")
         try:
             applicant = Applications.objects.get(email=email)
             existing_user = get_user_model().objects.filter(email=email).first()
             if existing_user and existing_user.is_verified:
-                return self.custom_response(status.HTTP_400_BAD_REQUEST, 'User already verified', None)
+                return self.custom_response(
+                    status.HTTP_400_BAD_REQUEST, "User already verified", None
+                )
 
             token = self.create_signed_token(applicant.id, applicant.email)
             verification_link = f"http://localhost:3000/?token={str(token)}"
-            body = (f"Congratulations {applicant.first_name} {applicant.last_name}!\n"
-                    f"You are requested to complete the selection process by verifying your account. "
-                    f"Please click the following link to proceed.\n{verification_link}")
+            body = (
+                f"Congratulations {applicant.first_name} {applicant.last_name}!\n"
+                f"You are requested to complete the selection process by verifying your account. "
+                f"Please click the following link to proceed.\n{verification_link}"
+            )
 
             email_data = {
                 "email_subject": "Verify your account",
@@ -254,13 +335,18 @@ class ResendVerificationEmail(views.APIView):
             }
             send_email(email_data)
 
-            return self.custom_response(status.HTTP_200_OK, 'Verification email resent.', None)
+            return self.custom_response(
+                status.HTTP_200_OK, "Verification email resent.", None
+            )
 
         except Applications.DoesNotExist:
-            return self.custom_response(status.HTTP_400_BAD_REQUEST, "Application with this email does not exist.", None)
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST,
+                "Application with this email does not exist.",
+                None,
+            )
 
-
-    def create_signed_token(self,id, email):
+    def create_signed_token(self, id, email):
         signer = TimestampSigner()
         # Combine the user_id and email into a single string
         data = f"{id}:{email}"
@@ -269,7 +355,6 @@ class ResendVerificationEmail(views.APIView):
         # Sign the encoded data
         signed_token = signer.sign(encoded_data)
         return signed_token
-
 
 
 # from rest_framework import status
@@ -353,16 +438,3 @@ class ResendVerificationEmail(views.APIView):
 #                 'status_code': status.HTTP_500_INTERNAL_SERVER_ERROR,
 #                 'message': f'An error occurred: {str(e)}'
 #             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-
-
-
-
-
-
-
-
-
-
-

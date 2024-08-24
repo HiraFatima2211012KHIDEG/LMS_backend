@@ -15,6 +15,7 @@ from django.contrib.auth.hashers import check_password
 import re
 from accounts.utils import send_email
 from ..models.user_models import Student
+from course.models.models import Course
 
 # from accounts.utils import send_email
 
@@ -67,6 +68,20 @@ class UserSerializer(serializers.ModelSerializer):
             user.set_password(validated_data.get(password))
             user.save()
         return user
+
+    def perform_create(self, serializer):
+        # Save the user and return the created user instance
+        return serializer.save()
+
+class AdminUserSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True)
+
+    class Meta:
+        model = User
+        fields = ['email', 'password', 'first_name', 'last_name']
+
+    def create(self, validated_data):
+        return User.objects.create_admin(**validated_data)
 
 
 class UserLoginSerializer(serializers.Serializer):
@@ -359,3 +374,13 @@ class InstructorSerializer(serializers.ModelSerializer):
     class Meta:
         model = Instructor
         fields = ["user", "session"]
+
+
+class AssignCoursesSerializer(serializers.Serializer):
+    course_ids = serializers.ListField(child=serializers.IntegerField())
+
+    def validate_course_ids(self, value):
+        # Ensure all course IDs are valid
+        if not Course.objects.filter(id__in=value).exists():
+            raise serializers.ValidationError("Some course IDs are invalid.")
+        return value

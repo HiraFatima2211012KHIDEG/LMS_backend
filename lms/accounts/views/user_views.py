@@ -6,10 +6,15 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from accounts.models import User
 from django.contrib.auth.models import Group
 from drf_spectacular.utils import extend_schema
-from ..serializers.user_serializers import UserSerializer, StudentSerializer
+from ..serializers.user_serializers import (
+    UserSerializer,
+    StudentSerializer,
+    AdminUserSerializer,
+)
 from ..models.user_models import Student
 import constants
 from utils.custom import CustomResponseMixin
+from course.models.models import Course
 
 
 class CreateUserView(generics.CreateAPIView):
@@ -18,10 +23,18 @@ class CreateUserView(generics.CreateAPIView):
     serializer_class = UserSerializer
     permission_classes = (permissions.AllowAny,)
 
+    def perform_create(self, serializer):
+        # Save the user and return the created user instance
+        return serializer.save()
+
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
+        user = self.perform_create(serializer)
+
+        if "instructor" in user.groups.values_list("name", flat=True):
+            Instructor.objects.get_or_create(id=user)
+
         return Response(
             {
                 "status_code": status.HTTP_200_OK,
@@ -29,6 +42,12 @@ class CreateUserView(generics.CreateAPIView):
                 "response": serializer.data,
             }
         )
+
+
+class CreateAdminUserView(generics.CreateAPIView):
+    queryset = User.objects.all()
+    serializer_class = AdminUserSerializer
+    # permission_classes = [permissions.IsAdminUser]
 
 
 class UserLoginView(views.APIView):
@@ -189,6 +208,7 @@ class UserProfileUpdateView(views.APIView):
     """
     View to handle updating the authenticated user's profile.
     """
+
     permission_classes = [permissions.IsAuthenticated]
 
     def patch(self, request):
@@ -435,10 +455,13 @@ class UserpasswordResetView(views.APIView):
             )
 
         except DjangoUnicodeDecodeError:
-            return Response(        {
-                        'status_code' : status.HTTP_400_BAD_REQUEST,
-                        'message': 'Invalid UID or token.',
-        })
+            return Response(
+                {
+                    "status_code": status.HTTP_400_BAD_REQUEST,
+                    "message": "Invalid UID or token.",
+                }
+            )
+
 
 class AssignSessionView(views.APIView, CustomResponseMixin):
     permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
@@ -456,32 +479,56 @@ class AssignSessionView(views.APIView, CustomResponseMixin):
                 obj = Instructor.objects.get(user=user)
                 serializer_class = InstructorSerializer
             else:
-                return self.custom_response(status.HTTP_400_BAD_REQUEST, 'User does not belong to a valid group (student or instructor).', None)
-
+                return self.custom_response(
+                    status.HTTP_400_BAD_REQUEST,
+                    "User does not belong to a valid group (student or instructor).",
+                    None,
+                )
 
             # Retrieve the session
             session = Sessions.objects.get(id=session_id)
 
             # Serialize the object with the session_id
-            serializer = serializer_class(obj, data={'session': session.id}, partial=True)
+            serializer = serializer_class(
+                obj, data={"session": session.id}, partial=True
+            )
             if serializer.is_valid(raise_exception=True):
                 serializer.save()
-                return self.custom_response(status.HTTP_200_OK, 'Session has been assigned to user', serializer.data)
+                return self.custom_response(
+                    status.HTTP_200_OK,
+                    "Session has been assigned to user",
+                    serializer.data,
+                )
 
-            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Failed to assign session to user', serializer.errors)
-
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST,
+                "Failed to assign session to user",
+                serializer.errors,
+            )
 
         except get_user_model().DoesNotExist:
-            return self.custom_response(status.HTTP_404_NOT_FOUND, 'User not found.', None)
+            return self.custom_response(
+                status.HTTP_404_NOT_FOUND, "User not found.", None
+            )
 
         except (Student.DoesNotExist, Instructor.DoesNotExist):
-            return self.custom_response(status.HTTP_404_NOT_FOUND, 'No corresponding student or instructor object found.', None)
+            return self.custom_response(
+                status.HTTP_404_NOT_FOUND,
+                "No corresponding student or instructor object found.",
+                None,
+            )
 
         except Sessions.DoesNotExist:
-            return self.custom_response(status.HTTP_404_NOT_FOUND, 'No session object found.', None)
+            return self.custom_response(
+                status.HTTP_404_NOT_FOUND, "No session object found.", None
+            )
 
         except Exception as e:
-            return self.custom_response(status.HTTP_500_INTERNAL_SERVER_ERROR, f"An unexpected error occurred: {str(e)}", None)
+            return self.custom_response(
+                status.HTTP_500_INTERNAL_SERVER_ERROR,
+                f"An unexpected error occurred: {str(e)}",
+                None,
+            )
 
 
 class CreateStudentView(generics.CreateAPIView):
@@ -532,6 +579,7 @@ class StudentDetailView(generics.RetrieveAPIView):
 class StudentListView(CustomResponseMixin, generics.ListAPIView):
     queryset = Student.objects.all()
     serializer_class = StudentSerializer
+    permission_classes = [permissions.IsAuthenticated]
 
     def list(self, request, *args, **kwargs):
         response = super().list(request, *args, **kwargs)
@@ -539,12 +587,40 @@ class StudentListView(CustomResponseMixin, generics.ListAPIView):
             status.HTTP_200_OK, "Students retrieved successfully", response.data
         )
 
+
 class InstructorListView(CustomResponseMixin, generics.ListAPIView):
     queryset = Instructor.objects.all()
     serializer_class = InstructorSerializer
+    permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
 
     def list(self, request, *args, **kwargs):
         response = super().list(request, *args, **kwargs)
         return self.custom_response(
             status.HTTP_200_OK, "Instructors retrieved successfully", response.data
+        )
+
+
+class AssignCoursesView(CustomResponseMixin, views.APIView):
+    permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
+
+    @extend_schema(
+        request=AssignCoursesSerializer,
+        responses={
+            200: "sucessfull",
+            400: "Bad Request.",
+        },
+        description="Assign courses to an instructor by providing a list of course IDs.",
+    )
+    def post(self, request, instructor_id):
+        serializer = AssignCoursesSerializer(data=request.data)
+        if serializer.is_valid():
+            course_ids = serializer.validated_data["course_ids"]
+            instructor = Instructor.objects.get(id=instructor_id)
+            courses = Course.objects.filter(id__in=course_ids)
+            instructor.courses.set(courses)
+            return self.custom_response(
+                status.HTTP_200_OK, "Courses assigned successfully.", {}
+            )
+        return self.custom_response(
+            status.HTTP_400_BAD_REQUEST, "Invalid course IDs.", serializer.errors
         )
