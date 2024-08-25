@@ -79,6 +79,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
     registration_id = serializers.CharField(source='student.registration_id', read_only=True)
     email = serializers.EmailField(read_only=True)
     program = serializers.SerializerMethodField()
+    # session_name = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -93,6 +94,12 @@ class UserProfileSerializer(serializers.ModelSerializer):
             return application.program.name
         except Applications.DoesNotExist:
             return None
+    # def get_session_name(self, obj):
+    #     try:
+    #         student = Student.objects.get(user=obj) 
+    #         return student.session  
+    #     except Student.DoesNotExist:
+    #         return None
 
 class UserProfileUpdateSerializer(serializers.ModelSerializer):
     """Serializer for updating user profile."""
@@ -310,7 +317,7 @@ class UserpasswordResetSerializer(serializers.Serializer):
 
 
 class StudentSerializer(serializers.ModelSerializer):
-    # registration_id = serializers.CharField(read_only=True)
+    # session = serializers.CharField(source='student.session', read_only=True)
 
     class Meta:
         model = Student

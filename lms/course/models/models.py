@@ -15,6 +15,7 @@ STATUS_CHOICES = (
 
 class Skill(models.Model):
     skill_name=models.CharField(max_length=100)
+    # created_at = models.DateTimeField(auto_now_add=True, blank=True)
 
     def __str__(self):
         return self.skill_name
@@ -24,6 +25,7 @@ class Course(models.Model):
     short_description = models.TextField()
     about = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=0)
     credit_hours = models.IntegerField()
@@ -40,6 +42,7 @@ class Module(models.Model):
     name = models.CharField(max_length=100)
     description = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=0)
 
@@ -57,12 +60,16 @@ class ContentFile(models.Model):
                 allowed_extensions=["pdf", "docx", "ppt", "xls", "zip"]
             )
         ],
+        
     )
+    def __str__(self):
+        return f"{self.module} - {self.file}"
 
 class Assignment(models.Model):
     # module = models.ForeignKey(Module, on_delete=models.CASCADE)
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=0)
     question = models.TextField(null=True, blank=True)
     description = models.TextField(null=True, blank=True)
@@ -76,6 +83,7 @@ class Assignment(models.Model):
         ],
         null=True, blank=True
     )
+    no_of_resubmissions_allowed = models.IntegerField(default=0)
     due_date = models.DateTimeField()
 
 
@@ -108,13 +116,26 @@ class AssignmentSubmission(models.Model):
     )
     status = models.PositiveSmallIntegerField(choices=ASSESMENT_STATUS_CHOICES, default=0)
     submitted_at = models.DateTimeField(auto_now_add=True)
-    resubmission = models.BooleanField(default=False)
+    updated_at = models.DateTimeField(auto_now=True)
+    remaining_resubmissions = models.IntegerField(default=0)
     comments = models.TextField(null=True, blank=True)
-
 
     def __str__(self):
         return f"{self.user} - {self.assignment}"
 
+    def save(self, *args, **kwargs):
+        if self.pk is None: 
+            self.remaining_resubmissions = self.assignment.no_of_resubmissions_allowed
+            print(f"Initialized remaining_resubmissions with {self.remaining_resubmissions}")  # Debugging line
+
+        super().save(*args, **kwargs)
+
+    def decrement_resubmissions(self):
+        if self.remaining_resubmissions > 0:
+            self.remaining_resubmissions -= 1
+            self.save()
+            return True
+        return False
 
 class Grading(models.Model):
     submission=models.ForeignKey(AssignmentSubmission, on_delete=models.CASCADE)
@@ -123,6 +144,7 @@ class Grading(models.Model):
     feedback = models.TextField(null=True, blank=True)
     graded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     graded_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"{self.submission} - {self.grade}"
@@ -133,6 +155,7 @@ class Quizzes(models.Model):
     # module = models.ForeignKey(Module, on_delete=models.CASCADE)
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=0)
     question = models.TextField(null=True, blank=True)
@@ -146,6 +169,7 @@ class Quizzes(models.Model):
         ],
         null=True, blank=True
     )
+    no_of_resubmissions_allowed = models.IntegerField(default=0)
     due_date = models.DateTimeField()
 
     def __str__(self):
@@ -168,12 +192,26 @@ class QuizSubmission(models.Model):
     )
     status = models.PositiveSmallIntegerField(choices=ASSESMENT_STATUS_CHOICES, default=0)
     quiz_submitted_at = models.DateTimeField(auto_now_add=True)
-    resubmission = models.BooleanField(default=False)
+    updated_at = models.DateTimeField(auto_now=True)
+    remaining_resubmissions = models.IntegerField(default=0)
     comments = models.TextField(null=True, blank=True)
-
 
     def __str__(self):
         return f"{self.user} - {self.quiz}"
+
+    def save(self, *args, **kwargs):
+        if self.pk is None: 
+            self.remaining_resubmissions = self.quiz.no_of_resubmissions_allowed
+            print(f"Initialized remaining_resubmissions with {self.remaining_resubmissions}") 
+
+        super().save(*args, **kwargs)
+
+    def decrement_resubmissions(self):
+        if self.remaining_resubmissions > 0:
+            self.remaining_resubmissions -= 1
+            self.save()
+            return True
+        return False
 
 
 class QuizGrading(models.Model):
@@ -183,6 +221,7 @@ class QuizGrading(models.Model):
     feedback = models.TextField(null=True, blank=True)
     graded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     graded_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"{self.quiz_submissions} - {self.grade}"
@@ -204,6 +243,7 @@ class Project(models.Model):
     )
     due_date = models.DateTimeField()
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=0)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
 
@@ -227,6 +267,7 @@ class ProjectSubmission(models.Model):
     )
     status = models.PositiveSmallIntegerField(choices=ASSESMENT_STATUS_CHOICES, default=0)
     project_submitted_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     resubmission = models.BooleanField(default=False)
     comments = models.TextField(null=True, blank=True)
 
@@ -242,6 +283,7 @@ class ProjectGrading(models.Model):
     feedback = models.TextField(null=True, blank=True)
     graded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     graded_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"{self.project_submissions} - {self.grade}"
@@ -262,6 +304,7 @@ class Exam(models.Model):
     )
     due_date = models.DateTimeField()
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=0)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
 
@@ -284,6 +327,7 @@ class ExamSubmission(models.Model):
     )
     status = models.PositiveSmallIntegerField(choices=ASSESMENT_STATUS_CHOICES, default=0)
     exam_submitted_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     resubmission = models.BooleanField(default=False)
     comments = models.TextField(null=True, blank=True)
 
@@ -297,6 +341,7 @@ class ExamGrading(models.Model):
     feedback = models.TextField(null=True, blank=True)
     graded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     graded_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"{self.exam_submission} - {self.grade}"
@@ -308,3 +353,5 @@ class Weightage(models.Model):
     quizzes_weightage = models.FloatField(default=0,null=True, blank=True)
     projects_weightage = models.FloatField(default=0,null=True, blank=True)
     exams_weightage = models.FloatField(default=0,null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)

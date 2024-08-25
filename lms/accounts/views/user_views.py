@@ -85,6 +85,7 @@ class UserLoginView(views.APIView):
                     if session is not None:
                         session_instance = Sessions.objects.get(id=session)
                         session_data = SessionsSerializer(session_instance)
+                        
                 elif user_group.name == 'instructor':
                     instructor = Instructor.objects.get(user=user.id)
                     user_serializer = InstructorSerializer(instructor)

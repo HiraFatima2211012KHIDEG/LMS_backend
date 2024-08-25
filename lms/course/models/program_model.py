@@ -9,6 +9,8 @@ class Program(models.Model):
     short_description = models.TextField()
     about = models.TextField()
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    # created_at = models.DateTimeField(auto_now_add=True)
+    # updated_at = models.DateTimeField(auto_now=True)
     courses = models.ManyToManyField(Course, blank=True)
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=0)
     picture = models.ImageField(upload_to='material/program_pictures/', blank=True, null=True)

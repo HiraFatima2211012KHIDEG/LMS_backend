@@ -8,7 +8,7 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from accounts.models.user_models import *
 import logging
 from django.utils import timezone
-
+from decimal import Decimal
 
 logger = logging.getLogger(__name__)
 class CustomResponseMixin:
@@ -244,6 +244,7 @@ class ProjectsByCourseIDAPIView(CustomResponseMixin, APIView):
                     submission_status = 'Pending'  # Due date has not passed, and not yet submitted
             
             project_data = {
+                'id': project.id,
                 'question': project.title,
                 'description': project.description,
                 'due_date': project.due_date,
@@ -266,29 +267,32 @@ class ProjectDetailView(APIView):
     def get(self, request, course_id, registration_id):
         projects = Project.objects.filter(course_id=course_id)
         submissions = ProjectSubmission.objects.filter(project__in=projects, registration_id=registration_id)
-        grading_ids = ProjectGrading.objects.filter(project_submissions__in=submissions).values_list('project_submissions_id', flat=True)
+        total_marks_obtained = Decimal('0.0')
+        sum_of_total_marks = Decimal('0.0')
 
         projects_data = []
+        
         for project in projects:
             submission = submissions.filter(project=project).first()
             grading = ProjectGrading.objects.filter(project_submissions=submission).first() if submission else None
+            
             if submission:
-                if submission.status == 1: 
-                    submission_status = 'Submitted'
-                else:
-                    submission_status = 'Pending' 
+                submission_status = 'Submitted' if submission.status == 1 else 'Pending'
             else:
-                if timezone.now() > project.due_date:
-                    submission_status = 'Not Submitted'  
-                else:
-                    submission_status = 'Pending'
-                    
+                submission_status = 'Not Submitted' if timezone.now() > project.due_date else 'Pending'
+
+            marks_obtain = grading.grade if grading else Decimal('0.0')
+            total_marks = grading.total_grade if grading else Decimal('0.0')
+            remarks = grading.feedback if grading else None
+
+            total_marks_obtained += marks_obtain
+            sum_of_total_marks += total_marks
 
             project_data = {
                 'project_name': project.title,
-                'marks_obtain': grading.grade if grading else None,
-                'total_marks': grading.total_grade if grading else None,
-                'remarks': grading.feedback if grading else None,
+                'marks_obtain': float(marks_obtain),  
+                'total_marks': float(total_marks),  
+                'remarks': remarks,
                 'status': submission_status,
             }
             projects_data.append(project_data)
@@ -296,5 +300,7 @@ class ProjectDetailView(APIView):
         return Response({
             'status': status.HTTP_200_OK,
             'message': 'Projects retrieved successfully.',
-            'data': projects_data
+            'data': projects_data,
+            'total_marks_obtained': float(total_marks_obtained), 
+            'sum_of_total_marks': float(sum_of_total_marks)
         })

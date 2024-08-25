@@ -12,6 +12,10 @@ from django.db.models import Sum
 from decimal import Decimal
 from django.utils import timezone
 from rest_framework import status
+from decimal import Decimal
+
+
+
 logger = logging.getLogger(__name__)
 
 class CustomResponseMixin:
@@ -94,56 +98,56 @@ class AssignmentSubmissionCreateAPIView(CustomResponseMixin, APIView):
         return self.custom_response(status.HTTP_200_OK, 'Assignment submissions retrieved successfully', serializer.data)
 
 
-    # def post(self, request, format=None):
-    #     data = {key: value for key, value in request.data.items()}
-    #     data['user'] = request.user.id
-        
-    #     try:
-    #         student_instructor = Student.objects.get(user=request.user)
-    #         data['registration_id'] = student_instructor.registration_id
-    #     except Student.DoesNotExist:
-    #         logger.error("StudentInstructor not found for user: %s", request.user)
-    #         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
-        
-       
-    #     data['status'] = 1
-    #     serializer = AssignmentSubmissionSerializer(data=data)
-    #     if serializer.is_valid():
-    #         serializer.save()
-    #         return self.custom_response(status.HTTP_201_CREATED, 'Assignment submission created successfully', serializer.data)
-    #     return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error creating assignment submission', serializer.errors)
     def post(self, request, format=None):
         data = {key: value for key, value in request.data.items()}
         data['user'] = request.user.id
-
+        
         try:
             student_instructor = Student.objects.get(user=request.user)
             data['registration_id'] = student_instructor.registration_id
         except Student.DoesNotExist:
             logger.error("StudentInstructor not found for user: %s", request.user)
             return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
-
-        assignment_id = data.get('assignment')
-        if not assignment_id:
-            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Assignment ID is required', {})
         
-        # Check if the student has already submitted this assignment
-        existing_submission = AssignmentSubmission.objects.filter(
-            user=request.user,
-            assignment_id=assignment_id
-        ).first()
-        
-        if existing_submission:
-            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'You have already submitted this assignment', {})
-        
+       
         data['status'] = 1
-        print("Data to be saved:", data) 
         serializer = AssignmentSubmissionSerializer(data=data)
         if serializer.is_valid():
             serializer.save()
             return self.custom_response(status.HTTP_201_CREATED, 'Assignment submission created successfully', serializer.data)
-        
         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error creating assignment submission', serializer.errors)
+    # def post(self, request, format=None):
+    #     data = {key: value for key, value in request.data.items()}
+    #     data['user'] = request.user.id
+
+    #     try:
+    #         student_instructor = Student.objects.get(user=request.user)
+    #         data['registration_id'] = student_instructor.registration_id
+    #     except Student.DoesNotExist:
+    #         logger.error("StudentInstructor not found for user: %s", request.user)
+    #         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
+
+    #     assignment_id = data.get('assignment')
+    #     if not assignment_id:
+    #         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Assignment ID is required', {})
+        
+    #     # Check if the student has already submitted this assignment
+    #     existing_submission = AssignmentSubmission.objects.filter(
+    #         user=request.user,
+    #         assignment_id=assignment_id
+    #     ).first()
+        
+    #     if existing_submission:
+    #         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'You have already submitted this assignment', {})
+        
+    #     data['status'] = 1
+    #     print("Data to be saved:", data) 
+    #     serializer = AssignmentSubmissionSerializer(data=data)
+    #     if serializer.is_valid():
+    #         serializer.save()
+    #         return self.custom_response(status.HTTP_201_CREATED, 'Assignment submission created successfully', serializer.data)
+        
+    #     return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error creating assignment submission', serializer.errors)
 
     
 class AssignmentSubmissionDetailAPIView(CustomResponseMixin, APIView):
@@ -154,9 +158,11 @@ class AssignmentSubmissionDetailAPIView(CustomResponseMixin, APIView):
         serializer = AssignmentSubmissionSerializer(submission)
         return self.custom_response(status.HTTP_200_OK, 'Assignment submission retrieved successfully', serializer.data)
 
+
     def put(self, request, pk, format=None):
         data = {key: value for key, value in request.data.items()}
         data['user'] = request.user.id
+
         try:
             student_instructor = Student.objects.get(user=request.user)
             data['registration_id'] = student_instructor.registration_id
@@ -165,17 +171,19 @@ class AssignmentSubmissionDetailAPIView(CustomResponseMixin, APIView):
             return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
 
         submission = get_object_or_404(AssignmentSubmission, pk=pk)
-        # file_content = request.FILES.get('submitted_file', None)
-        # if file_content is not None:
-        #     data['submitted_file'] = file_content
-        # else:
-        #     data['submitted_file'] = None
-        serializer = AssignmentSubmissionSerializer(submission, data=data)
-        if serializer.is_valid():
-            serializer.save()
-            return self.custom_response(status.HTTP_200_OK, 'Assignment submission updated successfully', serializer.data)
-    
-        return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error updating assignment submission', serializer.errors)
+
+        if submission.remaining_resubmissions is None:
+            submission.remaining_resubmissions = submission.assignment.no_of_resubmissions_allowed
+
+        if submission.decrement_resubmissions():
+            serializer = AssignmentSubmissionSerializer(submission, data=data)
+            if serializer.is_valid():
+                serializer.save()
+                return self.custom_response(status.HTTP_200_OK, 'Assignment submission updated successfully', serializer.data)
+            else:
+                return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error updating assignment submission', serializer.errors)
+        else:
+            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'No resubmissions left', {})
 
     def delete(self, request, pk, format=None):
         submission = get_object_or_404(AssignmentSubmission, pk=pk)
@@ -270,6 +278,7 @@ class AssignmentsByCourseIDAPIView(CustomResponseMixin, APIView):
                     submission_status = 'Pending'  # Due date has not passed, and not yet submitted
             
             assignment_data = {
+                'id': assignment.id,
                 'question': assignment.question,
                 'description': assignment.description,
                 'due_date': assignment.due_date,
@@ -624,6 +633,8 @@ class UnifiedPendingItemsView(CustomResponseMixin, APIView):
             data={'items': sorted_results}
         )
     
+
+
 class AssignmentDetailView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
     
@@ -631,26 +642,30 @@ class AssignmentDetailView(APIView):
         assignments = Assignment.objects.filter(course_id=course_id)
         submissions = AssignmentSubmission.objects.filter(assignment__in=assignments, registration_id=registration_id)
         assignments_data = []
+        total_marks_obtained = Decimal('0.0')
+        sum_of_total_marks = Decimal('0.0')
+        
         for assignment in assignments:
             submission = submissions.filter(assignment=assignment).first()
             grading = Grading.objects.filter(submission=submission).first() if submission else None
             
             if submission:
-                if submission.status == 1: 
-                    submission_status = 'Submitted'
-                else:
-                    submission_status = 'Pending' 
+                submission_status = 'Submitted' if submission.status == 1 else 'Pending'
             else:
-                if timezone.now() > assignment.due_date:
-                    submission_status = 'Not Submitted'  
-                else:
-                    submission_status = 'Pending'  
+                submission_status = 'Not Submitted' if timezone.now() > assignment.due_date else 'Pending'
+
+            marks_obtain = grading.grade if grading else Decimal('0.0')
+            total_marks = grading.total_grade if grading else Decimal('0.0')
+            remarks = grading.feedback if grading else None
+
+            total_marks_obtained += marks_obtain
+            sum_of_total_marks += total_marks
 
             assignment_data = {
                 'assignment_name': assignment.question,
-                'marks_obtain': grading.grade if grading else None,
-                'total_marks': grading.total_grade if grading else None,
-                'remarks': grading.feedback if grading else None,
+                'marks_obtain': float(marks_obtain),  
+                'total_marks': float(total_marks),  
+                'remarks': remarks,
                 'status': submission_status,
             }
             assignments_data.append(assignment_data)
@@ -658,5 +673,8 @@ class AssignmentDetailView(APIView):
         return Response({
             'status': status.HTTP_200_OK,
             'message': 'Assignments retrieved successfully.',
-            'data': assignments_data
+            'data': assignments_data,
+            'total_marks_obtain': float(total_marks_obtained), 
+            'sum_of_total_marks': float(sum_of_total_marks) 
         })
+

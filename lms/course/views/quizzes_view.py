@@ -7,6 +7,7 @@ from ..serializers import *
 from accounts.models.user_models import *
 import logging
 from django.utils import timezone
+from decimal import Decimal
 
 logger = logging.getLogger(__name__)
 class CustomResponseMixin:
@@ -81,54 +82,56 @@ class QuizSubmissionCreateAPIView(CustomResponseMixin, APIView):
         serializer = QuizSubmissionSerializer(quiz_submissions, many=True)
         return self.custom_response(status.HTTP_200_OK, 'Quiz submissions retrieved successfully', serializer.data)
 
-    # def post(self, request, format=None):
-    #     data = {key: value for key, value in request.data.items()}
-    #     data['user'] = request.user.id
-    #     try:
-    #         student_instructor = Student.objects.get(user=request.user)
-    #         data['registration_id'] = student_instructor.registration_id
-    #     except Student.DoesNotExist:
-    #         logger.error("StudentInstructor not found for user: %s", request.user)
-    #         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
-    #     data['status'] = 1
-    #     print(data)
-    #     serializer = QuizSubmissionSerializer(data=data)
-    #     if serializer.is_valid():
-    #         serializer.save()
-    #         return self.custom_response(status.HTTP_201_CREATED, 'Quiz submission created successfully', serializer.data)
-    #     return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error creating quiz submission', serializer.errors)
     def post(self, request, format=None):
         data = {key: value for key, value in request.data.items()}
         data['user'] = request.user.id
-        
         try:
             student_instructor = Student.objects.get(user=request.user)
             data['registration_id'] = student_instructor.registration_id
         except Student.DoesNotExist:
             logger.error("StudentInstructor not found for user: %s", request.user)
             return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
-        
-        quiz_id = data.get('quiz')
-        if not quiz_id:
-            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Quiz ID is required', {})
-        
-        # Check if the student has already submitted this quiz
-        existing_submission = QuizSubmission.objects.filter(
-            user=request.user,
-            quiz_id=quiz_id
-        ).first()
-        
-        if existing_submission:
-            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'You have already submitted this quiz', {})
-        
         data['status'] = 1
         print(data)
         serializer = QuizSubmissionSerializer(data=data)
         if serializer.is_valid():
             serializer.save()
             return self.custom_response(status.HTTP_201_CREATED, 'Quiz submission created successfully', serializer.data)
-        
         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error creating quiz submission', serializer.errors)
+
+
+    # def post(self, request, format=None):
+    #     data = {key: value for key, value in request.data.items()}
+    #     data['user'] = request.user.id
+        
+    #     try:
+    #         student_instructor = Student.objects.get(user=request.user)
+    #         data['registration_id'] = student_instructor.registration_id
+    #     except Student.DoesNotExist:
+    #         logger.error("StudentInstructor not found for user: %s", request.user)
+    #         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
+        
+    #     quiz_id = data.get('quiz')
+    #     if not quiz_id:
+    #         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Quiz ID is required', {})
+        
+    #     # Check if the student has already submitted this quiz
+    #     existing_submission = QuizSubmission.objects.filter(
+    #         user=request.user,
+    #         quiz_id=quiz_id
+    #     ).first()
+        
+    #     if existing_submission:
+    #         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'You have already submitted this quiz', {})
+        
+    #     data['status'] = 1
+    #     print(data)
+    #     serializer = QuizSubmissionSerializer(data=data)
+    #     if serializer.is_valid():
+    #         serializer.save()
+    #         return self.custom_response(status.HTTP_201_CREATED, 'Quiz submission created successfully', serializer.data)
+        
+    #     return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error creating quiz submission', serializer.errors)
 
 
 class QuizSubmissionDetailAPIView(CustomResponseMixin, APIView):
@@ -139,9 +142,27 @@ class QuizSubmissionDetailAPIView(CustomResponseMixin, APIView):
         serializer = QuizSubmissionSerializer(quiz_submission)
         return self.custom_response(status.HTTP_200_OK, 'Quiz submission retrieved successfully', serializer.data)
 
+    # def put(self, request, pk, format=None):
+    #     data = {key: value for key, value in request.data.items()}
+    #     data['user'] = request.user.id
+    #     try:
+    #         student_instructor = Student.objects.get(user=request.user)
+    #         data['registration_id'] = student_instructor.registration_id
+    #     except Student.DoesNotExist:
+    #         logger.error("StudentInstructor not found for user: %s", request.user)
+    #         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
+
+    #     quiz_submission = get_object_or_404(QuizSubmission, pk=pk)
+    #     serializer = QuizSubmissionSerializer(quiz_submission, data=data)
+    #     if serializer.is_valid():
+    #         serializer.save()
+    #         return self.custom_response(status.HTTP_200_OK, 'Quiz submission updated successfully', serializer.data)
+    #     return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error updating quiz submission', serializer.errors)
+
     def put(self, request, pk, format=None):
         data = {key: value for key, value in request.data.items()}
         data['user'] = request.user.id
+
         try:
             student_instructor = Student.objects.get(user=request.user)
             data['registration_id'] = student_instructor.registration_id
@@ -149,12 +170,20 @@ class QuizSubmissionDetailAPIView(CustomResponseMixin, APIView):
             logger.error("StudentInstructor not found for user: %s", request.user)
             return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
 
-        quiz_submission = get_object_or_404(QuizSubmission, pk=pk)
-        serializer = QuizSubmissionSerializer(quiz_submission, data=data)
-        if serializer.is_valid():
-            serializer.save()
-            return self.custom_response(status.HTTP_200_OK, 'Quiz submission updated successfully', serializer.data)
-        return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error updating quiz submission', serializer.errors)
+        submission = get_object_or_404(QuizSubmission, pk=pk)
+
+        if submission.remaining_resubmissions is None:
+            submission.remaining_resubmissions = submission.assignment.no_of_resubmissions_allowed
+
+        if submission.decrement_resubmissions():
+            serializer = QuizSubmissionSerializer(submission, data=data)
+            if serializer.is_valid():
+                serializer.save()
+                return self.custom_response(status.HTTP_200_OK, 'Quiz submission updated successfully', serializer.data)
+            else:
+                return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error updating quiz submission', serializer.errors)
+        else:
+            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'No resubmissions left', {})
 
     def delete(self, request, pk, format=None):
         quiz_submission = get_object_or_404(QuizSubmission, pk=pk)
@@ -221,19 +250,20 @@ class QuizzesByCourseIDAPIView(CustomResponseMixin, APIView):
         for quiz in quizzes:
             submission = QuizSubmission.objects.filter(quiz=quiz, user=user).first()
             
-            # Determine submission status
+           
             if submission:
-                if submission.status == 1:  # Submitted
+                if submission.status == 1:  
                     submission_status = 'Submitted'
                 else:
-                    submission_status = 'Pending'  # Status is pending if not yet graded
+                    submission_status = 'Pending'  
             else:
                 if timezone.now() > quiz.due_date:
-                    submission_status = 'Not Submitted'  # Due date has passed without submission
+                    submission_status = 'Not Submitted'  
                 else:
-                    submission_status = 'Pending'  # Due date has not passed, and not yet submitted
+                    submission_status = 'Pending'  
             
             quiz_data = {
+                'id': quiz.id,
                 'question': quiz.question,
                 'description': quiz.description,
                 'due_date': quiz.due_date,
@@ -254,28 +284,31 @@ class QuizDetailView(APIView):
     def get(self, request, course_id, registration_id):
         quizzes = Quizzes.objects.filter(course_id=course_id)
         submissions = QuizSubmission.objects.filter(quiz__in=quizzes, registration_id=registration_id)
-        
         quizzes_data = []
+        total_marks_obtained = Decimal('0.0')
+        sum_of_total_marks = Decimal('0.0')
+        
         for quiz in quizzes:
             submission = submissions.filter(quiz=quiz).first()
             grading = QuizGrading.objects.filter(quiz_submissions=submission).first() if submission else None
             
             if submission:
-                if submission.status == 1: 
-                    submission_status = 'Submitted'
-                else:
-                    submission_status = 'Pending'  
+                submission_status = 'Submitted' if submission.status == 1 else 'Pending'
             else:
-                if timezone.now() > quiz.due_date:
-                    submission_status = 'Not Submitted'  
-                else:
-                    submission_status = 'Pending'  
+                submission_status = 'Not Submitted' if timezone.now() > quiz.due_date else 'Pending'
+            
+            marks_obtain = grading.grade if grading else Decimal('0.0')
+            total_marks = grading.total_grade if grading else Decimal('0.0')
+            remarks = grading.feedback if grading else None
+
+            total_marks_obtained += marks_obtain
+            sum_of_total_marks += total_marks
 
             quiz_data = {
                 'quiz_name': quiz.question,
-                'marks_obtain': grading.grade if grading else None,
-                'total_marks': grading.total_grade if grading else None,
-                'remarks': grading.feedback if grading else None,
+                'marks_obtain': float(marks_obtain),  
+                'total_marks': float(total_marks),  
+                'remarks': remarks,
                 'status': submission_status,
             }
             quizzes_data.append(quiz_data)
@@ -283,5 +316,7 @@ class QuizDetailView(APIView):
         return Response({
             'status': status.HTTP_200_OK,
             'message': 'Quizzes retrieved successfully.',
-            'data': quizzes_data
+            'data': quizzes_data,
+            'total_marks_obtain': float(total_marks_obtained), 
+            'sum_of_total_marks': float(sum_of_total_marks)
         })

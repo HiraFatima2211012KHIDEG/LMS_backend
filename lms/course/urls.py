@@ -68,4 +68,6 @@ urlpatterns = [
     path('course/<int:course_id>/course-progress/', CourseProgressAPIView.as_view(), name='course-progress'),
     path('weightages/', WeightageListCreateAPIView.as_view(), name='weightage-list-create'),
     path('weightages/<int:pk>/', WeightageDetailAPIView.as_view(), name='weightage-detail'),
+    path('skills/', SkillListCreateAPIView.as_view(), name='skill-list-create'),
+    path('skills/<int:pk>/', SkillRetrieveUpdateDestroyAPIView.as_view(), name='skill-detail'),
 ]
