@@ -11,6 +11,7 @@ from .views.weightage_view import *
 
 
 urlpatterns = [
+    path('program-course', CreateProgramView.as_view(), name='program-course'),
     path('programs/', ProgramListCreateAPIView.as_view(), name='program-list-create'),
     path('programs/<int:pk>/', ProgramDetailAPIView.as_view(), name='program-detail'),
     path('programs/<int:program_id>/courses/', ProgramCoursesAPIView.as_view(), name='program-courses'),
