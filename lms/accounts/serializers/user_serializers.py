@@ -14,7 +14,7 @@ from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from django.contrib.auth.hashers import check_password
 import re
 from accounts.utils import send_email
-from ..models.user_models import Student
+from ..models.user_models import *
 from course.models.models import Course
 
 # from accounts.utils import send_email
@@ -386,19 +386,22 @@ class UserpasswordResetSerializer(serializers.Serializer):
 
 
 class StudentSerializer(serializers.ModelSerializer):
+    session_details = serializers.SerializerMethodField()
 
     class Meta:
         model = Student
-        fields = ["registration_id", "user", "session"]
-
+        fields = ["registration_id", "user", "session","session_details"]
+    def get_session_details(self, obj):
+        return obj.get_session_details()
 
 class InstructorSerializer(serializers.ModelSerializer):
-    # user = UserSerializer()
+    session_details = serializers.SerializerMethodField()
 
     class Meta:
         model = Instructor
         fields = "__all__"
-
+    def get_session_details(self, obj):
+        return obj.get_session_details()
 
 class AssignCoursesSerializer(serializers.Serializer):
     course_ids = serializers.ListField(child=serializers.IntegerField())

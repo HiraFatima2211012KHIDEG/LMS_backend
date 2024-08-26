@@ -170,6 +170,11 @@ class Student(models.Model):
             self.registration_id = f"{batch}-{self.user.id}"
         super(Student, self).save(*args, **kwargs)
 
+    def get_session_details(self):
+        if self.session:
+            return str(self.session)  
+        return "No session assigned"
+
     def __str__(self):
         return f"{self.user} - {self.registration_id}"
     # class Meta:
@@ -193,6 +198,11 @@ class Instructor(models.Model):
     courses = models.ManyToManyField(Course)
     created_at = models.DateTimeField(auto_now=True, null=True, blank=True)
     updated_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+
+    def get_session_details(self):
+        sessions = self.session.all()
+        return ", ".join([str(session) for session in sessions])
+
 
     def __str__(self):
         return self.id.email
