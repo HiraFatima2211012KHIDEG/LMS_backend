@@ -126,7 +126,7 @@ class AssignmentSubmission(models.Model):
     def save(self, *args, **kwargs):
         if self.pk is None: 
             self.remaining_resubmissions = self.assignment.no_of_resubmissions_allowed
-            print(f"Initialized remaining_resubmissions with {self.remaining_resubmissions}")  # Debugging line
+            print(f"Initialized remaining_resubmissions with {self.remaining_resubmissions}") 
 
         super().save(*args, **kwargs)
 
@@ -246,6 +246,7 @@ class Project(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=0)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    no_of_resubmissions_allowed = models.IntegerField(default=0)
 
     def __str__(self):
         return self.title
@@ -268,13 +269,26 @@ class ProjectSubmission(models.Model):
     status = models.PositiveSmallIntegerField(choices=ASSESMENT_STATUS_CHOICES, default=0)
     project_submitted_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    resubmission = models.BooleanField(default=False)
+    remaining_resubmissions = models.IntegerField(default=0)
     comments = models.TextField(null=True, blank=True)
 
 
     def __str__(self):
         return f"{self.user} - {self.project}"
+    
+    def save(self, *args, **kwargs):
+        if self.pk is None: 
+            self.remaining_resubmissions = self.project.no_of_resubmissions_allowed
+            print(f"Initialized remaining_resubmissions with {self.remaining_resubmissions}") 
 
+        super().save(*args, **kwargs)
+
+    def decrement_resubmissions(self):
+        if self.remaining_resubmissions > 0:
+            self.remaining_resubmissions -= 1
+            self.save()
+            return True
+        return False
 
 class ProjectGrading(models.Model):
     project_submissions=models.ForeignKey(ProjectSubmission, on_delete=models.CASCADE)

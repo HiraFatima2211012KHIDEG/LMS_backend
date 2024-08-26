@@ -259,7 +259,9 @@ class ProjectSubmissionSerializer(serializers.ModelSerializer):
             "resubmission",
             "comments",
         ]
-
+    def create(self, validated_data):
+        project_submission = ProjectSubmission.objects.create(**validated_data)
+        return project_submission
 
 class ProjectGradingSerializer(serializers.ModelSerializer):
     # project_submissions = serializers.PrimaryKeyRelatedField(
