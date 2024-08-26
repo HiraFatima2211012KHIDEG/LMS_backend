@@ -73,12 +73,13 @@ class UserSerializer(serializers.ModelSerializer):
         # Save the user and return the created user instance
         return serializer.save()
 
+
 class AdminUserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
 
     class Meta:
         model = User
-        fields = ['email', 'password', 'first_name', 'last_name']
+        fields = ["email", "password", "first_name", "last_name"]
 
     def create(self, validated_data):
         return User.objects.create_admin(**validated_data)
@@ -369,11 +370,14 @@ class StudentSerializer(serializers.ModelSerializer):
 
 
 class InstructorSerializer(serializers.ModelSerializer):
-    user = UserSerializer()
+    user = serializers.SerializerMethodField()
 
     class Meta:
         model = Instructor
-        fields = ["user", "session"]
+        fields = "__all__"
+
+    def get_user(self, obj):
+        return UserSerializer(obj.id).data
 
 
 class AssignCoursesSerializer(serializers.Serializer):
