@@ -89,8 +89,8 @@ class QuizSubmissionCreateAPIView(CustomResponseMixin, APIView):
             student_instructor = Student.objects.get(user=request.user)
             data['registration_id'] = student_instructor.registration_id
         except Student.DoesNotExist:
-            logger.error("StudentInstructor not found for user: %s", request.user)
-            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
+            logger.error("Student not found for user: %s", request.user)
+            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Student not found for user', {})
         data['status'] = 1
         print(data)
         serializer = QuizSubmissionSerializer(data=data)
@@ -108,8 +108,8 @@ class QuizSubmissionCreateAPIView(CustomResponseMixin, APIView):
     #         student_instructor = Student.objects.get(user=request.user)
     #         data['registration_id'] = student_instructor.registration_id
     #     except Student.DoesNotExist:
-    #         logger.error("StudentInstructor not found for user: %s", request.user)
-    #         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
+    #         logger.error("Student not found for user: %s", request.user)
+    #         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Student not found for user', {})
         
     #     quiz_id = data.get('quiz')
     #     if not quiz_id:
@@ -149,8 +149,8 @@ class QuizSubmissionDetailAPIView(CustomResponseMixin, APIView):
     #         student_instructor = Student.objects.get(user=request.user)
     #         data['registration_id'] = student_instructor.registration_id
     #     except Student.DoesNotExist:
-    #         logger.error("StudentInstructor not found for user: %s", request.user)
-    #         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
+    #         logger.error("Student not found for user: %s", request.user)
+    #         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Student not found for user', {})
 
     #     quiz_submission = get_object_or_404(QuizSubmission, pk=pk)
     #     serializer = QuizSubmissionSerializer(quiz_submission, data=data)
@@ -167,8 +167,8 @@ class QuizSubmissionDetailAPIView(CustomResponseMixin, APIView):
             student_instructor = Student.objects.get(user=request.user)
             data['registration_id'] = student_instructor.registration_id
         except Student.DoesNotExist:
-            logger.error("StudentInstructor not found for user: %s", request.user)
-            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
+            logger.error("Student not found for user: %s", request.user)
+            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Student not found for user', {})
 
         submission = get_object_or_404(QuizSubmission, pk=pk)
 

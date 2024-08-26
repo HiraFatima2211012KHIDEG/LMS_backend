@@ -94,8 +94,8 @@ class ProjectSubmissionListCreateAPIView(CustomResponseMixin, APIView):
             student_instructor = Student.objects.get(user=request.user)
             data['registration_id'] = student_instructor.registration_id
         except Student.DoesNotExist:
-            logger.error("StudentInstructor not found for user: %s", request.user)
-            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
+            logger.error("Student not found for user: %s", request.user)
+            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Student not found for user', {})
         data['status'] = 1
         serializer = ProjectSubmissionSerializer(data=data)
         if serializer.is_valid():
@@ -111,8 +111,8 @@ class ProjectSubmissionListCreateAPIView(CustomResponseMixin, APIView):
     #         student_instructor = Student.objects.get(user=request.user)
     #         data['registration_id'] = student_instructor.registration_id
     #     except Student.DoesNotExist:
-    #         logger.error("StudentInstructor not found for user: %s", request.user)
-    #         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
+    #         logger.error("Student not found for user: %s", request.user)
+    #         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Student not found for user', {})
         
     #     project_id = data.get('project')
     #     if not project_id:
@@ -151,8 +151,8 @@ class ProjectSubmissionDetailAPIView(CustomResponseMixin, APIView):
     #         student_instructor = Student.objects.get(user=request.user)
     #         data['registration_id'] = student_instructor.registration_id
     #     except Student.DoesNotExist:
-    #         logger.error("StudentInstructor not found for user: %s", request.user)
-    #         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
+    #         logger.error("Student not found for user: %s", request.user)
+    #         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Student not found for user', {})
 
     #     project_submission = get_object_or_404(ProjectSubmission, pk=pk)
     #     serializer = ProjectSubmissionSerializer(project_submission, data=data, partial=True)
@@ -169,8 +169,8 @@ class ProjectSubmissionDetailAPIView(CustomResponseMixin, APIView):
             student_instructor = Student.objects.get(user=request.user)
             data['registration_id'] = student_instructor.registration_id
         except Student.DoesNotExist:
-            logger.error("StudentInstructor not found for user: %s", request.user)
-            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
+            logger.error("Student not found for user: %s", request.user)
+            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Student not found for user', {})
 
         submission = get_object_or_404(ProjectSubmission, pk=pk)
         if submission.remaining_resubmissions is None:

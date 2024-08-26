@@ -107,8 +107,8 @@ class AssignmentSubmissionCreateAPIView(CustomResponseMixin, APIView):
             student_instructor = Student.objects.get(user=request.user)
             data['registration_id'] = student_instructor.registration_id
         except Student.DoesNotExist:
-            logger.error("StudentInstructor not found for user: %s", request.user)
-            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
+            logger.error("Student not found for user: %s", request.user)
+            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Student not found for user', {})
         
        
         data['status'] = 1
@@ -126,8 +126,8 @@ class AssignmentSubmissionCreateAPIView(CustomResponseMixin, APIView):
     #         student_instructor = Student.objects.get(user=request.user)
     #         data['registration_id'] = student_instructor.registration_id
     #     except Student.DoesNotExist:
-    #         logger.error("StudentInstructor not found for user: %s", request.user)
-    #         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
+    #         logger.error("Student not found for user: %s", request.user)
+    #         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Student not found for user', {})
 
     #     assignment_id = data.get('assignment')
     #     if not assignment_id:
@@ -170,8 +170,8 @@ class AssignmentSubmissionDetailAPIView(CustomResponseMixin, APIView):
             student_instructor = Student.objects.get(user=request.user)
             data['registration_id'] = student_instructor.registration_id
         except Student.DoesNotExist:
-            logger.error("StudentInstructor not found for user: %s", request.user)
-            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
+            logger.error("Student not found for user: %s", request.user)
+            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Student not found for user', {})
 
         submission = get_object_or_404(AssignmentSubmission, pk=pk)
 
@@ -454,8 +454,8 @@ class AssignmentProgressAPIView(CustomResponseMixin, APIView):
             student_instructor = Student.objects.get(user=user)
             registration_id = student_instructor.registration_id
         except Student.DoesNotExist:
-            logger.error("StudentInstructor not found for user: %s", user)
-            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
+            logger.error("Student not found for user: %s", user)
+            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Student not found for user', {})
 
         total_assignments = Assignment.objects.filter(course=course).count()
         submitted_assignments = AssignmentSubmission.objects.filter(user=user, assignment__course=course).count()
@@ -488,8 +488,8 @@ class QuizProgressAPIView(CustomResponseMixin, APIView):
             student_instructor = Student.objects.get(user=user)
             registration_id = student_instructor.registration_id
         except Student.DoesNotExist:
-            logger.error("StudentInstructor not found for user: %s", user)
-            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
+            logger.error("Student not found for user: %s", user)
+            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Student not found for user', {})
         
         total_quiz = Quizzes.objects.filter(course=course).count()
         submitted_quiz = QuizSubmission.objects.filter(user=user, quiz__course=course).count()
@@ -522,8 +522,8 @@ class CourseProgressAPIView(CustomResponseMixin,APIView):
             student_instructor = Student.objects.get(user=user)
             registration_id = student_instructor.registration_id
         except Student.DoesNotExist:
-            logger.error("StudentInstructor not found for user: %s", user)
-            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
+            logger.error("Student not found for user: %s", user)
+            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Student not found for user', {})
         total_modules = Module.objects.filter(course=course).count()
         attendance_records = Attendance.objects.filter(course=course,student=registration_id, status="Present")
         total_attendance = attendance_records.count()
