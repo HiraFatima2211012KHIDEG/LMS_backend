@@ -5,10 +5,10 @@ from django.core.exceptions import ValidationError
 import re
 
 STATUS_CHOICES = (
-        (0, 'Not Active'),
-        (1, 'Active'),
-        (2, 'Deleted'),
-    )
+    (0, "Not Active"),
+    (1, "Active"),
+    (2, "Deleted"),
+)
 
 
 class Course(models.Model):
@@ -17,9 +17,10 @@ class Course(models.Model):
     about = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    registration_id = models.CharField(max_length=50, null=True, blank=True)
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=0)
     credit_hours = models.IntegerField()
+    # skills = models.ManyToManyField("Skill", blank=True)
+    instructors = models.ManyToManyField("accounts.Instructor", blank=True)
 
     def __str__(self):
         return self.name
@@ -37,6 +38,7 @@ class Module(models.Model):
     def __str__(self):
         return self.name
 
+
 class ContentFile(models.Model):
     module = models.ForeignKey(
         Module, related_name="files", on_delete=models.CASCADE, null=True, blank=True
@@ -50,6 +52,7 @@ class ContentFile(models.Model):
         ],
     )
 
+
 class Assignment(models.Model):
     # module = models.ForeignKey(Module, on_delete=models.CASCADE)
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
@@ -57,19 +60,21 @@ class Assignment(models.Model):
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=0)
     question = models.TextField(null=True, blank=True)
     description = models.TextField(null=True, blank=True)
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,null=True, blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True
+    )
     registration_id = models.CharField(max_length=50, null=True, blank=True)
     content = models.FileField(
         upload_to="material/assignments/",
         validators=[
             FileExtensionValidator(
-                allowed_extensions=["pdf", "doc", "docx", "ppt", "pptx", "txt",'zip']
+                allowed_extensions=["pdf", "doc", "docx", "ppt", "pptx", "txt", "zip"]
             )
         ],
-        null=True, blank=True
+        null=True,
+        blank=True,
     )
     due_date = models.DateTimeField()
-
 
     def __str__(self):
         return self.question
@@ -85,26 +90,25 @@ class AssignmentSubmission(models.Model):
         upload_to="material/submissions/",
         validators=[
             FileExtensionValidator(
-                allowed_extensions=['pdf', "doc", "docx", "ppt", "pptx", "txt",'zip']
+                allowed_extensions=["pdf", "doc", "docx", "ppt", "pptx", "txt", "zip"]
             )
         ],
-
-        null=True, blank=True
+        null=True,
+        blank=True,
     )
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=0)
     submitted_at = models.DateTimeField(auto_now_add=True)
     resubmission = models.BooleanField(default=False)
     comments = models.TextField(null=True, blank=True)
 
-
     def __str__(self):
         return f"{self.user} - {self.assignment}"
 
 
 class Grading(models.Model):
-    submission=models.ForeignKey(AssignmentSubmission, on_delete=models.CASCADE)
-    grade=models.DecimalField(max_digits=10, decimal_places=2, null=True)
-    total_grade=models.DecimalField(max_digits=10, decimal_places=2, null=True)
+    submission = models.ForeignKey(AssignmentSubmission, on_delete=models.CASCADE)
+    grade = models.DecimalField(max_digits=10, decimal_places=2, null=True)
+    total_grade = models.DecimalField(max_digits=10, decimal_places=2, null=True)
     feedback = models.TextField(null=True, blank=True)
     graded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     registration_id = models.CharField(max_length=50, null=True, blank=True)
@@ -112,7 +116,6 @@ class Grading(models.Model):
 
     def __str__(self):
         return f"{self.submission} - {self.grade}"
-
 
 
 class Quizzes(models.Model):
@@ -128,10 +131,11 @@ class Quizzes(models.Model):
         upload_to="material/quizzes/",
         validators=[
             FileExtensionValidator(
-                allowed_extensions=["pdf", "doc", "docx", "ppt", "pptx", "txt",'zip']
+                allowed_extensions=["pdf", "doc", "docx", "ppt", "pptx", "txt", "zip"]
             )
         ],
-        null=True, blank=True
+        null=True,
+        blank=True,
     )
     due_date = models.DateTimeField()
 
@@ -149,7 +153,7 @@ class QuizSubmission(models.Model):
         upload_to="material/quiz_submissions/",
         validators=[
             FileExtensionValidator(
-                allowed_extensions=["pdf", "doc", "docx", "ppt", "pptx", "txt",'zip']
+                allowed_extensions=["pdf", "doc", "docx", "ppt", "pptx", "txt", "zip"]
             )
         ],
     )
@@ -158,15 +162,14 @@ class QuizSubmission(models.Model):
     resubmission = models.BooleanField(default=False)
     comments = models.TextField(null=True, blank=True)
 
-
     def __str__(self):
         return f"{self.user} - {self.quiz}"
 
 
 class QuizGrading(models.Model):
-    quiz_submissions=models.ForeignKey(QuizSubmission, on_delete=models.CASCADE)
-    grade=models.DecimalField(max_digits=10, decimal_places=2, null=True)
-    total_grade=models.DecimalField(max_digits=10, decimal_places=2, null=True)
+    quiz_submissions = models.ForeignKey(QuizSubmission, on_delete=models.CASCADE)
+    grade = models.DecimalField(max_digits=10, decimal_places=2, null=True)
+    total_grade = models.DecimalField(max_digits=10, decimal_places=2, null=True)
     feedback = models.TextField(null=True, blank=True)
     graded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     registration_id = models.CharField(max_length=50, null=True, blank=True)
@@ -176,9 +179,10 @@ class QuizGrading(models.Model):
         return f"{self.quiz_submissions} - {self.grade}"
 
 
-
 class Project(models.Model):
-    course = models.ForeignKey(Course, related_name='projects', on_delete=models.CASCADE)
+    course = models.ForeignKey(
+        Course, related_name="projects", on_delete=models.CASCADE
+    )
     title = models.CharField(max_length=255)
     description = models.TextField()
     content = models.FileField(
@@ -188,7 +192,8 @@ class Project(models.Model):
                 allowed_extensions=["pdf", "doc", "docx", "ppt", "pptx", "txt", "zip"]
             )
         ],
-        null=True, blank=True
+        null=True,
+        blank=True,
     )
     due_date = models.DateTimeField()
     created_at = models.DateTimeField(auto_now_add=True)
@@ -210,7 +215,7 @@ class ProjectSubmission(models.Model):
         upload_to="material/project_submissions/",
         validators=[
             FileExtensionValidator(
-                allowed_extensions=["pdf", "doc", "docx", "ppt", "pptx", "txt",'zip']
+                allowed_extensions=["pdf", "doc", "docx", "ppt", "pptx", "txt", "zip"]
             )
         ],
     )
@@ -219,15 +224,14 @@ class ProjectSubmission(models.Model):
     resubmission = models.BooleanField(default=False)
     comments = models.TextField(null=True, blank=True)
 
-
     def __str__(self):
         return f"{self.user} - {self.project}"
 
 
 class ProjectGrading(models.Model):
-    project_submissions=models.ForeignKey(ProjectSubmission, on_delete=models.CASCADE)
-    grade=models.DecimalField(max_digits=10, decimal_places=2, null=True)
-    total_grade=models.DecimalField(max_digits=10, decimal_places=2, null=True)
+    project_submissions = models.ForeignKey(ProjectSubmission, on_delete=models.CASCADE)
+    grade = models.DecimalField(max_digits=10, decimal_places=2, null=True)
+    total_grade = models.DecimalField(max_digits=10, decimal_places=2, null=True)
     feedback = models.TextField(null=True, blank=True)
     graded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     registration_id = models.CharField(max_length=50, null=True, blank=True)
@@ -238,7 +242,7 @@ class ProjectGrading(models.Model):
 
 
 class Exam(models.Model):
-    course = models.ForeignKey(Course, related_name='exams', on_delete=models.CASCADE)
+    course = models.ForeignKey(Course, related_name="exams", on_delete=models.CASCADE)
     title = models.CharField(max_length=255)
     description = models.TextField()
     content = models.FileField(
@@ -248,7 +252,8 @@ class Exam(models.Model):
                 allowed_extensions=["pdf", "doc", "docx", "ppt", "pptx", "txt", "zip"]
             )
         ],
-        null=True, blank=True
+        null=True,
+        blank=True,
     )
     due_date = models.DateTimeField()
     created_at = models.DateTimeField(auto_now_add=True)
@@ -258,6 +263,7 @@ class Exam(models.Model):
 
     def __str__(self):
         return self.title
+
 
 class ExamSubmission(models.Model):
     exam = models.ForeignKey(
@@ -281,6 +287,7 @@ class ExamSubmission(models.Model):
     def __str__(self):
         return f"{self.user} - {self.exam}"
 
+
 class ExamGrading(models.Model):
     exam_submission = models.ForeignKey(ExamSubmission, on_delete=models.CASCADE)
     grade = models.DecimalField(max_digits=10, decimal_places=2, null=True)
@@ -295,8 +302,10 @@ class ExamGrading(models.Model):
 
 
 class Weightage(models.Model):
-    course = models.ForeignKey(Course, related_name='weightage', on_delete=models.CASCADE)
-    assignments_weightage = models.FloatField(default=0,null=True, blank=True)
-    quizzes_weightage = models.FloatField(default=0,null=True, blank=True)
-    projects_weightage = models.FloatField(default=0,null=True, blank=True)
-    exams_weightage = models.FloatField(default=0,null=True, blank=True)
+    course = models.ForeignKey(
+        Course, related_name="weightage", on_delete=models.CASCADE
+    )
+    assignments_weightage = models.FloatField(default=0, null=True, blank=True)
+    quizzes_weightage = models.FloatField(default=0, null=True, blank=True)
+    projects_weightage = models.FloatField(default=0, null=True, blank=True)
+    exams_weightage = models.FloatField(default=0, null=True, blank=True)

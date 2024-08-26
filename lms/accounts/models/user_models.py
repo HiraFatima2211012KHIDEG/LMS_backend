@@ -185,5 +185,11 @@ class Instructor(models.Model):
     created_at = models.DateTimeField(auto_now=True, null=True, blank=True)
     updated_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
 
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        for course in self.courses.all():
+            course.instructors.add(self)
+            course.save()
+
     def __str__(self):
         return self.id.email

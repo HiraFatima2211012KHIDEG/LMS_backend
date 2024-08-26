@@ -50,106 +50,6 @@ class CreateAdminUserView(generics.CreateAPIView):
     serializer_class = AdminUserSerializer
     # permission_classes = [permissions.IsAdminUser]
 
-
-class UserLoginView(views.APIView):
-    """
-    View to handle user login and generate authentication tokens.
-    """
-
-    @extend_schema(
-        request=UserLoginSerializer,
-        responses={
-            200: "Login Successful.",
-            400: "Bad Request.",
-            401: "Unauthorized.",
-        },
-    )
-    def post(self, request):
-        """
-        Handle POST requests for user login.
-        This method processes the login request by validating the provided credentials.
-        If valid, it authenticates the user and generates authentication tokens.
-        Args:
-            request (Request): The HTTP request object containing the login data.
-        Returns:
-            Response: A Response object with authentication tokens if successful,
-                      or error details if validation fails.
-        """
-        data = request.data
-        if "email" not in data:
-            return Response(
-                {
-                    "status_code": status.HTTP_400_BAD_REQUEST,
-                    "message": "Email is not provided.",
-                }
-            )
-        if "password" not in data:
-            return Response(
-                {
-                    "status_code": status.HTTP_400_BAD_REQUEST,
-                    "message": "Password is not provided.",
-                }
-            )
-        data["email"] = data.get("email", "").lower()
-        serializer = UserLoginSerializer(data=data)
-        if serializer.is_valid(raise_exception=True):
-            user = authenticate(
-                email=serializer.validated_data["email"],
-                password=serializer.validated_data["password"],
-            )
-            print("user", user)
-            if user is not None:
-                tokens = self.get_tokens_for_user(user)
-                user_group = Group.objects.get(user=user.id)
-                permission = self.get_group_permissions(user_group.id)
-                user_profile = UserProfileSerializer(user)
-                user_serializer = None
-                session_data = None  # Initialize session_data as None
-                if user_group.name == "student":
-                    student = Student.objects.get(user=user.id)
-                    user_serializer = StudentSerializer(student)
-                    session = user_serializer.data.get("session", None)
-                    if session is not None:
-                        session_instance = Sessions.objects.get(id=session)
-                        session_data = SessionsSerializer(session_instance)
-                elif user_group.name == "instructor":
-                    print("user email", user.email)
-                    instructor = Instructor.objects.get(id=user.email)
-                    print("instructor", instructor)
-                    user_serializer = InstructorSerializer(instructor)
-                    session = user_serializer.data.get("session", None)
-                    if session is not None:
-                        session_instance = Sessions.objects.get(id=session[0])
-                        session_data = SessionsSerializer(session_instance)
-                return Response(
-                    {
-                        "status_code": status.HTTP_200_OK,
-                        "message": "Login Successful.",
-                        "response": {
-                            "token": tokens,
-                            "Group": user_group.name,
-                            "User": user_profile.data,
-                            "permissions": permission,
-                            # 'user_data': user_serializer.data if user_serializer else None,
-                            "session": session_data.data if session_data else None,
-                        },
-                    }
-                )
-            else:
-                return Response(
-                    {
-                        "status_code": status.HTTP_401_UNAUTHORIZED,
-                        "message": "Invalid credentials.",
-                    },
-                )
-        return Response(
-            {
-                "status_code": status.HTTP_400_BAD_REQUEST,
-                "message": "Unable to login.",
-                "response": serializer.errors,
-            }
-        )
-
     # class UserLoginView(views.APIView):
     #     """
     #     View to handle user login and generate authentication tokens.
@@ -166,13 +66,10 @@ class UserLoginView(views.APIView):
     #     def post(self, request):
     #         """
     #         Handle POST requests for user login.
-
     #         This method processes the login request by validating the provided credentials.
     #         If valid, it authenticates the user and generates authentication tokens.
-
     #         Args:
     #             request (Request): The HTTP request object containing the login data.
-
     #         Returns:
     #             Response: A Response object with authentication tokens if successful,
     #                       or error details if validation fails.
@@ -199,11 +96,30 @@ class UserLoginView(views.APIView):
     #                 email=serializer.validated_data["email"],
     #                 password=serializer.validated_data["password"],
     #             )
+    #             print("user", user)
     #             if user is not None:
     #                 tokens = self.get_tokens_for_user(user)
     #                 user_group = Group.objects.get(user=user.id)
     #                 permission = self.get_group_permissions(user_group.id)
     #                 user_profile = UserProfileSerializer(user)
+    #                 user_serializer = None
+    #                 session_data = None  # Initialize session_data as None
+    #                 if user_group.name == "student":
+    #                     student = Student.objects.get(user=user.id)
+    #                     user_serializer = StudentSerializer(student)
+    #                     session = user_serializer.data.get("session", None)
+    #                     if session is not None:
+    #                         session_instance = Sessions.objects.get(id=session)
+    #                         session_data = SessionsSerializer(session_instance)
+    #                 elif user_group.name == "instructor":
+    #                     print("user email", user.email)
+    #                     instructor = Instructor.objects.get(id=user.email)
+    #                     print("instructor", instructor)
+    #                     user_serializer = InstructorSerializer(instructor)
+    #                     session = user_serializer.data.get("session", None)
+    #                     if session is not None:
+    #                         session_instance = Sessions.objects.get(id=session[0])
+    #                         session_data = SessionsSerializer(session_instance)
     #                 return Response(
     #                     {
     #                         "status_code": status.HTTP_200_OK,
@@ -211,8 +127,10 @@ class UserLoginView(views.APIView):
     #                         "response": {
     #                             "token": tokens,
     #                             "Group": user_group.name,
-    #                             "user": user_profile.data,
+    #                             "User": user_profile.data,
     #                             "permissions": permission,
+    #                             # 'user_data': user_serializer.data if user_serializer else None,
+    #                             "session": session_data.data if session_data else None,
     #                         },
     #                     }
     #                 )
@@ -230,6 +148,88 @@ class UserLoginView(views.APIView):
     #                 "response": serializer.errors,
     #             }
     #         )
+
+
+class UserLoginView(views.APIView):
+    """
+    View to handle user login and generate authentication tokens.
+    """
+
+    @extend_schema(
+        request=UserLoginSerializer,
+        responses={
+            200: "Login Successful.",
+            400: "Bad Request.",
+            401: "Unauthorized.",
+        },
+    )
+    def post(self, request):
+        """
+        Handle POST requests for user login.
+
+        This method processes the login request by validating the provided credentials.
+        If valid, it authenticates the user and generates authentication tokens.
+
+        Args:
+            request (Request): The HTTP request object containing the login data.
+
+        Returns:
+            Response: A Response object with authentication tokens if successful,
+                        or error details if validation fails.
+        """
+        data = request.data
+        if "email" not in data:
+            return Response(
+                {
+                    "status_code": status.HTTP_400_BAD_REQUEST,
+                    "message": "Email is not provided.",
+                }
+            )
+        if "password" not in data:
+            return Response(
+                {
+                    "status_code": status.HTTP_400_BAD_REQUEST,
+                    "message": "Password is not provided.",
+                }
+            )
+        data["email"] = data.get("email", "").lower()
+        serializer = UserLoginSerializer(data=data)
+        if serializer.is_valid(raise_exception=True):
+            user = authenticate(
+                email=serializer.validated_data["email"],
+                password=serializer.validated_data["password"],
+            )
+            if user is not None:
+                tokens = self.get_tokens_for_user(user)
+                user_group = Group.objects.get(user=user.id)
+                permission = self.get_group_permissions(user_group.id)
+                user_profile = UserProfileSerializer(user)
+                return Response(
+                    {
+                        "status_code": status.HTTP_200_OK,
+                        "message": "Login Successful.",
+                        "response": {
+                            "token": tokens,
+                            "Group": user_group.name,
+                            "user": user_profile.data,
+                            "permissions": permission,
+                        },
+                    }
+                )
+            else:
+                return Response(
+                    {
+                        "status_code": status.HTTP_401_UNAUTHORIZED,
+                        "message": "Invalid credentials.",
+                    },
+                )
+        return Response(
+            {
+                "status_code": status.HTTP_400_BAD_REQUEST,
+                "message": "Unable to login.",
+                "response": serializer.errors,
+            }
+        )
 
     def get_tokens_for_user(self, user):
         """
@@ -691,7 +691,7 @@ class StudentListView(CustomResponseMixin, generics.ListAPIView):
 class InstructorListView(CustomResponseMixin, generics.ListAPIView):
     queryset = Instructor.objects.all()
     serializer_class = InstructorSerializer
-    permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
+    permission_classes = [permissions.IsAuthenticated]
 
     def list(self, request, *args, **kwargs):
         response = super().list(request, *args, **kwargs)
@@ -701,7 +701,7 @@ class InstructorListView(CustomResponseMixin, generics.ListAPIView):
 
 
 class AssignCoursesView(CustomResponseMixin, views.APIView):
-    permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
+    permission_classes = [permissions.IsAuthenticated]
 
     @extend_schema(
         request=AssignCoursesSerializer,
@@ -718,6 +718,11 @@ class AssignCoursesView(CustomResponseMixin, views.APIView):
             instructor = Instructor.objects.get(id=instructor_id)
             courses = Course.objects.filter(id__in=course_ids)
             instructor.courses.set(courses)
+
+            for course in courses:
+                course.instructors.add(instructor)
+                course.save()
+
             return self.custom_response(
                 status.HTTP_200_OK, "Courses assigned successfully.", {}
             )
