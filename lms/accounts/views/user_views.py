@@ -112,7 +112,7 @@ class UserLoginView(views.APIView):
                     user_serializer = InstructorSerializer(instructor)
                     session = user_serializer.data.get('session', None)
                     if session: 
-                        session_instance = Sessions.objects.get(id=session) 
+                        session_instance = Sessions.objects.get(id__in=session) 
                         session_data = SessionsSerializer(session_instance)
                     else:
                         session_data = None
