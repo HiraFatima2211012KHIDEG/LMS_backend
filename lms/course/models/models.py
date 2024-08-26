@@ -15,7 +15,7 @@ STATUS_CHOICES = (
 
 class Skill(models.Model):
     skill_name=models.CharField(max_length=100)
-    # created_at = models.DateTimeField(auto_now_add=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.skill_name
@@ -27,7 +27,7 @@ class Course(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=0)
+    status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=1)
     credit_hours = models.IntegerField()
     skills = models.ManyToManyField('Skill',  blank=True)
     instructors = models.ManyToManyField('accounts.Instructor', blank=True) 
@@ -44,7 +44,7 @@ class Module(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=0)
+    status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=1)
 
     def __str__(self):
         return self.name
@@ -70,7 +70,7 @@ class Assignment(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=0)
+    status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=1)
     question = models.TextField(null=True, blank=True)
     description = models.TextField(null=True, blank=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,null=True, blank=True)
@@ -157,7 +157,7 @@ class Quizzes(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=0)
+    status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=1)
     question = models.TextField(null=True, blank=True)
     description = models.TextField(null=True, blank=True)
     content = models.FileField(
@@ -244,7 +244,7 @@ class Project(models.Model):
     due_date = models.DateTimeField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=0)
+    status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=1)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     no_of_resubmissions_allowed = models.IntegerField(default=0)
 
@@ -319,7 +319,7 @@ class Exam(models.Model):
     due_date = models.DateTimeField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=0)
+    status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=1)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
 
     def __str__(self):

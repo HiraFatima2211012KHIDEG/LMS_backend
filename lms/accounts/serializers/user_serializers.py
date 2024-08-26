@@ -387,19 +387,17 @@ class UserpasswordResetSerializer(serializers.Serializer):
 
 class StudentSerializer(serializers.ModelSerializer):
 
-    user = UserSerializer()
-
     class Meta:
         model = Student
         fields = ["registration_id", "user", "session"]
 
 
 class InstructorSerializer(serializers.ModelSerializer):
-    user = UserSerializer()
+    # user = UserSerializer()
 
     class Meta:
         model = Instructor
-        fields = ["user", "session"]
+        fields = "__all__"
 
 
 class AssignCoursesSerializer(serializers.Serializer):

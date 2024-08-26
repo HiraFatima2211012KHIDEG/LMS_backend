@@ -101,17 +101,21 @@ class UserLoginView(views.APIView):
                     student = Student.objects.get(user=user.id)
                     user_serializer = StudentSerializer(student)
                     session = user_serializer.data.get('session', None)
-                    if session is not None:
-                        session_instance = Sessions.objects.get(id=session)
+                    if session: 
+                        session_instance = Sessions.objects.get(id=session) 
                         session_data = SessionsSerializer(session_instance)
+                    else:
+                        session_data = None
                         
                 elif user_group.name == 'instructor':
-                    instructor = Instructor.objects.get(user=user.id)
+                    instructor = Instructor.objects.get(id=user.email)
                     user_serializer = InstructorSerializer(instructor)
                     session = user_serializer.data.get('session', None)
-                    if session is not None:
-                        session_instance = Sessions.objects.get(id=session)
+                    if session: 
+                        session_instance = Sessions.objects.get(id=session) 
                         session_data = SessionsSerializer(session_instance)
+                    else:
+                        session_data = None
                 return Response({
                     'status_code': status.HTTP_200_OK,
                     'message': 'Login Successful.',
@@ -135,6 +139,83 @@ class UserLoginView(views.APIView):
                         'message': 'Unable to login.',
                         'response' : serializer.errors
         })
+# class UserLoginView(views.APIView):
+#     """
+#     View to handle user login and generate authentication tokens.
+#     """
+#     @extend_schema(
+#         request=UserLoginSerializer,
+#         responses={
+#             200: "Login Successful.",
+#             400: "Bad Request.",
+#             401: "Unauthorized.",
+#         },
+#     )
+#     def post(self, request):
+#         """
+#         Handle POST requests for user login.
+#         This method processes the login request by validating the provided credentials.
+#         If valid, it authenticates the user and generates authentication tokens.
+#         Args:
+#             request (Request): The HTTP request object containing the login data.
+#         Returns:
+#             Response: A Response object with authentication tokens if successful,
+#                       or error details if validation fails.
+#         """
+#         data = request.data
+#         if "email" not in data:
+#             return Response(
+#                 {
+#                     "status_code": status.HTTP_400_BAD_REQUEST,
+#                     "message": "Email is not provided.",
+#                 }
+#             )
+#         if "password" not in data:
+#             return Response(
+#                 {
+#                     "status_code": status.HTTP_400_BAD_REQUEST,
+#                     "message": "Password is not provided.",
+#                 }
+#             )
+#         data["email"] = data.get("email", "").lower()
+#         serializer = UserLoginSerializer(data=data)
+#         if serializer.is_valid(raise_exception=True):
+#             user = authenticate(
+#                 email=serializer.validated_data["email"],
+#                 password=serializer.validated_data["password"],
+#             )
+#             if user is not None:
+#                 tokens = self.get_tokens_for_user(user)
+#                 user_group = Group.objects.get(user=user.id)
+#                 permission = self.get_group_permissions(user_group.id)
+#                 user_profile = UserProfileSerializer(user)
+#                 return Response(
+#                     {
+#                         "status_code": status.HTTP_200_OK,
+#                         "message": "Login Successful.",
+#                         "response": {
+#                             "token": tokens,
+#                             "Group": user_group.name,
+#                             "user": user_profile.data,
+#                             "permissions": permission,
+                            
+#                         },
+#                     }
+#                 )
+#             else:
+#                 return Response(
+#                     {
+#                         "status_code": status.HTTP_401_UNAUTHORIZED,
+#                         "message": "Invalid credentials.",
+#                     },
+#                 )
+#         return Response(
+#             {
+#                 "status_code": status.HTTP_400_BAD_REQUEST,
+#                 "message": "Unable to login.",
+#                 "response": serializer.errors,
+#             }
+#         )
     def get_tokens_for_user(self, user):
         """
         Generate JWT tokens for the authenticated user.

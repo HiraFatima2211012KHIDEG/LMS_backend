@@ -31,15 +31,6 @@ class SessionsSerializer(serializers.ModelSerializer):
         fields = ["location", "no_of_students", "batch", "start_time", "end_time"]
 
 
-class StudentSerializer(serializers.ModelSerializer):
-    registration_id = serializers.CharField(read_only=True)
-
-    class Meta:
-        model = Student
-        fields = ["registration_id", "user", "session"]
-
-        fields = ["id", "location", "no_of_students", "batch", "start_time", "end_time"]
-
 
 class AssignSessionsSerializer(serializers.Serializer):
     session_ids = serializers.ListField(child=serializers.IntegerField())
