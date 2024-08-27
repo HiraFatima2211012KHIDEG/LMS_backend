@@ -695,6 +695,10 @@ class AssignCoursesView(CustomResponseMixin, views.APIView):
             instructor = Instructor.objects.get(id=instructor_id)
             courses = Course.objects.filter(id__in=course_ids)
             instructor.courses.set(courses)
+
+            for course in courses:
+                course.instructors.add(instructor)
+                course.save()
             return self.custom_response(
                 status.HTTP_200_OK, "Courses assigned successfully.", {}
             )
