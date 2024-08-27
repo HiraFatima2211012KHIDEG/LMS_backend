@@ -9,19 +9,10 @@ from rest_framework.parsers import MultiPartParser, FormParser
 import logging
 from django.apps import apps
 from drf_spectacular.utils import extend_schema
+from utils.custom import CustomResponseMixin, custom_extend_schema
 
 logger = logging.getLogger(__name__)
 
-class CustomResponseMixin:
-    def custom_response(self, status_code, message, data):
-        return Response(
-            {
-                'status_code': status_code,
-                'message': message,
-                'data': data
-            },
-            status=status_code
-        )
 
 
 class CourseModulesAPIView(CustomResponseMixin, APIView):
@@ -44,19 +35,12 @@ class CourseListCreateAPIView(CustomResponseMixin, APIView):
         logger.info("Retrieved all courses")
         return self.custom_response(status.HTTP_200_OK, 'Courses retrieved successfully', serializer.data)
 
-    @extend_schema(
-        request=CourseSerializer,
-        responses={
-            200: "Successful.",
-            400: "Bad Request.",
-            401: "Unauthorized.",
-        },
-    )
 
+    @custom_extend_schema(CourseSerializer)
     def post(self, request, format=None):
         data = {key: value for key, value in request.data.items()}
         data['created_by'] = request.user.id
-       
+
 
         serializer = CourseSerializer(data=data)
         if serializer.is_valid():
@@ -78,11 +62,11 @@ class CourseDetailAPIView(CustomResponseMixin, APIView):
         return self.custom_response(status.HTTP_200_OK, 'Course retrieved successfully', serializer.data)
 
 
-
+    @custom_extend_schema(CourseSerializer)
     def put(self, request, pk, format=None):
         data = {key: value for key, value in request.data.items()}
         data['created_by'] = request.user.id
-        
+
 
         course = get_object_or_404(Course, pk=pk)
         serializer = CourseSerializer(course, data=data)
@@ -108,10 +92,11 @@ class ModuleListCreateAPIView(CustomResponseMixin, APIView):
         serializer = ModuleSerializer(modules, many=True)
         return self.custom_response(status.HTTP_200_OK, 'Modules retrieved successfully', serializer.data)
 
+    @custom_extend_schema(ModuleSerializer)
     def post(self, request, format=None):
         data = {key: value for key, value in request.data.items()}
         data['created_by'] = request.user.id
-     
+
 
         serializer = ModuleSerializer(data=data)
         if serializer.is_valid():
@@ -132,11 +117,11 @@ class ModuleDetailAPIView(CustomResponseMixin, APIView):
         serializer = ModuleSerializer(module)
         return self.custom_response(status.HTTP_200_OK, 'Module retrieved successfully', serializer.data)
 
-
+    @custom_extend_schema(ModuleSerializer)
     def put(self, request, pk, format=None):
         data = {key: value for key, value in request.data.items()}
         data['created_by'] = request.user.id
-      
+
 
         module = get_object_or_404(Module, pk=pk)
         serializer = ModuleSerializer(module, data=data)

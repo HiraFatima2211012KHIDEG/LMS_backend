@@ -9,18 +9,10 @@ from accounts.models.user_models import *
 from ..serializers import *
 from drf_spectacular.utils import extend_schema, inline_serializer
 from rest_framework import serializers
+from utils.custom import CustomResponseMixin, custom_extend_schema
 
 import logging
-class CustomResponseMixin:
-    def custom_response(self, status_code, message, data):
-        return Response(
-            {
-                'status_code': status_code,
-                'message': message,
-                'data': data
-            },
-            status=status_code
-        )
+
 logger = logging.getLogger(__name__)
 
 class ProgramListCreateAPIView(CustomResponseMixin, APIView):
@@ -32,6 +24,7 @@ class ProgramListCreateAPIView(CustomResponseMixin, APIView):
         logger.info("Retrieved all programs")
         return self.custom_response(status.HTTP_200_OK, 'Programs retrieved successfully', serializer.data)
 
+    @custom_extend_schema(ProgramSerializer)
     def post(self, request, format=None):
         data = {key: value for key, value in request.data.items()}
         data['created_by'] = request.user.id
@@ -54,6 +47,7 @@ class ProgramDetailAPIView(CustomResponseMixin, APIView):
         logger.info(f"Retrieved program with ID: {pk}")
         return self.custom_response(status.HTTP_200_OK, 'Program retrieved successfully', serializer.data)
 
+    @custom_extend_schema(ProgramSerializer)
     def put(self, request, pk, format=None):
         data = {key: value for key, value in request.data.items()}
         data['created_by'] = request.user.id
@@ -89,31 +83,34 @@ class ProgramCoursesAPIView(CustomResponseMixin, APIView):
 
 
 class CreateProgramView(APIView):
+    """Create a new Program by providing course IDs and other required details."""
+
     permission_classes = [permissions.IsAuthenticated]
 
-    @extend_schema(
-        request=inline_serializer(
-            name='ProgramCreateRequest',
-            fields={
-                'name': serializers.CharField(max_length=255),
-                'short_description': serializers.CharField(),
-                'about': serializers.CharField(),
-                'courses': serializers.ListField(
-                    child=serializers.IntegerField(),
-                    allow_empty=False,
-                    help_text="List of course IDs to be associated with the program"
-                ),
-                'status': serializers.ChoiceField(choices=[(0, 'Inactive'), (1, 'Active')]),
-                'picture': serializers.ImageField(required=False, allow_null=True)
-            }
-        ),
-        responses={
-            201: ProgramSerializer,
-            400: "Bad Request.",
-            401: "Unauthorized.",
-        },
-        description="Create a new Program by providing course IDs and other required details."
-    )
+    # @extend_schema(
+    #     request=inline_serializer(
+    #         name='ProgramCreateRequest',
+    #         fields={
+    #             'name': serializers.CharField(max_length=255),
+    #             'short_description': serializers.CharField(),
+    #             'about': serializers.CharField(),
+    #             'courses': serializers.ListField(
+    #                 child=serializers.IntegerField(),
+    #                 allow_empty=False,
+    #                 help_text="List of course IDs to be associated with the program"
+    #             ),
+    #             'status': serializers.ChoiceField(choices=[(0, 'Inactive'), (1, 'Active')]),
+    #             'picture': serializers.ImageField(required=False, allow_null=True)
+    #         }
+    #     ),
+    #     responses={
+    #         201: ProgramSerializer,
+    #         400: "Bad Request.",
+    #         401: "Unauthorized.",
+    #     },
+    #     description="Create a new Program by providing course IDs and other required details."
+    # )
+    @custom_extend_schema(ProgramSerializer)
     def post(self, request, *args, **kwargs):
         course_ids = request.data.get('courses')
         if not course_ids:

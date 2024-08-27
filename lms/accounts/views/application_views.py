@@ -27,6 +27,7 @@ from django.core.signing import TimestampSigner
 import base64
 from django.core.signing import TimestampSigner, SignatureExpired, BadSignature
 from utils.custom import CustomResponseMixin
+from utils.custom import custom_extend_schema
 
 
 class CreateApplicationView(generics.CreateAPIView):
@@ -66,6 +67,7 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
 
     # permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
 
+    @custom_extend_schema(ApplicationSerializer)
     def get(self, request, program_id=None):
         if program_id is None:
             return self.custom_response(
@@ -109,6 +111,7 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
                 None,
             )
 
+    @custom_extend_schema(ApplicationSerializer)
     def patch(self, request):
         data = request.data
         application_id = request.query_params.get("application_id")
@@ -305,18 +308,26 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
 #                 status.HTTP_400_BAD_REQUEST, "User not found.", None
 #             )
 
+
 class VerifyEmailandSetPasswordView(views.APIView, CustomResponseMixin):
     permission_classes = [permissions.AllowAny]
+
     def post(self, request):
-        token = request.data.get('token')
-        password = request.data.get('password')
-        password2 = request.data.get('password2')
+        token = request.data.get("token")
+        password = request.data.get("password")
+        password2 = request.data.get("password2")
         if not token:
-            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Token is required.', None)
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST, "Token is required.", None
+            )
         if not password:
-            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'password is required.', None)
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST, "password is required.", None
+            )
         if not password2:
-            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Confirm password is required.', None)
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST, "Confirm password is required.", None
+            )
         signer = TimestampSigner()
         try:
             with transaction.atomic():
@@ -333,16 +344,18 @@ class VerifyEmailandSetPasswordView(views.APIView, CustomResponseMixin):
                 user_id, email = decoded_data.split(":")
                 existing_user = get_user_model().objects.filter(email=email).first()
                 if existing_user:
-                    return self.custom_response(status.HTTP_400_BAD_REQUEST, 'User already verified', None)
+                    return self.custom_response(
+                        status.HTTP_400_BAD_REQUEST, "User already verified", None
+                    )
                 # Retrieve the application and create a user
                 application = Applications.objects.get(id=user_id)
                 user_data = {
-                    'email': application.email,
-                    'first_name': application.first_name,
-                    'last_name': application.last_name,
-                    'contact': application.contact,
-                    'city': application.city,
-                    'is_verified': True
+                    "email": application.email,
+                    "first_name": application.first_name,
+                    "last_name": application.last_name,
+                    "contact": application.contact,
+                    "city": application.city,
+                    "is_verified": True,
                 }
                 user = get_user_model().objects.create_user(**user_data)
                 # Create StudentInstructor record based on group_name
@@ -351,28 +364,46 @@ class VerifyEmailandSetPasswordView(views.APIView, CustomResponseMixin):
                     year = str(application.year)[-2:]
                     batch = f"{city_abb}-{year}"
                     Student.objects.create(
-                        user=user,
-                        registration_id=f"{batch}-{user.id}"
+                        user=user, registration_id=f"{batch}-{user.id}"
                     )
                 elif application.group_name == "instructor":
-                    Instructor.objects.create(
-                        id = user
-                    )
+                    Instructor.objects.create(id=user)
                 else:
-                    return self.custom_response(status.HTTP_400_BAD_REQUEST, "Invalid group_name.", None)
-                password_data = {'password': password, 'password2': password2}
-                serializer = SetPasswordSerializer(data=password_data, context={'user': user})
+                    return self.custom_response(
+                        status.HTTP_400_BAD_REQUEST, "Invalid group_name.", None
+                    )
+                password_data = {"password": password, "password2": password2}
+                serializer = SetPasswordSerializer(
+                    data=password_data, context={"user": user}
+                )
                 if serializer.is_valid(raise_exception=True):
                     serializer.save()
                 else:
-                    return self.custom_response(status.HTTP_400_BAD_REQUEST, "Verification failed.", serializer.errors)
-                return self.custom_response(status.HTTP_200_OK, "Email verified and user created successfully.", serializer.data)
+                    return self.custom_response(
+                        status.HTTP_400_BAD_REQUEST,
+                        "Verification failed.",
+                        serializer.errors,
+                    )
+                return self.custom_response(
+                    status.HTTP_200_OK,
+                    "Email verified and user created successfully.",
+                    serializer.data,
+                )
         except SignatureExpired:
-                return self.custom_response(status.HTTP_400_BAD_REQUEST, 'The reset link has expired.', None)
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST, "The reset link has expired.", None
+            )
         except BadSignature:
-            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Invalid token or data tampering detected.', None)
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST,
+                "Invalid token or data tampering detected.",
+                None,
+            )
         except Applications.DoesNotExist:
-            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'User not found.', None)
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST, "User not found.", None
+            )
+
 
 class ResendVerificationEmail(views.APIView):
 

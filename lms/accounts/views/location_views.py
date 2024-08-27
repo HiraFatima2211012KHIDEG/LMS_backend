@@ -15,7 +15,7 @@ from ..serializers.location_serializers import (
     SessionsSerializer,
     AssignSessionsSerializer,
 )
-from utils.custom import CustomResponseMixin
+from utils.custom import CustomResponseMixin, custom_extend_schema
 from rest_framework import views
 from drf_spectacular.utils import extend_schema, inline_serializer
 
@@ -99,15 +99,11 @@ class CreateBatchLocationSessionView(views.APIView):
 
 
 class AssignSessionsView(CustomResponseMixin, views.APIView):
+    """Assign sessions to an instructor by providing a list of session IDs."""
+
     permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
-    @extend_schema(
-        request=AssignSessionsSerializer,
-        responses={
-            200: "sucessfull",
-            400: "Bad Request.",
-        },
-        description="Assign sessions to an instructor by providing a list of session IDs.",
-    )
+
+    @custom_extend_schema(AssignSessionsSerializer)
     def post(self, request, instructor_id):
         serializer = AssignSessionsSerializer(data=request.data)
         if serializer.is_valid():

@@ -6,20 +6,10 @@ from django.shortcuts import get_object_or_404
 from ..serializers import ContentFile,ContentFileSerializer
 from accounts.models.user_models import *
 import logging
+from utils.custom import CustomResponseMixin, custom_extend_schema
 
 logger = logging.getLogger(__name__)
 
-
-class CustomResponseMixin:
-    def custom_response(self, status_code, message, data):
-        return Response(
-            {
-                'status_code': status_code,
-                'message': message,
-                'data': data
-            },
-            status=status_code
-        )
 
 
 class ContentFileListCreateAPIView(CustomResponseMixin, APIView):
@@ -30,6 +20,7 @@ class ContentFileListCreateAPIView(CustomResponseMixin, APIView):
         serializer = ContentFileSerializer(content_files, many=True)
         return self.custom_response(status.HTTP_200_OK, 'Content files retrieved successfully', serializer.data)
 
+    @custom_extend_schema(ContentFileSerializer)
     def post(self, request, format=None):
         serializer = ContentFileSerializer(data=request.data)
         if serializer.is_valid():
@@ -45,6 +36,7 @@ class ContentFileDetailAPIView(CustomResponseMixin,APIView):
         serializer = ContentFileSerializer(content_file)
         return self.custom_response(status.HTTP_200_OK, 'Content file retrieved successfully', serializer.data)
 
+    @custom_extend_schema(ContentFileSerializer)
     def put(self, request, pk, format=None):
         content_file = get_object_or_404(ContentFile, pk=pk)
         serializer = ContentFileSerializer(content_file, data=request.data)
@@ -52,7 +44,7 @@ class ContentFileDetailAPIView(CustomResponseMixin,APIView):
             serializer.save()
             return self.custom_response(status.HTTP_200_OK, 'Content file updated successfully', serializer.data)
         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error updating content file', serializer.errors)
-    
+
 
     def delete(self, request, pk, format=None):
         content_file = get_object_or_404(ContentFile, pk=pk)

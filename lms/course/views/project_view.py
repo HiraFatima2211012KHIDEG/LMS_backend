@@ -9,18 +9,10 @@ from accounts.models.user_models import *
 import logging
 from django.utils import timezone
 from decimal import Decimal
+from utils.custom import CustomResponseMixin, custom_extend_schema
 
 logger = logging.getLogger(__name__)
-class CustomResponseMixin:
-    def custom_response(self, status_code, message, data):
-        return Response(
-            {
-                'status_code': status_code,
-                'message': message,
-                'data': data
-            },
-            status=status_code
-        )
+
 
 class ProjectListCreateAPIView(CustomResponseMixin,APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -30,10 +22,11 @@ class ProjectListCreateAPIView(CustomResponseMixin,APIView):
         serializer = ProjectSerializer(projects, many=True)
         return self.custom_response(status.HTTP_200_OK, 'Projects retrieved successfully', serializer.data)
 
+    @custom_extend_schema(ProjectSerializer)
     def post(self, request, format=None):
         data = {key: value for key, value in request.data.items()}
         data['created_by'] = request.user.id
-       
+
         file_content = request.FILES.get('content', None)
         if file_content is not None:
             data['content'] = file_content
@@ -54,10 +47,11 @@ class ProjectDetailAPIView(CustomResponseMixin, APIView):
         serializer = ProjectSerializer(project)
         return self.custom_response(status.HTTP_200_OK, 'Project retrieved successfully', serializer.data)
 
+    @custom_extend_schema(ProjectSerializer)
     def put(self, request, pk, format=None):
         data = {key: value for key, value in request.data.items()}
         data['created_by'] = request.user.id
-       
+
 
         project = get_object_or_404(Project, pk=pk)
         file_content = request.FILES.get('content', None)
@@ -87,6 +81,7 @@ class ProjectSubmissionListCreateAPIView(CustomResponseMixin, APIView):
         serializer = ProjectSubmissionSerializer(project_submissions, many=True)
         return self.custom_response(status.HTTP_200_OK, 'Project submissions retrieved successfully', serializer.data)
 
+    @custom_extend_schema(ProjectSubmissionSerializer)
     def post(self, request, format=None):
         data = {key: value for key, value in request.data.items()}
         data['user'] = request.user.id
@@ -106,33 +101,33 @@ class ProjectSubmissionListCreateAPIView(CustomResponseMixin, APIView):
     # def post(self, request, format=None):
     #     data = {key: value for key, value in request.data.items()}
     #     data['user'] = request.user.id
-        
+
     #     try:
     #         student_instructor = Student.objects.get(user=request.user)
     #         data['registration_id'] = student_instructor.registration_id
     #     except Student.DoesNotExist:
     #         logger.error("Student not found for user: %s", request.user)
     #         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Student not found for user', {})
-        
+
     #     project_id = data.get('project')
     #     if not project_id:
     #         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Project ID is required', {})
-        
+
     #     # Check if the student has already submitted this project
     #     existing_submission = ProjectSubmission.objects.filter(
     #         user=request.user,
     #         project_id=project_id
     #     ).first()
-        
+
     #     if existing_submission:
     #         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'You have already submitted this project', {})
-        
+
     #     data['status'] = 1
     #     serializer = ProjectSubmissionSerializer(data=data)
     #     if serializer.is_valid():
     #         serializer.save(user=request.user)
     #         return self.custom_response(status.HTTP_201_CREATED, 'Project submission created successfully', serializer.data)
-        
+
     #     return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error creating project submission', serializer.errors)
 
 
@@ -161,7 +156,7 @@ class ProjectSubmissionDetailAPIView(CustomResponseMixin, APIView):
     #         return self.custom_response(status.HTTP_200_OK, 'Project submission updated successfully', serializer.data)
     #     return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error updating project submission', serializer.errors)
 
-
+    @custom_extend_schema(ProjectSubmissionSerializer)
     def put(self, request, pk, format=None):
         data = {key: value for key, value in request.data.items()}
         data['user'] = request.user.id
@@ -192,7 +187,7 @@ class ProjectSubmissionDetailAPIView(CustomResponseMixin, APIView):
         project_submission = get_object_or_404(ProjectSubmission, pk=pk)
         project_submission.delete()
         return self.custom_response(status.HTTP_204_NO_CONTENT, 'Project submission deleted successfully', {})
-    
+
 
 
 
@@ -204,10 +199,11 @@ class ProjectGradingListCreateAPIView(CustomResponseMixin, APIView):
         serializer = ProjectGradingSerializer(project_gradings, many=True)
         return self.custom_response(status.HTTP_200_OK, 'Project gradings retrieved successfully', serializer.data)
 
+    @custom_extend_schema(ProjectGradingSerializer)
     def post(self, request, format=None):
         data = {key: value for key, value in request.data.items()}
         data['graded_by'] = request.user.id
-       
+
 
         serializer = ProjectGradingSerializer(data=data)
         if serializer.is_valid():
@@ -223,10 +219,11 @@ class ProjectGradingDetailAPIView(CustomResponseMixin, APIView):
         serializer = ProjectGradingSerializer(project_grading)
         return self.custom_response(status.HTTP_200_OK, 'Project grading retrieved successfully', serializer.data)
 
+    @custom_extend_schema(ProjectGradingSerializer)
     def put(self, request, pk, format=None):
         data = {key: value for key, value in request.data.items()}
         data['graded_by'] = request.user.id
-        
+
 
         project_grading = get_object_or_404(ProjectGrading, pk=pk)
         serializer = ProjectGradingSerializer(project_grading, data=data, partial=True)
@@ -250,14 +247,14 @@ class ProjectsByCourseIDAPIView(CustomResponseMixin, APIView):
     def get(self, request, course_id, format=None):
         user = request.user
         projects = Project.objects.filter(course_id=course_id)
-        
+
         if not projects.exists():
             return self.custom_response(status.HTTP_200_OK, 'No projects found', {})
-        
+
         projects_data = []
         for project in projects:
             submission = ProjectSubmission.objects.filter(project=project, user=user).first()
-            
+
             # Determine submission status
             if submission:
                 if submission.status == 1:  # Submitted
@@ -269,7 +266,7 @@ class ProjectsByCourseIDAPIView(CustomResponseMixin, APIView):
                     submission_status = 'Not Submitted'  # Due date has passed without submission
                 else:
                     submission_status = 'Pending'  # Due date has not passed, and not yet submitted
-            
+
             project_data = {
                 'id': project.id,
                 'question': project.title,
@@ -283,7 +280,7 @@ class ProjectsByCourseIDAPIView(CustomResponseMixin, APIView):
                 'comments': submission.comments if submission else None,
             }
             projects_data.append(project_data)
-        
+
         return self.custom_response(status.HTTP_200_OK, 'Projects retrieved successfully', projects_data)
 
 
@@ -298,11 +295,11 @@ class ProjectDetailView(APIView):
         sum_of_total_marks = Decimal('0.0')
 
         projects_data = []
-        
+
         for project in projects:
             submission = submissions.filter(project=project).first()
             grading = ProjectGrading.objects.filter(project_submissions=submission).first() if submission else None
-            
+
             if submission:
                 submission_status = 'Submitted' if submission.status == 1 else 'Pending'
             else:
@@ -317,8 +314,8 @@ class ProjectDetailView(APIView):
 
             project_data = {
                 'project_name': project.title,
-                'marks_obtain': float(marks_obtain),  
-                'total_marks': float(total_marks),  
+                'marks_obtain': float(marks_obtain),
+                'total_marks': float(total_marks),
                 'remarks': remarks,
                 'status': submission_status,
             }
@@ -328,6 +325,6 @@ class ProjectDetailView(APIView):
             'status': status.HTTP_200_OK,
             'message': 'Projects retrieved successfully.',
             'data': projects_data,
-            'total_marks_obtained': float(total_marks_obtained), 
+            'total_marks_obtained': float(total_marks_obtained),
             'sum_of_total_marks': float(sum_of_total_marks)
         })

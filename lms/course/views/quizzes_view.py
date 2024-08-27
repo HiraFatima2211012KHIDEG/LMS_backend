@@ -8,18 +8,11 @@ from accounts.models.user_models import *
 import logging
 from django.utils import timezone
 from decimal import Decimal
+from utils.custom import CustomResponseMixin, custom_extend_schema
 
 logger = logging.getLogger(__name__)
-class CustomResponseMixin:
-    def custom_response(self, status_code, message, data):
-        return Response(
-            {
-                'status_code': status_code,
-                'message': message,
-                'data': data
-            },
-            status=status_code
-        )
+
+
 class QuizListCreateAPIView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
@@ -28,10 +21,11 @@ class QuizListCreateAPIView(CustomResponseMixin, APIView):
         serializer = QuizzesSerializer(quizzes, many=True)
         return self.custom_response(status.HTTP_200_OK, 'Quizzes retrieved successfully', serializer.data)
 
+    @custom_extend_schema(QuizzesSerializer)
     def post(self, request, format=None):
         data = {key: value for key, value in request.data.items()}
         data['created_by'] = request.user.id
-      
+
         file_content = request.FILES.get('content', None)
         if file_content is not None:
             data['content'] = file_content
@@ -52,10 +46,11 @@ class QuizDetailAPIView(CustomResponseMixin, APIView):
         serializer = QuizzesSerializer(quiz)
         return self.custom_response(status.HTTP_200_OK, 'Quiz retrieved successfully', serializer.data)
 
+    @custom_extend_schema(QuizzesSerializer)
     def put(self, request, pk, format=None):
         data = {key: value for key, value in request.data.items()}
         data['created_by'] = request.user.id
-       
+
 
         quiz = get_object_or_404(Quizzes, pk=pk)
         file_content = request.FILES.get('content', None)
@@ -82,6 +77,7 @@ class QuizSubmissionCreateAPIView(CustomResponseMixin, APIView):
         serializer = QuizSubmissionSerializer(quiz_submissions, many=True)
         return self.custom_response(status.HTTP_200_OK, 'Quiz submissions retrieved successfully', serializer.data)
 
+    @custom_extend_schema(QuizSubmissionSerializer)
     def post(self, request, format=None):
         data = {key: value for key, value in request.data.items()}
         data['user'] = request.user.id
@@ -103,34 +99,34 @@ class QuizSubmissionCreateAPIView(CustomResponseMixin, APIView):
     # def post(self, request, format=None):
     #     data = {key: value for key, value in request.data.items()}
     #     data['user'] = request.user.id
-        
+
     #     try:
     #         student_instructor = Student.objects.get(user=request.user)
     #         data['registration_id'] = student_instructor.registration_id
     #     except Student.DoesNotExist:
     #         logger.error("Student not found for user: %s", request.user)
     #         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Student not found for user', {})
-        
+
     #     quiz_id = data.get('quiz')
     #     if not quiz_id:
     #         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Quiz ID is required', {})
-        
+
     #     # Check if the student has already submitted this quiz
     #     existing_submission = QuizSubmission.objects.filter(
     #         user=request.user,
     #         quiz_id=quiz_id
     #     ).first()
-        
+
     #     if existing_submission:
     #         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'You have already submitted this quiz', {})
-        
+
     #     data['status'] = 1
     #     print(data)
     #     serializer = QuizSubmissionSerializer(data=data)
     #     if serializer.is_valid():
     #         serializer.save()
     #         return self.custom_response(status.HTTP_201_CREATED, 'Quiz submission created successfully', serializer.data)
-        
+
     #     return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error creating quiz submission', serializer.errors)
 
 
@@ -159,6 +155,7 @@ class QuizSubmissionDetailAPIView(CustomResponseMixin, APIView):
     #         return self.custom_response(status.HTTP_200_OK, 'Quiz submission updated successfully', serializer.data)
     #     return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error updating quiz submission', serializer.errors)
 
+    @custom_extend_schema(QuizSubmissionSerializer)
     def put(self, request, pk, format=None):
         data = {key: value for key, value in request.data.items()}
         data['user'] = request.user.id
@@ -199,18 +196,18 @@ class QuizGradingListCreateAPIVieww(CustomResponseMixin, APIView):
         serializer = QuizGradingSerializer(quiz_grading, many=True)
         return self.custom_response(status.HTTP_200_OK, 'Quiz gradings retrieved successfully', serializer.data)
 
-
+    @custom_extend_schema(QuizGradingSerializer)
     def post(self, request, format=None):
         data = {key: value for key, value in request.data.items()}
         data['graded_by'] = request.user.id
-       
+
 
         serializer = QuizGradingSerializer(data=data)
         if serializer.is_valid():
             serializer.save()
             return self.custom_response(status.HTTP_201_CREATED, 'Quiz grading created successfully', serializer.data)
         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error creating quiz grading', serializer.errors)
-    
+
 class QuizGradingDetailAPIView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
@@ -219,11 +216,12 @@ class QuizGradingDetailAPIView(CustomResponseMixin, APIView):
         serializer = QuizGradingSerializer(quiz_grading)
         return self.custom_response(status.HTTP_200_OK, 'Quiz grading retrieved successfully', serializer.data)
 
+    @custom_extend_schema(QuizGradingSerializer)
     def put(self, request, pk, format=None):
         data = {key: value for key, value in request.data.items()}
         data['graded_by'] = request.user.id
-       
-        
+
+
         quiz_grading = get_object_or_404(QuizGrading, pk=pk)
         serializer = QuizGradingSerializer(quiz_grading, data=data, partial=True)
         if serializer.is_valid():
@@ -235,33 +233,33 @@ class QuizGradingDetailAPIView(CustomResponseMixin, APIView):
         grading = get_object_or_404(QuizGrading, pk=pk)
         grading.delete()
         return self.custom_response(status.HTTP_204_NO_CONTENT, 'Quiz grading deleted successfully', {})
-    
+
 class QuizzesByCourseIDAPIView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request, course_id, format=None):
         user = request.user
         quizzes = Quizzes.objects.filter(course_id=course_id)
-        
+
         if not quizzes.exists():
             return self.custom_response(status.HTTP_200_OK, 'No quizzes found', {})
 
         quizzes_data = []
         for quiz in quizzes:
             submission = QuizSubmission.objects.filter(quiz=quiz, user=user).first()
-            
-           
+
+
             if submission:
-                if submission.status == 1:  
+                if submission.status == 1:
                     submission_status = 'Submitted'
                 else:
-                    submission_status = 'Pending'  
+                    submission_status = 'Pending'
             else:
                 if timezone.now() > quiz.due_date:
-                    submission_status = 'Not Submitted'  
+                    submission_status = 'Not Submitted'
                 else:
-                    submission_status = 'Pending'  
-            
+                    submission_status = 'Pending'
+
             quiz_data = {
                 'id': quiz.id,
                 'question': quiz.question,
@@ -277,7 +275,7 @@ class QuizzesByCourseIDAPIView(CustomResponseMixin, APIView):
 
         return self.custom_response(status.HTTP_200_OK, 'Quizzes retrieved successfully', quizzes_data)
 
-    
+
 class QuizDetailView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
@@ -287,16 +285,16 @@ class QuizDetailView(APIView):
         quizzes_data = []
         total_marks_obtained = Decimal('0.0')
         sum_of_total_marks = Decimal('0.0')
-        
+
         for quiz in quizzes:
             submission = submissions.filter(quiz=quiz).first()
             grading = QuizGrading.objects.filter(quiz_submissions=submission).first() if submission else None
-            
+
             if submission:
                 submission_status = 'Submitted' if submission.status == 1 else 'Pending'
             else:
                 submission_status = 'Not Submitted' if timezone.now() > quiz.due_date else 'Pending'
-            
+
             marks_obtain = grading.grade if grading else Decimal('0.0')
             total_marks = grading.total_grade if grading else Decimal('0.0')
             remarks = grading.feedback if grading else None
@@ -306,8 +304,8 @@ class QuizDetailView(APIView):
 
             quiz_data = {
                 'quiz_name': quiz.question,
-                'marks_obtain': float(marks_obtain),  
-                'total_marks': float(total_marks),  
+                'marks_obtain': float(marks_obtain),
+                'total_marks': float(total_marks),
                 'remarks': remarks,
                 'status': submission_status,
             }
@@ -317,6 +315,6 @@ class QuizDetailView(APIView):
             'status': status.HTTP_200_OK,
             'message': 'Quizzes retrieved successfully.',
             'data': quizzes_data,
-            'total_marks_obtain': float(total_marks_obtained), 
+            'total_marks_obtain': float(total_marks_obtained),
             'sum_of_total_marks': float(sum_of_total_marks)
         })

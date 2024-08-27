@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from ..models.models import *
 from ..serializers import *
+from utils.custom import custom_extend_schema
 
 class WeightageListCreateAPIView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
@@ -16,6 +17,7 @@ class WeightageListCreateAPIView(APIView):
             'data': serializer.data
         }, status=status.HTTP_200_OK)
 
+    @custom_extend_schema(WeightageSerializer)
     def post(self, request, format=None):
         serializer = WeightageSerializer(data=request.data)
         if serializer.is_valid():
@@ -40,6 +42,7 @@ class WeightageDetailAPIView(APIView):
             'data': serializer.data
         }, status=status.HTTP_200_OK)
 
+    @custom_extend_schema(WeightageSerializer)
     def put(self, request, pk, format=None):
         weightage = get_object_or_404(Weightage, pk=pk)
         serializer = WeightageSerializer(weightage, data=request.data, partial=True)
@@ -68,6 +71,7 @@ class SkillListCreateAPIView(APIView):
         serializer = SkillSerializer(skills, many=True)
         return Response(serializer.data)
 
+    @custom_extend_schema(SkillSerializer)
     def post(self, request):
         serializer = SkillSerializer(data=request.data)
         if serializer.is_valid():
@@ -82,16 +86,17 @@ class SkillRetrieveUpdateDestroyAPIView(APIView):
             skill = Skill.objects.get(pk=pk)
         except Skill.DoesNotExist:
             return Response({'error': 'Skill not found'}, status=status.HTTP_404_NOT_FOUND)
-        
+
         serializer = SkillSerializer(skill)
         return Response(serializer.data)
 
+    @custom_extend_schema(SkillSerializer)
     def put(self, request, pk):
         try:
             skill = Skill.objects.get(pk=pk)
         except Skill.DoesNotExist:
             return Response({'error': 'Skill not found'}, status=status.HTTP_404_NOT_FOUND)
-        
+
         serializer = SkillSerializer(skill, data=request.data)
         if serializer.is_valid():
             serializer.save()
@@ -103,6 +108,6 @@ class SkillRetrieveUpdateDestroyAPIView(APIView):
             skill = Skill.objects.get(pk=pk)
         except Skill.DoesNotExist:
             return Response({'error': 'Skill not found'}, status=status.HTTP_404_NOT_FOUND)
-        
+
         skill.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)

@@ -8,19 +8,10 @@ from accounts.models.user_models import *
 import logging
 from django.utils import timezone
 from decimal import Decimal
+from utils.custom import CustomResponseMixin, custom_extend_schema
 
 logger = logging.getLogger(__name__)
 
-class CustomResponseMixin:
-    def custom_response(self, status_code, message, data):
-        return Response(
-            {
-                'status_code': status_code,
-                'message': message,
-                'data': data
-            },
-            status=status_code
-        )
 
 class ExamListCreateAPIView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
@@ -30,12 +21,13 @@ class ExamListCreateAPIView(CustomResponseMixin, APIView):
         serializer = ExamSerializer(exams, many=True)
         return self.custom_response(status.HTTP_200_OK, 'Exams retrieved successfully', serializer.data)
 
+    @custom_extend_schema(ExamSerializer)
     def post(self, request, format=None):
         # data = request.data.copy()
         data = {key: value for key, value in request.data.items()}
         data['created_by'] = request.user.id
-       
-        
+
+
         file_content = request.FILES.get('content', None)
         if file_content is not None:
             data['content'] = file_content
@@ -56,11 +48,12 @@ class ExamDetailAPIView(CustomResponseMixin, APIView):
         serializer = ExamSerializer(exam)
         return self.custom_response(status.HTTP_200_OK, 'Exam retrieved successfully', serializer.data)
 
+    @custom_extend_schema(ExamSerializer)
     def put(self, request, pk, format=None):
         # data = request.data.copy()
         data = {key: value for key, value in request.data.items()}
-        data['created_by'] = request.user.id 
-       
+        data['created_by'] = request.user.id
+
 
         exam = get_object_or_404(Exam, pk=pk)
         file_content = request.FILES.get('content', None)
@@ -78,7 +71,7 @@ class ExamDetailAPIView(CustomResponseMixin, APIView):
         exam = get_object_or_404(Exam, pk=pk)
         exam.delete()
         return self.custom_response(status.HTTP_204_NO_CONTENT, 'Exam deleted successfully', {})
-    
+
 
 
 class ExamSubmissionListCreateAPIView(CustomResponseMixin, APIView):
@@ -105,36 +98,37 @@ class ExamSubmissionListCreateAPIView(CustomResponseMixin, APIView):
     #         return self.custom_response(status.HTTP_201_CREATED, 'Exam submission created successfully', serializer.data)
     #     return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error creating exam submission', serializer.errors)
 
+    @custom_extend_schema(ExamSubmissionSerializer)
     def post(self, request, format=None):
         data = {key: value for key, value in request.data.items()}
         data['user'] = request.user.id
-        
+
         try:
             student_instructor = Student.objects.get(user=request.user)
             data['registration_id'] = student_instructor.registration_id
         except Student.DoesNotExist:
             logger.error("StudentInstructor not found for user: %s", request.user)
             return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
-        
+
         exam_id = data.get('exam')
         if not exam_id:
             return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Exam ID is required', {})
-        
+
         # Check if the student has already submitted this exam
         existing_submission = ExamSubmission.objects.filter(
             user=request.user,
             exam_id=exam_id
         ).first()
-        
+
         if existing_submission:
             return self.custom_response(status.HTTP_400_BAD_REQUEST, 'You have already submitted this exam', {})
-        
+
         data['status'] = 1
         serializer = ExamSubmissionSerializer(data=data)
         if serializer.is_valid():
             serializer.save()
             return self.custom_response(status.HTTP_201_CREATED, 'Exam submission created successfully', serializer.data)
-        
+
         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error creating exam submission', serializer.errors)
 
 class ExamSubmissionDetailAPIView(CustomResponseMixin, APIView):
@@ -145,6 +139,7 @@ class ExamSubmissionDetailAPIView(CustomResponseMixin, APIView):
         serializer = ExamSubmissionSerializer(submission)
         return self.custom_response(status.HTTP_200_OK, 'Exam submission retrieved successfully', serializer.data)
 
+    @custom_extend_schema(ExamSubmissionSerializer)
     def put(self, request, pk, format=None):
         data = {key: value for key, value in request.data.items()}
         data['user'] = request.user.id
@@ -176,10 +171,11 @@ class ExamGradingListCreateAPIView(CustomResponseMixin, APIView):
         serializer = ExamGradingSerializer(gradings, many=True)
         return self.custom_response(status.HTTP_200_OK, 'Exam gradings retrieved successfully', serializer.data)
 
+    @custom_extend_schema(ExamGradingSerializer)
     def post(self, request, format=None):
         data = {key: value for key, value in request.data.items()}
         data['graded_by'] = request.user.id
-       
+
 
         serializer = ExamGradingSerializer(data=data)
         if serializer.is_valid():
@@ -195,10 +191,11 @@ class ExamGradingDetailAPIView(CustomResponseMixin, APIView):
         serializer = ExamGradingSerializer(grading)
         return self.custom_response(status.HTTP_200_OK, 'Exam grading retrieved successfully', serializer.data)
 
+    @custom_extend_schema(ExamGradingSerializer)
     def put(self, request, pk, format=None):
         data = {key: value for key, value in request.data.items()}
         data['graded_by'] = request.user.id
-       
+
 
         grading = get_object_or_404(ExamGrading, pk=pk)
         serializer = ExamGradingSerializer(grading, data=data)
@@ -218,14 +215,14 @@ class ExamsByCourseIDAPIView(CustomResponseMixin, APIView):
     def get(self, request, course_id, format=None):
         user = request.user
         exams = Exam.objects.filter(course_id=course_id)
-        
+
         if not exams.exists():
             return self.custom_response(status.HTTP_200_OK, 'No exams found', {})
-        
+
         exams_data = []
         for exam in exams:
             submission = ExamSubmission.objects.filter(exam=exam, user=user).first()
-            
+
             # Determine submission status
             if submission:
                 if submission.status == 1:  # Submitted
@@ -237,7 +234,7 @@ class ExamsByCourseIDAPIView(CustomResponseMixin, APIView):
                     submission_status = 'Not Submitted'  # Due date has passed without submission
                 else:
                     submission_status = 'Pending'  # Due date has not passed, and not yet submitted
-            
+
             exam_data = {
                 'id': exam.id,
                 'question': exam.title,
