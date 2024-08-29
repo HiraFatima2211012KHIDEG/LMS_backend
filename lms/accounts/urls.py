@@ -27,7 +27,11 @@ urlpatterns = [
         ApplicationProcessView.as_view(),
         name="update-application",
     ),
-    path('applications-process/<int:filteration_id>/', ApplicationProcessView.as_view(), name='get-all-applications'),
+    path(
+        "applications-process/<int:filteration_id>/",
+        ApplicationProcessView.as_view(),
+        name="get-all-applications",
+    ),
     # path('registration/', UserRegistrationView.as_view(), name='registration-completion'),
     path("create/", user_views.CreateUserView.as_view(), name="create"),
     path("login/", user_views.UserLoginView.as_view(), name="login"),
@@ -117,6 +121,11 @@ urlpatterns = [
         user_views.StudentDetailView.as_view(),
         name="detail-student",
     ),
+    path(
+        "student-courses-instructors/<str:registration_id>/",
+        user_views.StudentCoursesInstructorsView.as_view(),
+        name="student_courses_instructors",
+    ),
     path("students", user_views.StudentListView.as_view(), name="all-students"),
     path(
         "instructors", user_views.InstructorListView.as_view(), name="all-instructors"
@@ -153,7 +162,16 @@ urlpatterns = [
         CreateBatchLocationSessionView.as_view(),
         name="create-batch-location-session",
     ),
-
-    path('techskills/', TechSkillViewSet.as_view({'get': 'list', 'post': 'create'}), name='techskill-list-create'),
-    path('techskills/<int:pk>/', TechSkillViewSet.as_view({'get': 'retrieve', 'put': 'update', 'delete': 'destroy'}), name='techskill-detail'),
+    path(
+        "techskills/",
+        TechSkillViewSet.as_view({"get": "list", "post": "create"}),
+        name="techskill-list-create",
+    ),
+    path(
+        "techskills/<int:pk>/",
+        TechSkillViewSet.as_view(
+            {"get": "retrieve", "put": "update", "delete": "destroy"}
+        ),
+        name="techskill-detail",
+    ),
 ]

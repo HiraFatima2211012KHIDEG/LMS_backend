@@ -16,6 +16,8 @@ import constants
 from utils.custom import CustomResponseMixin, custom_extend_schema
 from course.models.models import Course
 from ..serializers.location_serializers import *
+from course.serializers import CourseSerializer
+from django.shortcuts import get_object_or_404
 
 
 class CreateUserView(generics.CreateAPIView):
@@ -264,6 +266,7 @@ class UserProfileView(views.APIView):
     """
     View to handle retrieving the authenticated user's profile.
     """
+
     permission_classes = [permissions.IsAuthenticated]
 
     @custom_extend_schema(UserProfileSerializer)
@@ -295,6 +298,7 @@ class UserProfileUpdateView(views.APIView):
     """
     View to handle updating the authenticated user's profile.
     """
+
     permission_classes = [permissions.IsAuthenticated]
 
     @custom_extend_schema(UserProfileUpdateSerializer)
@@ -393,6 +397,7 @@ class SetPasswordView(views.APIView):
     """
     View to set a new password for the authenticated user.
     """
+
     permission_classes = [permissions.IsAuthenticated]
 
     @custom_extend_schema(SetPasswordSerializer)
@@ -556,7 +561,6 @@ class UserpasswordResetView(views.APIView):
 class AssignSessionView(views.APIView, CustomResponseMixin):
     permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
 
-
     def patch(self, request, user_id=None, session_id=None):
         try:
             # Retrieve the user
@@ -714,3 +718,27 @@ class AssignCoursesView(CustomResponseMixin, views.APIView):
         return self.custom_response(
             status.HTTP_400_BAD_REQUEST, "Invalid course IDs.", serializer.errors
         )
+
+
+class StudentCoursesInstructorsView(views.APIView):
+    def get(self, request, registration_id):
+        student = get_object_or_404(Student, registration_id=registration_id)
+
+        program = student.program
+        courses = program.courses.all()
+
+        all_instructors = Instructor.objects.filter(courses__in=courses).distinct()
+
+        matching_instructors_emails = [
+            instructor.id.email
+            for instructor in all_instructors
+            if instructor.session.filter(location=student.session.location).exists()
+        ]
+
+        course_names = [course.name for course in courses]
+        response_data = {
+            "courses": course_names,
+            "instructors": matching_instructors_emails,
+        }
+        return Response(response_data, status=status.HTTP_200_OK)
+
