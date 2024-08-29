@@ -405,7 +405,7 @@ class VerifyEmailandSetPasswordView(views.APIView, CustomResponseMixin):
             )
 
 
-class ResendVerificationEmail(views.APIView):
+class ResendVerificationEmail(views.APIView,CustomResponseMixin):
 
     permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
 

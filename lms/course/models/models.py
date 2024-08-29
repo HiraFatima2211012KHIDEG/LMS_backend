@@ -28,11 +28,13 @@ class Course(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=1)
-    credit_hours = models.IntegerField()
+    theory_credit_hours = models.IntegerField(null=True, blank=True)
+    lab_credit_hours = models.IntegerField(null=True, blank=True)
     skills = models.ManyToManyField('Skill',  blank=True)
     instructors = models.ManyToManyField('accounts.Instructor', blank=True) 
-
-
+    picture = models.ImageField(
+        upload_to="material/course_pictures/", blank=True, null=True
+    )
     def __str__(self):
         return self.name
 

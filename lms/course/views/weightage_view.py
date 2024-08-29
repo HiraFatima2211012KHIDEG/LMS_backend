@@ -4,110 +4,156 @@ from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from ..models.models import *
 from ..serializers import *
-from utils.custom import custom_extend_schema
+from utils.custom import CustomResponseMixin
 
-class WeightageListCreateAPIView(APIView):
+
+class WeightageListCreateAPIView(APIView, CustomResponseMixin):
     permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request, format=None):
         weightages = Weightage.objects.all()
         serializer = WeightageSerializer(weightages, many=True)
-        return Response({
-            'message': 'Weightages retrieved successfully',
-            'data': serializer.data
-        }, status=status.HTTP_200_OK)
+        return self.custom_response(
+            status_code=status.HTTP_200_OK,
+            message='Weightages retrieved successfully',
+            data=serializer.data
+        )
 
-    @custom_extend_schema(WeightageSerializer)
     def post(self, request, format=None):
         serializer = WeightageSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
-            return Response({
-                'message': 'Weightage created successfully',
-                'data': serializer.data
-            }, status=status.HTTP_201_CREATED)
-        return Response({
-            'message': 'Error creating weightage',
-            'errors': serializer.errors
-        }, status=status.HTTP_400_BAD_REQUEST)
+            return self.custom_response(
+                status_code=status.HTTP_201_CREATED,
+                message='Weightage created successfully',
+                data=serializer.data
+            )
+        return self.custom_response(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            message='Error creating weightage',
+            data=serializer.errors
+        )
 
-class WeightageDetailAPIView(APIView):
+class WeightageDetailAPIView(APIView, CustomResponseMixin):
     permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request, pk, format=None):
         weightage = get_object_or_404(Weightage, pk=pk)
         serializer = WeightageSerializer(weightage)
-        return Response({
-            'message': 'Weightage retrieved successfully',
-            'data': serializer.data
-        }, status=status.HTTP_200_OK)
+        return self.custom_response(
+            status_code=status.HTTP_200_OK,
+            message='Weightage retrieved successfully',
+            data=serializer.data
+        )
 
-    @custom_extend_schema(WeightageSerializer)
     def put(self, request, pk, format=None):
         weightage = get_object_or_404(Weightage, pk=pk)
         serializer = WeightageSerializer(weightage, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
-            return Response({
-                'message': 'Weightage updated successfully',
-                'data': serializer.data
-            }, status=status.HTTP_200_OK)
-        return Response({
-            'message': 'Error updating weightage',
-            'errors': serializer.errors
-        }, status=status.HTTP_400_BAD_REQUEST)
+            return self.custom_response(
+                status_code=status.HTTP_200_OK,
+                message='Weightage updated successfully',
+                data=serializer.data
+            )
+        return self.custom_response(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            message='Error updating weightage',
+            data=serializer.errors
+        )
 
     def delete(self, request, pk, format=None):
         weightage = get_object_or_404(Weightage, pk=pk)
         weightage.delete()
-        return Response({
-            'message': 'Weightage deleted successfully'
-        }, status=status.HTTP_204_NO_CONTENT)
+        return self.custom_response(
+            status_code=status.HTTP_204_NO_CONTENT,
+            message='Weightage deleted successfully',
+            data=None
+        )
 
 
-class SkillListCreateAPIView(APIView):
+# Skill Views
+class SkillListCreateAPIView(APIView, CustomResponseMixin):
     def get(self, request):
         skills = Skill.objects.all()
         serializer = SkillSerializer(skills, many=True)
-        return Response(serializer.data)
+        return self.custom_response(
+            status_code=status.HTTP_200_OK,
+            message='Skills retrieved successfully',
+            data=serializer.data
+        )
 
-    @custom_extend_schema(SkillSerializer)
     def post(self, request):
         serializer = SkillSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return self.custom_response(
+                status_code=status.HTTP_201_CREATED,
+                message='Skill created successfully',
+                data=serializer.data
+            )
+        return self.custom_response(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            message='Error creating skill',
+            data=serializer.errors
+        )
 
 
-class SkillRetrieveUpdateDestroyAPIView(APIView):
+class SkillRetrieveUpdateDestroyAPIView(APIView, CustomResponseMixin):
     def get(self, request, pk):
         try:
             skill = Skill.objects.get(pk=pk)
         except Skill.DoesNotExist:
-            return Response({'error': 'Skill not found'}, status=status.HTTP_404_NOT_FOUND)
-
+            return self.custom_response(
+                status_code=status.HTTP_404_NOT_FOUND,
+                message='Skill not found',
+                data=None
+            )
+        
         serializer = SkillSerializer(skill)
-        return Response(serializer.data)
+        return self.custom_response(
+            status_code=status.HTTP_200_OK,
+            message='Skill retrieved successfully',
+            data=serializer.data
+        )
 
-    @custom_extend_schema(SkillSerializer)
     def put(self, request, pk):
         try:
             skill = Skill.objects.get(pk=pk)
         except Skill.DoesNotExist:
-            return Response({'error': 'Skill not found'}, status=status.HTTP_404_NOT_FOUND)
-
+            return self.custom_response(
+                status_code=status.HTTP_404_NOT_FOUND,
+                message='Skill not found',
+                data=None
+            )
+        
         serializer = SkillSerializer(skill, data=request.data)
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return self.custom_response(
+                status_code=status.HTTP_200_OK,
+                message='Skill updated successfully',
+                data=serializer.data
+            )
+        return self.custom_response(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            message='Error updating skill',
+            data=serializer.errors
+        )
 
     def delete(self, request, pk):
         try:
             skill = Skill.objects.get(pk=pk)
         except Skill.DoesNotExist:
-            return Response({'error': 'Skill not found'}, status=status.HTTP_404_NOT_FOUND)
-
+            return self.custom_response(
+                status_code=status.HTTP_404_NOT_FOUND,
+                message='Skill not found',
+                data=None
+            )
+        
         skill.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        return self.custom_response(
+            status_code=status.HTTP_204_NO_CONTENT,
+            message='Skill deleted successfully',
+            data=None
+        )

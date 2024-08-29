@@ -7,9 +7,7 @@ class CourseSerializer(serializers.ModelSerializer):
     skills = serializers.PrimaryKeyRelatedField(
         many=True, queryset=Skill.objects.all()
     )
-    # instructors = serializers.PrimaryKeyRelatedField(
-    #     many=True, queryset=Instructor.objects.all()
-    # )
+
     class Meta:
         model = Course
         fields = [
@@ -19,10 +17,12 @@ class CourseSerializer(serializers.ModelSerializer):
             "about",
             "created_at",
             "created_by",
-            "credit_hours",
+            "theory_credit_hours",
+            "lab_credit_hours",
             "skills",
             "instructors",
             "status",
+            "picture",
         ]
 
 
@@ -256,7 +256,7 @@ class ProjectSubmissionSerializer(serializers.ModelSerializer):
             "project_submitted_file",
             "project_submitted_file",
             "status",
-            "resubmission",
+            "remaining_resubmissions",
             "comments",
         ]
     def create(self, validated_data):
