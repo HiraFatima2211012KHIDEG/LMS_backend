@@ -17,6 +17,7 @@ from course.models.models import Course
 
 class TechSkill(models.Model):
     name = models.CharField(max_length=100)
+
 class Applications(models.Model):
     """Users of Registration Request"""
     email = models.EmailField(unique=True)
@@ -24,8 +25,9 @@ class Applications(models.Model):
     last_name = models.CharField(max_length=20)
     contact = models.CharField(max_length=12, null=True, blank=True)
     city = models.CharField(max_length=50)
-    city_abb = models.CharField(max_length=10)
-    program = models.ManyToManyField('course.Program', blank=True)  
+
+    city_abb = models.CharField(max_length=10, null=True)
+    program = models.ManyToManyField('course.Program', blank=True)  # Make blank=True to accommodate instructors
     group_name = models.CharField(max_length=20)
     created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
@@ -47,11 +49,15 @@ class Applications(models.Model):
     # program_order = ArrayField(models.IntegerField(), blank=True, null=True)
     def __str__(self):
         return f"{self.email} - {self.city} - {self.program}"
+
+
 class StudentApplicationSelection(models.Model):
     application = models.OneToOneField(Applications, on_delete=models.CASCADE)
     selected_program = models.ForeignKey('course.Program', on_delete=models.CASCADE)
     status = models.CharField(max_length=15, default='selected')
     selected_at = models.DateTimeField(auto_now_add=True)
+
+
 class InstructorApplicationSelection(models.Model):
     application = models.OneToOneField(Applications, on_delete=models.CASCADE)
     selected_skills = models.ManyToManyField(TechSkill)
@@ -169,6 +175,7 @@ class Student(models.Model):
     session = models.ForeignKey(
         Sessions, on_delete=models.CASCADE, null=True, blank=True
     )
+    program = models.ForeignKey(Program, on_delete=models.CASCADE, null=True)
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=1)
     created_at = models.DateTimeField(auto_now=True, null=True, blank=True)
     updated_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
@@ -180,7 +187,7 @@ class Student(models.Model):
 
     def get_session_details(self):
         if self.session:
-            return str(self.session)  
+            return str(self.session)
         return "No session assigned"
 
     def __str__(self):
