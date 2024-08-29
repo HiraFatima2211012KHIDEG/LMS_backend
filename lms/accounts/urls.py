@@ -117,6 +117,11 @@ urlpatterns = [
         user_views.StudentDetailView.as_view(),
         name="detail-student",
     ),
+    path(
+        "student-courses-instructors/<str:registration_id>/",
+        user_views.StudentCoursesInstructorsView.as_view(),
+        name="student_courses_instructors",
+    ),
     path("students", user_views.StudentListView.as_view(), name="all-students"),
     path(
         "instructors", user_views.InstructorListView.as_view(), name="all-instructors"

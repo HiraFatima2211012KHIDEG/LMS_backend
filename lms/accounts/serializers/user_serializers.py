@@ -113,19 +113,19 @@ class UserProfileSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(read_only=True)
     program = serializers.SerializerMethodField()
     # session_name = serializers.SerializerMethodField()
-
     class Meta:
         model = User
         fields = [
-            'id', 'first_name', 'last_name', 'contact', 'city', 
+            'id', 'first_name', 'last_name', 'contact', 'city',
             'registration_id', 'email', 'program'
         ]
-
-
     def get_program(self, obj):
         try:
             application = Applications.objects.get(email=obj.email)
-            return application.program.name
+            student_program = StudentApplicationSelection.objects.get(application = application)
+            return {  'id': student_program.selected_program.id,
+                      'name': student_program.selected_program.name
+                   }
         except Applications.DoesNotExist:
             return None
     # def get_session_name(self, obj):

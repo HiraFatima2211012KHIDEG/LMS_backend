@@ -25,7 +25,7 @@ class Applications(models.Model):
     contact = models.CharField(max_length=12, null=True, blank=True)
     city = models.CharField(max_length=50)
     city_abb = models.CharField(max_length=10)
-    program = models.ManyToManyField('course.Program', blank=True)  # Make blank=True to accommodate instructors
+    program = models.ManyToManyField('course.Program', blank=True)  
     group_name = models.CharField(max_length=20)
     created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
@@ -88,7 +88,6 @@ class UserManager(BaseUserManager):
 
         return user
 
-
 class User(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(unique=True)
     first_name = models.CharField(max_length=20, null=True, blank=True)
@@ -145,6 +144,7 @@ class User(AbstractBaseUser, PermissionsMixin):
                         raise ValueError(f"Group '{user_group_name}' does not exist.")
 
         super(User, self).save(*args, **kwargs)
+
 
 
 class AccessControl(models.Model):
