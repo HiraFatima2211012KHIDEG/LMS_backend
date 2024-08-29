@@ -27,11 +27,7 @@ urlpatterns = [
         ApplicationProcessView.as_view(),
         name="update-application",
     ),
-    path(
-        "applications-process/<int:program_id>/",
-        ApplicationProcessView.as_view(),
-        name="get-all-applications",
-    ),
+    path('applications-process/<int:filteration_id>/', ApplicationProcessView.as_view(), name='get-all-applications'),
     # path('registration/', UserRegistrationView.as_view(), name='registration-completion'),
     path("create/", user_views.CreateUserView.as_view(), name="create"),
     path("login/", user_views.UserLoginView.as_view(), name="login"),
@@ -157,4 +153,7 @@ urlpatterns = [
         CreateBatchLocationSessionView.as_view(),
         name="create-batch-location-session",
     ),
+
+    path('techskills/', TechSkillViewSet.as_view({'get': 'list', 'post': 'create'}), name='techskill-list-create'),
+    path('techskills/<int:pk>/', TechSkillViewSet.as_view({'get': 'retrieve', 'put': 'update', 'delete': 'destroy'}), name='techskill-detail'),
 ]
