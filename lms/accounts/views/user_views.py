@@ -16,6 +16,7 @@ import constants
 from utils.custom import CustomResponseMixin, custom_extend_schema
 from course.models.models import Course
 from ..serializers.location_serializers import *
+from django.shortcuts import get_object_or_404
 
 
 class CreateUserView(generics.CreateAPIView):

@@ -272,7 +272,7 @@ class ProjectsByCourseIDAPIView(CustomResponseMixin, APIView):
                 'question': project.title,
                 'description': project.description,
                 'due_date': project.due_date,
-                'project_created_at': project.created_at,
+                'created_at': project.created_at,
                 'submission_status': submission_status,
                 'submitted_at': submission.project_submitted_at if submission else None,
                 'submitted_file': submission.project_submitted_file.url if submission and submission.project_submitted_file else None,

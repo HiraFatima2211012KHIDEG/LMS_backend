@@ -265,7 +265,7 @@ class QuizzesByCourseIDAPIView(CustomResponseMixin, APIView):
                 'question': quiz.question,
                 'description': quiz.description,
                 'due_date': quiz.due_date,
-                'quiz_created_at': quiz.created_at,
+                'created_at': quiz.created_at,
                 'submission_status': submission_status,
                 'submitted_at': submission.quiz_submitted_at if submission else None,
                 'submitted_file': submission.quiz_submitted_file.url if submission and submission.quiz_submitted_file else None,

@@ -240,7 +240,7 @@ class ExamsByCourseIDAPIView(CustomResponseMixin, APIView):
                 'question': exam.title,
                 'description': exam.description,
                 'due_date': exam.due_date,
-                'exam_created_at': exam.created_at,
+                'created_at': exam.created_at,
                 'submission_status': submission_status,
                 'submitted_at': submission.exam_submitted_at if submission else None,
                 'exam_submitted_file': submission.exam_submitted_file.url if submission and submission.exam_submitted_file else None,
