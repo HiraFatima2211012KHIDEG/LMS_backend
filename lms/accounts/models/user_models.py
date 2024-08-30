@@ -12,34 +12,59 @@ from .location_models import (
     Sessions,
     Batch
 )
+from django.contrib.postgres.fields import ArrayField
+
+class TechSkill(models.Model):
+    name = models.CharField(max_length=100)
+
 
 
 class Applications(models.Model):
     """Users of Registration Request"""
     email = models.EmailField(unique=True)
-    first_name = models.CharField(max_length=20)  # make first name and last name mandatory
+    first_name = models.CharField(max_length=20)
     last_name = models.CharField(max_length=20)
     contact = models.CharField(max_length=12, null=True, blank=True)
     city = models.CharField(max_length=50)
     city_abb = models.CharField(max_length=10)
-    program = models.ForeignKey(Program, on_delete=models.CASCADE, null=True)
+    program = models.ManyToManyField('course.Program', blank=True)  # Make blank=True to accommodate instructors
     group_name = models.CharField(max_length=20)
-    created_at = models.DateTimeField(auto_now_add=True,null=True, blank=True)
-    updated_at = models.DateTimeField(auto_now=True,null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
     year = models.IntegerField(default=datetime.date.today().year)
-    application_status_choices = [
-        ('approved', 'Approved'),
-        ('short_listed', 'Short_Listed'),
-        ('pending', 'Pending'),
-        ('removed', 'Removed')
-    ]
-    application_status = models.CharField(max_length= 15, choices= application_status_choices, default='pending') # I added
-    #program_id should also be here
-    #area of residence.
+    application_status = models.CharField(
+        max_length=15,
+        choices=[
+            ('approved', 'Approved'),
+            ('short_listed', 'Short_Listed'),
+            ('pending', 'Pending'),
+            ('removed', 'Removed')
+        ],
+        default='pending'
+    )
+    date_of_birth = models.DateField(null=True, blank=True)
+    years_of_experience = models.IntegerField(null=True, blank=True)
+    required_skills = models.ManyToManyField(TechSkill, blank=True)
+    resume = models.FileField(upload_to='material/Instructor_resumes/', blank=True, null=True)
+    # program_order = ArrayField(models.IntegerField(), blank=True, null=True)
 
-#this should have a status field.
+
     def __str__(self):
         return f"{self.email} - {self.city} - {self.program}"
+
+
+    
+class StudentApplicationSelection(models.Model):
+    application = models.OneToOneField(Applications, on_delete=models.CASCADE)
+    selected_program = models.ForeignKey('course.Program', on_delete=models.CASCADE)
+    status = models.CharField(max_length=15, default='selected')
+    selected_at = models.DateTimeField(auto_now_add=True)
+
+class InstructorApplicationSelection(models.Model):
+    application = models.OneToOneField(Applications, on_delete=models.CASCADE)
+    selected_skills = models.ManyToManyField(TechSkill)
+    status = models.CharField(max_length=15, default='selected')
+    selected_at = models.DateTimeField(auto_now_add=True)    
 
 class UserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):

@@ -2,7 +2,7 @@
 Views for the Accounts Applications API.
 """
 from rest_framework import generics
-from ..serializers.application_serializers import ApplicationSerializer
+from ..serializers.application_serializers import ApplicationSerializer, SkillSerializer
 from ..serializers.location_serializers import *
 from rest_framework import (
     views,
@@ -20,7 +20,7 @@ from drf_spectacular.utils import extend_schema
 from ..serializers.user_serializers import (
     UserSerializer,
 )
-from ..models.user_models import AccessControl
+from ..models.user_models import AccessControl, TechSkill
 import constants
 from django.db import transaction
 from accounts.utils import send_email
@@ -31,6 +31,9 @@ from django.core.signing import TimestampSigner
 import base64
 from django.core.signing import TimestampSigner, SignatureExpired, BadSignature
 from .location_views import CustomResponseMixin
+from course.serializers import *
+from django.db.models import Q
+
 
 class CreateApplicationView(generics.CreateAPIView):
     """Create a new user in the application."""
@@ -60,29 +63,106 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
 
     # permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
 
-    def get(self, request, program_id=None):
-        if program_id is None:
-            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Program_id is not provided.', None)
+    def get(self, request, filteration_id=None):
+        if filteration_id is None:
+            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'filteration_id is not provided.', None)
 
         group_name = request.query_params.get('group_name')
+        application_status = request.query_params.get('status')
 
-        # Validate group_name
+        if application_status not in ["pending", "short_listed", "approved"]:
+            return self.custom_response(status.HTTP_400_BAD_REQUEST, "Invalid status. Choices are 'pending', 'approved', 'short_listed'.", None)
+
         if group_name not in ["student", "instructor"]:
             return self.custom_response(status.HTTP_400_BAD_REQUEST, "Invalid group_name. Choices are 'student' and 'instructor'.", None)
 
         try:
-            # Query the applications based on the provided program_id and group_name
-            applications = Applications.objects.filter(program=program_id, group_name=group_name)
+            if application_status == 'approved' and group_name == 'student':
+                specific_program = StudentApplicationSelection.objects.filter(selected_program_id = filteration_id)
+                print('a', specific_program)
+                specific_program_list = list(specific_program.values_list('application_id', flat=True))
+                print('list',specific_program_list)
+                applications = Applications.objects.filter(id__in = specific_program_list, group_name=group_name, application_status=application_status)
+                print('app',applications)
+
+            elif application_status == 'approved' and group_name == 'instructor':
+                specific_skills = InstructorApplicationSelection.objects.filter(selected_skills__id=filteration_id).distinct()
+                print('a', specific_skills)
+                specific_skills_list = list(specific_skills.values_list('application_id', flat=True))
+                print('list', specific_skills_list)
+                applications = Applications.objects.filter(id__in=specific_skills_list, group_name=group_name, application_status=application_status)
+                print('app', applications)
+
+    
+            # Query the applications based on the provided filteration_id and group_name
+            else:
+                applications = Applications.objects.filter(
+                    Q(program__id=filteration_id, group_name=group_name, application_status=application_status) | 
+                    Q(required_skills__id=filteration_id, group_name=group_name, application_status=application_status)
+                ).distinct()
+                
             if not applications.exists():
-                return self.custom_response(status.HTTP_404_NOT_FOUND, "No applications found for the provided program ID and group_name.", None)
+                return self.custom_response(status.HTTP_404_NOT_FOUND, "No applications found for the provided program ID, group_name, and status.", None)
+            
+            serialized_data = ApplicationSerializer(applications, many=True).data
 
+            if group_name == 'student':
+                self.handle_student_applications(serialized_data, application_status)
+            elif group_name == 'instructor':
+                self.handle_instructor_applications(serialized_data, application_status)
 
-            serializer = ApplicationSerializer(applications, many=True)
-            return self.custom_response(status.HTTP_200_OK, 'Applications fetched successfully.', serializer.data)
+            return self.custom_response(status.HTTP_200_OK, 'Applications fetched successfully.', serialized_data)
 
         except Exception as e:
             # Catch any unexpected exceptions and log them if necessary
             return self.custom_response(status.HTTP_500_INTERNAL_SERVER_ERROR, f'An error occurred: {str(e)}', None)
+
+    def handle_student_applications(self, serialized_data, application_status):
+        """Handle processing of student applications based on their status."""
+        for application in serialized_data:
+            programs = application.pop('program', [])
+            
+            if application_status == 'approved':
+                try:
+                    selected_user = StudentApplicationSelection.objects.get(application_id=application['id'])
+                    selected_program = Program.objects.get(id=selected_user.selected_program.id)
+                    application['program'] = [ProgramSerializer(selected_program).data]
+                except StudentApplicationSelection.DoesNotExist:
+                    application['program'] = None  # or handle the case appropriately
+            else:
+                complete_related_programs = Program.objects.filter(id__in=programs)
+                application['program'] = [
+                    {'id': program['id'], 'name': program['name']}
+                    for program in ProgramSerializer(complete_related_programs, many=True).data
+                ]
+
+    def handle_instructor_applications(self, serialized_data, application_status):
+        """Handle processing of instructor applications based on their status."""
+        for application in serialized_data:
+            related_skills = application.pop('required_skills', [])
+            
+            if application_status == 'approved':
+                try:
+                    selected_user = InstructorApplicationSelection.objects.get(application_id=application['id'])
+                    selected_skills = selected_user.selected_skills.all()
+                    application['skill'] = SkillSerializer(selected_skills, many=True).data
+                except InstructorApplicationSelection.DoesNotExist:
+                    application['skill'] = []  # or handle the case appropriately
+            else:
+                # Check if related_skills is a list of integers or dictionaries
+                if related_skills and isinstance(related_skills[0], dict):
+                    # related_skills is a list of dictionaries
+                    related_skills_objects = TechSkill.objects.filter(id__in=[skill['id'] for skill in related_skills])
+                else:
+                    # related_skills is a list of integers
+                    related_skills_objects = TechSkill.objects.filter(id__in=related_skills)
+
+                print("related_skills:", related_skills)
+                print("Type of related_skills[0]:", type(related_skills[0]) if related_skills else "Empty")
+
+                    
+                application['skill'] = SkillSerializer(related_skills_objects, many=True).data
+
 
     def patch(self, request):
         data = request.data
@@ -95,9 +175,9 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
             return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Application status is not provided.', None)
 
         try:
-            application = Applications.objects.get(id=application_id)
-            print(application)
-            print(application.program)
+            application_obj = Applications.objects.get(id=application_id)
+            print(application_obj)
+            print(application_obj.program)
         except Applications.DoesNotExist:
             return self.custom_response(status.HTTP_404_NOT_FOUND, 'No application object found for this application ID.', None)
 
@@ -105,29 +185,64 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
         application_status = data.get('application_status').lower()
         if application_status not in ["short_listed", "approved", "removed"]:
             return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Invalid application status.', None)
+        
+        # try:
+        #     program = Program.objects.get(id = program_id)
+        # except Program.DoesNotExist:
+        #     return self.custom_response(status.HTTP_404_NOT_FOUND, 'No program object found for this ID.', None)
 
 
         try:
             with transaction.atomic():
-                serializer = ApplicationSerializer(application, data={'application_status': application_status}, partial=True)
+                serializer = ApplicationSerializer(application_obj, data={'application_status': application_status}, partial=True)
                 if serializer.is_valid(raise_exception=True):
                     if application_status in ["short_listed", "removed"]:
                         serializer.save()
                         return self.custom_response(status.HTTP_200_OK, f'Application status has been changed to {application_status}.', serializer.data)
 
                     elif application_status == "approved":
+                        if application_obj.group_name == 'student':
+                            program_id = data.get('program_id')
+                            if program_id is None:
+                                return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Selected program_id is not provided.', None)
+                            try:
+                                program = Program.objects.get(id = program_id)
+                            except Program.DoesNotExist:
+                                return self.custom_response(status.HTTP_404_NOT_FOUND, 'No program object found for this ID.', None)
+                            # application_selection_data = {
+                            #     'application' : application_obj,
+                            #     'selected_program' : program
+                            # }
+                            related_programs = application_obj.program.all()
+                            print("hello", related_programs)
+                            if program not in related_programs:
+                                return self.custom_response(status.HTTP_400_BAD_REQUEST, f'Invalid program_id.', None)
 
-                        token = self.create_signed_token(application_id, application.email)
+                            # print(application_selection_data)
+                            # StudentApplicationSelection.objects.create(**application_selection_data)
+                            StudentApplicationSelection.objects.create(application=application_obj, selected_program=program)
+
+                        elif application_obj.group_name == 'instructor':
+                            skills_ids = data.get('skills_id', [])
+                            if not skills_ids or not set(skills_ids).issubset(application_obj.required_skills.values_list('id', flat=True)):
+                                return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Selected skills_id is not provided or Invalid skills_id found.', None)
+
+                            skills = TechSkill.objects.filter(id__in=skills_ids)
+                            instructor_selection = InstructorApplicationSelection.objects.create(application=application_obj)
+
+                            instructor_selection.selected_skills.set(skills)
+
+                        token = self.create_signed_token(application_id, application_obj.email)
                         print(token)
-                        verification_link = f"http://localhost:3000/?token={str(token)}"
-                        body = (f"Congratulations {application.first_name} {application.last_name}!\n"
+                        verification_link = f"http://localhost:3000/auth/account-verify/{str(token)}"
+                        body = (f"Congratulations {application_obj.first_name} {application_obj.last_name}!\n"
                                 f"You are requested to complete the selection process by verifying your account. "
                                 f"Please click the following link to proceed.\n{verification_link}")
 
                         email_data = {
                             "email_subject": "Verify your account",
                             "body": body,
-                            "to_email": application.email,
+                            "to_email": application_obj.email,
                         }
                         send_email(email_data)
                         serializer.save()
@@ -228,21 +343,24 @@ class VerifyEmailandSetPasswordView(views.APIView, CustomResponseMixin):
 
 
 
-class ResendVerificationEmail(views.APIView):
+class ResendVerificationEmail(views.APIView,CustomResponseMixin):
 
-    permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
+    # permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
 
 
     def post(self, request):
         email = request.data.get('email')
         try:
             applicant = Applications.objects.get(email=email)
+            if applicant.application_status != "approved":
+                return self.custom_response(status.HTTP_400_BAD_REQUEST, 'You are not a selected user, contact admin in case of any confusion.', None)
             existing_user = get_user_model().objects.filter(email=email).first()
             if existing_user and existing_user.is_verified:
                 return self.custom_response(status.HTTP_400_BAD_REQUEST, 'User already verified', None)
 
             token = self.create_signed_token(applicant.id, applicant.email)
             verification_link = f"http://localhost:3000/?token={str(token)}"
+            print(token)
             body = (f"Congratulations {applicant.first_name} {applicant.last_name}!\n"
                     f"You are requested to complete the selection process by verifying your account. "
                     f"Please click the following link to proceed.\n{verification_link}")
@@ -354,6 +472,13 @@ class ResendVerificationEmail(views.APIView):
 #                 'message': f'An error occurred: {str(e)}'
 #             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+# views.py
+
+from rest_framework import viewsets
+
+class TechSkillViewSet(viewsets.ModelViewSet):
+    queryset = TechSkill.objects.all()
+    serializer_class = SkillSerializer
 
 
 

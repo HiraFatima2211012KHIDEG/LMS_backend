@@ -21,7 +21,7 @@ class CustomResponseMixin:
 logger = logging.getLogger(__name__)
 
 class ProgramListCreateAPIView(CustomResponseMixin, APIView):
-    permission_classes = (permissions.IsAuthenticated,)
+    # permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request, format=None):
         programs = Program.objects.all()

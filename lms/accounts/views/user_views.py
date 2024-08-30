@@ -522,3 +522,12 @@ class StudentDetailView(generics.RetrieveAPIView):
     queryset = Student.objects.all()
     serializer_class = StudentSerializer
     lookup_field = "registration_id"
+
+
+class AssignCourseView(views.APIView):
+
+    # permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
+
+    def post(self, request):
+        data = request.data
+            
