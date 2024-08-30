@@ -135,6 +135,7 @@ class AssignmentSubmission(models.Model):
     def decrement_resubmissions(self):
         if self.remaining_resubmissions > 0:
             self.remaining_resubmissions -= 1
+            
             self.save()
             return True
         return False

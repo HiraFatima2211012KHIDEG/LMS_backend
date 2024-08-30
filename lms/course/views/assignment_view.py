@@ -355,7 +355,8 @@ class AssignmentsByCourseIDAPIView(CustomResponseMixin, APIView):
                     if submission and submission.submitted_file
                     else None
                 ),
-                "resubmission": submission.resubmission if submission else False,
+                "no_of_resubmissions_allowed":assignment.no_of_resubmissions_allowed,
+                "remaining_resubmissions": submission.remaining_resubmissions if submission else 0,
             }
             assignments_data.append(assignment_data)
 

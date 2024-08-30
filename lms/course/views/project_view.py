@@ -276,8 +276,9 @@ class ProjectsByCourseIDAPIView(CustomResponseMixin, APIView):
                 'submission_status': submission_status,
                 'submitted_at': submission.project_submitted_at if submission else None,
                 'submitted_file': submission.project_submitted_file.url if submission and submission.project_submitted_file else None,
-                'resubmission': submission.resubmission if submission else False,
-                'comments': submission.comments if submission else None,
+                'remaining_resubmissions': submission.remaining_resubmissions if submission else False,
+                "no_of_resubmissions_allowed":project.no_of_resubmissions_allowed,
+                'comments': submission.comments if submission else 0,
             }
             projects_data.append(project_data)
 

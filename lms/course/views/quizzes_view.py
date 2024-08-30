@@ -269,7 +269,8 @@ class QuizzesByCourseIDAPIView(CustomResponseMixin, APIView):
                 'submission_status': submission_status,
                 'submitted_at': submission.quiz_submitted_at if submission else None,
                 'submitted_file': submission.quiz_submitted_file.url if submission and submission.quiz_submitted_file else None,
-                'resubmission': submission.resubmission if submission else False,
+                "no_of_resubmissions_allowed":quiz.no_of_resubmissions_allowed,
+                'remaining_resubmissions': submission.remaining_resubmissions if submission else 0,
             }
             quizzes_data.append(quiz_data)
 
