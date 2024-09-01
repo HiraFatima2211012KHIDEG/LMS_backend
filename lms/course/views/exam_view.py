@@ -239,6 +239,7 @@ class ExamsByCourseIDAPIView(CustomResponseMixin, APIView):
                 'id': exam.id,
                 'question': exam.title,
                 'description': exam.description,
+                'status':exam.status,
                 'due_date': exam.due_date,
                 'created_at': exam.created_at,
                 'submission_status': submission_status,

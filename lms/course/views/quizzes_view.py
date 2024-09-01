@@ -264,6 +264,7 @@ class QuizzesByCourseIDAPIView(CustomResponseMixin, APIView):
                 'id': quiz.id,
                 'question': quiz.question,
                 'description': quiz.description,
+                'status':quiz.status,
                 'due_date': quiz.due_date,
                 'created_at': quiz.created_at,
                 'submission_status': submission_status,

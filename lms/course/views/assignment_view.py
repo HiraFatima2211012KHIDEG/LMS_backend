@@ -346,6 +346,7 @@ class AssignmentsByCourseIDAPIView(CustomResponseMixin, APIView):
                 "id": assignment.id,
                 "question": assignment.question,
                 "description": assignment.description,
+                "status":assignment.status,
                 "due_date": assignment.due_date,
                 "created_at": assignment.created_at,
                 "submission_status": submission_status,

@@ -271,6 +271,7 @@ class ProjectsByCourseIDAPIView(CustomResponseMixin, APIView):
                 'id': project.id,
                 'question': project.title,
                 'description': project.description,
+                'status':project.status,
                 'due_date': project.due_date,
                 'created_at': project.created_at,
                 'submission_status': submission_status,
