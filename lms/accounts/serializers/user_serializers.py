@@ -16,6 +16,7 @@ import re
 from accounts.utils import send_email
 from ..models.user_models import *
 from course.models.models import Course
+from django.contrib.auth.models import Group
 
 # from accounts.utils import send_email
 
@@ -120,12 +121,18 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'registration_id', 'email', 'program'
         ]
     def get_program(self, obj):
+        user = self.context.get('user')
+
         try:
-            application = Applications.objects.get(email=obj.email)
-            student_program = StudentApplicationSelection.objects.get(application = application)
-            return {  'id': student_program.selected_program.id,
-                      'name': student_program.selected_program.name
-                   }
+            if user.groups == 'student': 
+                application = Applications.objects.get(email=obj.email)
+                student_program = StudentApplicationSelection.objects.get(application = application)
+                return {  'id': student_program.selected_program.id,
+                        'name': student_program.selected_program.name
+                    }
+            elif user.groups == 'instructor':
+                # application = Applications.objects.get(email = obj.email)
+                pass
         except Applications.DoesNotExist:
             return None
     # def get_session_name(self, obj):

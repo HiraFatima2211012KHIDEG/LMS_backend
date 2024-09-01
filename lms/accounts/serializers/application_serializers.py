@@ -1,7 +1,7 @@
 from ..models.user_models import Applications, TechSkill
 from rest_framework import serializers
 
-class SkillSerializer(serializers.ModelSerializer):
+class TechSkillSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = TechSkill

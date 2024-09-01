@@ -95,7 +95,7 @@ class UserLoginView(views.APIView):
                 tokens = self.get_tokens_for_user(user)
                 user_group = Group.objects.get(user=user.id)
                 permission = self.get_group_permissions(user_group.id)
-                user_profile = UserProfileSerializer(user)
+                user_profile = UserProfileSerializer(user, context={'user' : user})
                 user_serializer = None
                 session_data = None  # Initialize session_data as None
                 if user_group.name == "student":
@@ -685,7 +685,7 @@ class StudentListView(CustomResponseMixin, generics.ListAPIView):
 class InstructorListView(CustomResponseMixin, generics.ListAPIView):
     queryset = Instructor.objects.all()
     serializer_class = InstructorSerializer
-    permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
+    # permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
 
     def list(self, request, *args, **kwargs):
         response = super().list(request, *args, **kwargs)

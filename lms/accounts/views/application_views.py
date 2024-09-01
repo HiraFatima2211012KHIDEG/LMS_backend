@@ -3,7 +3,7 @@ Views for the Accounts Applications API.
 """
 
 from rest_framework import generics
-from ..serializers.application_serializers import ApplicationSerializer, SkillSerializer
+from ..serializers.application_serializers import ApplicationSerializer, TechSkillSerializer
 from ..serializers.location_serializers import *
 from rest_framework import views, status, generics, permissions
 from rest_framework.response import Response
@@ -205,7 +205,7 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
                         application_id=application["id"]
                     )
                     selected_skills = selected_user.selected_skills.all()
-                    application["skill"] = SkillSerializer(
+                    application["skill"] = TechSkillSerializer(
                         selected_skills, many=True
                     ).data
                 except InstructorApplicationSelection.DoesNotExist:
@@ -229,7 +229,7 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
                     type(related_skills[0]) if related_skills else "Empty",
                 )
 
-                application["skill"] = SkillSerializer(
+                application["skill"] = TechSkillSerializer(
                     related_skills_objects, many=True
                 ).data
 
@@ -452,7 +452,7 @@ class VerifyEmailandSetPasswordView(views.APIView, CustomResponseMixin):
                     )
                 elif application.group_name == "instructor":
                     # Handle instructor logic if needed
-                    Instructor.objects.create(user=user)
+                    Instructor.objects.create(id=user)
                 else:
                     return self.custom_response(
                         status.HTTP_400_BAD_REQUEST, "Invalid group_name.", None
@@ -642,4 +642,77 @@ from rest_framework import viewsets
 
 class TechSkillViewSet(viewsets.ModelViewSet):
     queryset = TechSkill.objects.all()
-    serializer_class = SkillSerializer
+    serializer_class = TechSkillSerializer
+
+class ApplicationStatusCount(views.APIView):
+    # permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
+
+    def get(self, request, filteration_id=None):
+        if filteration_id is None:
+            return Response(
+                {
+                    "status_code": status.HTTP_400_BAD_REQUEST,
+                    "message": "filteration_id is not provided.",
+                    "data": None,
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        application_status = request.query_params.get("status", None)
+
+        # Validate status input
+        if application_status not in ["pending", "short_listed", "approved", None]:
+            return Response(
+                {
+                    "status_code": status.HTTP_400_BAD_REQUEST,
+                    "message": "Invalid status. Choices are 'pending', 'approved', 'short_listed'.",
+                    "data": None,
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            # Base query filtering on filteration_id
+            base_query = Applications.objects.filter(
+                Q(program__id=filteration_id) | Q(required_skills__id=filteration_id)
+            ).distinct()
+
+            # If a specific status is provided, filter by that status
+            if application_status:
+                count = base_query.filter(application_status=application_status).count()
+                return Response(
+                    {
+                        "status_code": status.HTTP_200_OK,
+                        "message": f"Count for status '{application_status}' fetched successfully.",
+                        "data": {application_status: count},
+                    },
+                    status=status.HTTP_200_OK,
+                )
+
+            # If no specific status is provided, get counts for all statuses
+            counts = {
+                "approved": base_query.filter(application_status="approved").count(),
+                "short_listed": base_query.filter(application_status="short_listed").count(),
+                "pending": base_query.filter(application_status="pending").count(),
+            }
+
+            return Response(
+                {
+                    "status_code": status.HTTP_200_OK,
+                    "message": "Counts for all statuses fetched successfully.",
+                    "data": counts,
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        except Exception as e:
+            # Catch any unexpected exceptions and log them if necessary
+            return Response(
+                {
+                    "status_code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    "message": f"An error occurred: {str(e)}",
+                    "data": None,
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
