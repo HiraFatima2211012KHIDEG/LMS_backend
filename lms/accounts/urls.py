@@ -174,4 +174,5 @@ urlpatterns = [
         ),
         name="techskill-detail",
     ),
+    path("application-count/<int:filteration_id>/", ApplicationStatusCount.as_view(), name="applications-count")
 ]

@@ -643,3 +643,67 @@ from rest_framework import viewsets
 class TechSkillViewSet(viewsets.ModelViewSet):
     queryset = TechSkill.objects.all()
     serializer_class = SkillSerializer
+
+class ApplicationStatusCount(views.APIView):
+    # permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
+    def get(self, request, filteration_id=None):
+        if filteration_id is None:
+            return Response(
+                {
+                    "status_code": status.HTTP_400_BAD_REQUEST,
+                    "message": "filteration_id is not provided.",
+                    "data": None,
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        application_status = request.query_params.get("status", None)
+        # Validate status input
+        if application_status not in ["pending", "short_listed", "approved", None]:
+            return Response(
+                {
+                    "status_code": status.HTTP_400_BAD_REQUEST,
+                    "message": "Invalid status. Choices are 'pending', 'approved', 'short_listed'.",
+                    "data": None,
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            # Base query filtering on filteration_id
+            base_query = Applications.objects.filter(
+                Q(program__id=filteration_id) | Q(required_skills__id=filteration_id)
+            ).distinct()
+            # If a specific status is provided, filter by that status
+            if application_status:
+                count = base_query.filter(application_status=application_status).count()
+                return Response(
+                    {
+                        "status_code": status.HTTP_200_OK,
+                        "message": f"Count for status '{application_status}' fetched successfully.",
+                        "data": {application_status: count},
+                    },
+                    status=status.HTTP_200_OK,
+                )
+            # If no specific status is provided, get counts for all statuses
+            counts = {
+                "approved": base_query.filter(application_status="approved").count(),
+                "short_listed": base_query.filter(application_status="short_listed").count(),
+                "pending": base_query.filter(application_status="pending").count(),
+            }
+            return Response(
+                {
+                    "status_code": status.HTTP_200_OK,
+                    "message": "Counts for all statuses fetched successfully.",
+                    "data": counts,
+                },
+                status=status.HTTP_200_OK,
+            )
+        except Exception as e:
+            # Catch any unexpected exceptions and log them if necessary
+            return Response(
+                {
+                    "status_code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    "message": f"An error occurred: {str(e)}",
+                    "data": None,
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
