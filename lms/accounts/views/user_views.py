@@ -727,7 +727,7 @@ class StudentCoursesInstructorsView(views.APIView):
         courses = program.courses.all()
 
         all_instructors = Instructor.objects.filter(courses__in=courses).distinct()
-
+        
         matching_instructors_emails = [
             instructor.id.email
             for instructor in all_instructors
@@ -743,24 +743,3 @@ class StudentCoursesInstructorsView(views.APIView):
 
 
 
-class StudentCoursesInstructorsView(views.APIView):
-    def get(self, request, registration_id):
-        student = get_object_or_404(Student, registration_id=registration_id)
-
-        program = student.program
-        courses = program.courses.all()
-
-        all_instructors = Instructor.objects.filter(courses__in=courses).distinct()
-
-        matching_instructors_emails = [
-            instructor.id.email
-            for instructor in all_instructors
-            if instructor.session.filter(location=student.session.location).exists()
-        ]
-
-        course_names = [course.name for course in courses]
-        response_data = {
-            "courses": course_names,
-            "instructors": matching_instructors_emails,
-        }
-        return Response(response_data, status=status.HTTP_200_OK)
