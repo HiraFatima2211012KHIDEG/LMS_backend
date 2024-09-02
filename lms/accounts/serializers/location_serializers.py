@@ -15,29 +15,44 @@ class BatchSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Batch
-        fields = ["batch", "city", "year", "no_of_students", "start_date", "end_date"]
+        fields = [
+            "batch",
+            "city",
+            "year",
+            "no_of_students",
+            "start_date",
+            "end_date",
+            "status",
+        ]
 
 
 class LocationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Location
-        fields = ["id", "name", "shortname", "capacity", "city"]
+        fields = ["id", "name", "shortname", "capacity", "city", "status"]
 
 
 class SessionsSerializer(serializers.ModelSerializer):
+    location_name = serializers.CharField(source="location.name", read_only=True)
+
     class Meta:
         model = Sessions
 
-        fields = ["location", "no_of_students", "batch", "start_time", "end_time"]
-
+        fields = [
+            "location",
+            "location_name",
+            "no_of_students",
+            "batch",
+            "start_time",
+            "end_time",
+            "status",
+        ]
 
 
 class AssignSessionsSerializer(serializers.Serializer):
     session_ids = serializers.ListField(child=serializers.IntegerField())
 
     def validate_session_ids(self, value):
-        # Ensure all session IDs are valid
         if not Sessions.objects.filter(id__in=value).exists():
             raise serializers.ValidationError("Some session IDs are invalid.")
         return value
-

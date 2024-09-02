@@ -30,6 +30,16 @@ class BatchViewSet(BaseLocationViewSet):
     serializer_class = BatchSerializer
 
 
+class BatchListByCityView(generics.ListAPIView):
+    serializer_class = BatchSerializer
+
+    def get_queryset(self):
+        city_id = self.request.query_params.get('city', None)
+        if city_id:
+            return Batch.objects.filter(city__id=city_id)
+        return Batch.objects.all()
+
+
 class LocationViewSet(BaseLocationViewSet):
     queryset = Location.objects.all()
     serializer_class = LocationSerializer
@@ -101,7 +111,7 @@ class CreateBatchLocationSessionView(views.APIView):
 class AssignSessionsView(CustomResponseMixin, views.APIView):
     """Assign sessions to an instructor by providing a list of session IDs."""
 
-    permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
+    # permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
 
     @custom_extend_schema(AssignSessionsSerializer)
     def post(self, request, instructor_id):

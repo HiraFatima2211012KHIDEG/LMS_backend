@@ -8,6 +8,7 @@ from .views import user_views
 from .views.location_views import (
     CityViewSet,
     BatchViewSet,
+    BatchListByCityView,
     LocationViewSet,
     SessionsViewSet,
     CreateBatchLocationSessionView,
@@ -78,6 +79,7 @@ urlpatterns = [
         BatchViewSet.as_view({"get": "retrieve", "put": "update", "delete": "destroy"}),
         name="batch-detail",
     ),
+    path("batches-by-city/", BatchListByCityView.as_view(), name="batches-by-city"),
     path(
         "location/",
         LocationViewSet.as_view({"get": "list", "post": "create"}),

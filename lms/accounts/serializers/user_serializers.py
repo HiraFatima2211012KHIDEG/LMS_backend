@@ -73,12 +73,13 @@ class UserSerializer(serializers.ModelSerializer):
         # Save the user and return the created user instance
         return serializer.save()
 
+
 class AdminUserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
 
     class Meta:
         model = User
-        fields = ['email', 'password', 'first_name', 'last_name']
+        fields = ["email", "password", "first_name", "last_name"]
 
     def create(self, validated_data):
         return User.objects.create_admin(**validated_data)
@@ -108,32 +109,48 @@ class UserLoginSerializer(serializers.Serializer):
 #         model = User
 #         fields = ['id', 'first_name', 'last_name', 'contact', 'city']
 
+
 class UserProfileSerializer(serializers.ModelSerializer):
-    registration_id = serializers.CharField(source='student.registration_id', read_only=True)
+    registration_id = serializers.CharField(
+        source="student.registration_id", read_only=True
+    )
     email = serializers.EmailField(read_only=True)
     program = serializers.SerializerMethodField()
+
     # session_name = serializers.SerializerMethodField()
     class Meta:
         model = User
         fields = [
-            'id', 'first_name', 'last_name', 'contact', 'city',
-            'registration_id', 'email', 'program'
+            "id",
+            "first_name",
+            "last_name",
+            "contact",
+            "city",
+            "registration_id",
+            "email",
+            "program",
         ]
+
     def get_program(self, obj):
         try:
             application = Applications.objects.get(email=obj.email)
-            student_program = StudentApplicationSelection.objects.get(application = application)
-            return {  'id': student_program.selected_program.id,
-                      'name': student_program.selected_program.name
-                   }
+            student_program = StudentApplicationSelection.objects.get(
+                application=application
+            )
+            return {
+                "id": student_program.selected_program.id,
+                "name": student_program.selected_program.name,
+            }
         except Applications.DoesNotExist:
             return None
+
     # def get_session_name(self, obj):
     #     try:
-    #         student = Student.objects.get(user=obj) 
-    #         return student.session  
+    #         student = Student.objects.get(user=obj)
+    #         return student.session
     #     except Student.DoesNotExist:
     #         return None
+
 
 class UserProfileUpdateSerializer(serializers.ModelSerializer):
     """Serializer for updating user profile."""
@@ -390,9 +407,11 @@ class StudentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Student
-        fields = ["registration_id", "user", "session","session_details"]
+        fields = ["registration_id", "user", "session", "session_details", "program_id"]
+
     def get_session_details(self, obj):
         return obj.get_session_details()
+
 
 class InstructorSerializer(serializers.ModelSerializer):
     session_details = serializers.SerializerMethodField()
@@ -400,8 +419,10 @@ class InstructorSerializer(serializers.ModelSerializer):
     class Meta:
         model = Instructor
         fields = "__all__"
+
     def get_session_details(self, obj):
         return obj.get_session_details()
+
 
 class AssignCoursesSerializer(serializers.Serializer):
     course_ids = serializers.ListField(child=serializers.IntegerField())

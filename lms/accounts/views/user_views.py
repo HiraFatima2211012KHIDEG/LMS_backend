@@ -16,6 +16,7 @@ import constants
 from utils.custom import CustomResponseMixin, custom_extend_schema
 from course.models.models import Course
 from ..serializers.location_serializers import *
+from django.shortcuts import get_object_or_404
 
 
 class CreateUserView(generics.CreateAPIView):
@@ -672,7 +673,7 @@ class StudentDetailView(generics.RetrieveAPIView):
 class StudentListView(CustomResponseMixin, generics.ListAPIView):
     queryset = Student.objects.all()
     serializer_class = StudentSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    # permission_classes = [permissions.IsAuthenticated]
 
     def list(self, request, *args, **kwargs):
         response = super().list(request, *args, **kwargs)
@@ -684,7 +685,7 @@ class StudentListView(CustomResponseMixin, generics.ListAPIView):
 class InstructorListView(CustomResponseMixin, generics.ListAPIView):
     queryset = Instructor.objects.all()
     serializer_class = InstructorSerializer
-    permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
+    # permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
 
     def list(self, request, *args, **kwargs):
         response = super().list(request, *args, **kwargs)
@@ -742,24 +743,24 @@ class StudentCoursesInstructorsView(views.APIView):
 
 
 
-class StudentCoursesInstructorsView(views.APIView):
-    def get(self, request, registration_id):
-        student = get_object_or_404(Student, registration_id=registration_id)
+# class StudentCoursesInstructorsView(views.APIView):
+#     def get(self, request, registration_id):
+#         student = get_object_or_404(Student, registration_id=registration_id)
 
-        program = student.program
-        courses = program.courses.all()
+#         program = student.program
+#         courses = program.courses.all()
 
-        all_instructors = Instructor.objects.filter(courses__in=courses).distinct()
+#         all_instructors = Instructor.objects.filter(courses__in=courses).distinct()
 
-        matching_instructors_emails = [
-            instructor.id.email
-            for instructor in all_instructors
-            if instructor.session.filter(location=student.session.location).exists()
-        ]
+#         matching_instructors_emails = [
+#             instructor.id.email
+#             for instructor in all_instructors
+#             if instructor.session.filter(location=student.session.location).exists()
+#         ]
 
-        course_names = [course.name for course in courses]
-        response_data = {
-            "courses": course_names,
-            "instructors": matching_instructors_emails,
-        }
-        return Response(response_data, status=status.HTTP_200_OK)
+#         course_names = [course.name for course in courses]
+#         response_data = {
+#             "courses": course_names,
+#             "instructors": matching_instructors_emails,
+#         }
+#         return Response(response_data, status=status.HTTP_200_OK)

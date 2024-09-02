@@ -72,7 +72,7 @@ class ProgramDetailAPIView(CustomResponseMixin, APIView):
 
 
 class ProgramCoursesAPIView(CustomResponseMixin, APIView):
-    permission_classes = (permissions.IsAuthenticated,)
+    # permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request, program_id, format=None):
         program = get_object_or_404(Program, id=program_id)

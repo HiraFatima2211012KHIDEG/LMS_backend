@@ -58,7 +58,6 @@ class Sessions(models.Model):
 
     location = models.ForeignKey(Location, on_delete=models.CASCADE)
     no_of_students = models.IntegerField()
-
     batch = models.ForeignKey(Batch, on_delete=models.CASCADE)
     start_time = models.DateTimeField(null=True, blank=True)
     end_time = models.DateTimeField(null=True, blank=True)
