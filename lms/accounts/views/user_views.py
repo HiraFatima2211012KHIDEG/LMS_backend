@@ -697,7 +697,7 @@ class InstructorListView(CustomResponseMixin, generics.ListAPIView):
 class AssignCoursesView(CustomResponseMixin, views.APIView):
     """Assign courses to an instructor by providing a list of course IDs."""
 
-    permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
+    # permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
 
     @custom_extend_schema(AssignCoursesSerializer)
     def post(self, request, instructor_id):
