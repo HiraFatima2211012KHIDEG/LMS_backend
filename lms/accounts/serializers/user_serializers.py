@@ -341,13 +341,16 @@ class UserpasswordResetSerializer(serializers.Serializer):
             )
 
         # Check if password contains alphabets, numeric, and special characters
+        if " " in value:
+            raise serializers.ValidationError("Password cannot contain spaces.")
+
         if not re.match(
-            r"^(?=.*[a-zA-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]+$", value
+            r"^(?=.*[a-zA-Z])(?=.*\d)(?=.*[@$!%*?&^#(){}[\]=+/\\|_\-<>])[A-Za-z\d@$!%*?&^#(){}[\]=+/\\|_\-<>]+$",
+            value,
         ):
             raise serializers.ValidationError(
-                "Password should contain alphabets, numeric, and special characters."
+                "Password should contain letters, numbers, and special characters."
             )
-
         return value
 
     def validate(self, data):
