@@ -19,6 +19,7 @@ class Attendance(models.Model):
     attendance = models.CharField(
         max_length=10,
         choices=[("Present", "Present"), ("Absent", "Absent"), ("Leave", "Leave")],
+        default="Present",
     )
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=1)
     marked_by = models.ForeignKey(
@@ -28,7 +29,7 @@ class Attendance(models.Model):
     )
 
     class Meta:
-        unique_together = ('student', 'date')
+        unique_together = ("student", "date")
 
     def __str__(self):
         return f"{self.student} - {self.session} - {self.date}"

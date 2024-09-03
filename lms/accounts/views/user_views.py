@@ -95,7 +95,7 @@ class UserLoginView(views.APIView):
                 tokens = self.get_tokens_for_user(user)
                 user_group = Group.objects.get(user=user.id)
                 permission = self.get_group_permissions(user_group.id)
-                user_profile = UserProfileSerializer(user)
+                user_profile = UserProfileSerializer(user, context={'user' : user})
                 user_serializer = None
                 session_data = None  # Initialize session_data as None
                 if user_group.name == "student":
@@ -685,7 +685,7 @@ class StudentListView(CustomResponseMixin, generics.ListAPIView):
 class InstructorListView(CustomResponseMixin, generics.ListAPIView):
     queryset = Instructor.objects.all()
     serializer_class = InstructorSerializer
-    permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
+    # permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
 
     def list(self, request, *args, **kwargs):
         response = super().list(request, *args, **kwargs)
@@ -697,7 +697,7 @@ class InstructorListView(CustomResponseMixin, generics.ListAPIView):
 class AssignCoursesView(CustomResponseMixin, views.APIView):
     """Assign courses to an instructor by providing a list of course IDs."""
 
-    permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
+    # permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
 
     @custom_extend_schema(AssignCoursesSerializer)
     def post(self, request, instructor_id):
@@ -727,7 +727,7 @@ class StudentCoursesInstructorsView(views.APIView):
         courses = program.courses.all()
 
         all_instructors = Instructor.objects.filter(courses__in=courses).distinct()
-        
+
         matching_instructors_emails = [
             instructor.id.email
             for instructor in all_instructors
@@ -743,3 +743,24 @@ class StudentCoursesInstructorsView(views.APIView):
 
 
 
+class StudentCoursesInstructorsView(views.APIView):
+    def get(self, request, registration_id):
+        student = get_object_or_404(Student, registration_id=registration_id)
+
+        program = student.program
+        courses = program.courses.all()
+
+        all_instructors = Instructor.objects.filter(courses__in=courses).distinct()
+
+        matching_instructors_emails = [
+            instructor.id.email
+            for instructor in all_instructors
+            if instructor.session.filter(location=student.session.location).exists()
+        ]
+
+        course_names = [course.name for course in courses]
+        response_data = {
+            "courses": course_names,
+            "instructors": matching_instructors_emails,
+        }
+        return Response(response_data, status=status.HTTP_200_OK)

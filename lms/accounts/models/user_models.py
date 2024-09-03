@@ -53,7 +53,7 @@ class Applications(models.Model):
 
 class StudentApplicationSelection(models.Model):
     application = models.OneToOneField(Applications, on_delete=models.CASCADE)
-    selected_program = models.ForeignKey('course.Program', on_delete=models.CASCADE)
+    selected_program = models.ForeignKey('course.Program', on_delete=models.CASCADE,null=True, blank=True)
     status = models.CharField(max_length=15, default='selected')
     selected_at = models.DateTimeField(auto_now_add=True)
 

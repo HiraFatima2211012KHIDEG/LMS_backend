@@ -12,6 +12,8 @@ from .views.location_views import (
     SessionsViewSet,
     CreateBatchLocationSessionView,
     AssignSessionsView,
+    FilterBatchByCityView,
+    FilterLocationByCityView,
 )
 from .views.attendance_views import *
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
@@ -77,6 +79,16 @@ urlpatterns = [
         "batch/<str:pk>/",
         BatchViewSet.as_view({"get": "retrieve", "put": "update", "delete": "destroy"}),
         name="batch-detail",
+    ),
+    path(
+        "filter-batches-by-city/",
+        FilterBatchByCityView.as_view(),
+        name="filter-batches-by-city",
+    ),
+    path(
+        "filter-locations-by-city/",
+        FilterLocationByCityView.as_view(),
+        name="filter-locations-by-city",
     ),
     path(
         "location/",
@@ -174,5 +186,9 @@ urlpatterns = [
         ),
         name="techskill-detail",
     ),
-    path("application-count/<int:filteration_id>/", ApplicationStatusCount.as_view(), name="applications-count")
+    path(
+        "application-count/<int:filteration_id>/",
+        ApplicationStatusCount.as_view(),
+        name="applications-count",
+    ),
 ]

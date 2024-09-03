@@ -117,3 +117,35 @@ class AssignSessionsView(CustomResponseMixin, views.APIView):
         return self.custom_response(
             status.HTTP_400_BAD_REQUEST, "Invalid session IDs.", serializer.errors
         )
+
+class FilterBatchByCityView(views.APIView):
+    """
+    API view to filter Batches by city.
+    """
+    def get(self, request):
+        city_name = request.query_params.get('city', None)
+
+        if not city_name:
+            return Response({"error": "City parameter is required."}, status=400)
+
+        batches = Batch.objects.filter(city__iexact=city_name)
+        batch_serializer = BatchSerializer(batches, many=True)
+
+        return Response({"batches": batch_serializer.data})
+
+
+class FilterLocationByCityView(views.APIView):
+    """
+    API view to filter Locations by city.
+    """
+    def get(self, request):
+        city_name = request.query_params.get('city', None)
+
+        if not city_name:
+            return Response({"error": "City parameter is required."}, status=400)
+        locations = Location.objects.filter(city__iexact=city_name)
+
+        location_serializer = LocationSerializer(locations, many=True)
+
+        return Response({"locations": location_serializer.data})
+
