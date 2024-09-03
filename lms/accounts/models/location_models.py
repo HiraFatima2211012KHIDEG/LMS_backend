@@ -12,14 +12,17 @@ class City(models.Model):
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=1)
     created_at = models.DateTimeField(auto_now=True, null=True, blank=True)
     updated_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+
     def __str__(self):
         return f"{self.city}"
+
 
 class Batch(models.Model):
     """Batches of cities."""
 
     batch = models.CharField(max_length=10, primary_key=True)
-    city = models.ForeignKey(City, on_delete=models.CASCADE)
+    city = models.CharField(max_length=30, null=True)
+    city_abb = models.CharField(max_length=3, null=True)
     year = models.IntegerField()
     no_of_students = models.IntegerField()
     start_date = models.DateField()
@@ -30,11 +33,12 @@ class Batch(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.batch:
-            self.batch = f"{self.city.shortname}-{str(self.year)[-2:]}"
+            self.batch = f"{self.city_abb.upper()}-{str(self.year)[-2:]}"
         super(Batch, self).save(*args, **kwargs)
 
     class Meta:
-        unique_together = ('city', 'year')
+        unique_together = ("city", "year")
+
     def __str__(self):
         return f"{self.batch}"
 
@@ -44,7 +48,7 @@ class Location(models.Model):
 
     name = models.CharField(max_length=100)
     shortname = models.CharField(max_length=3)
-    city = models.ForeignKey(City, on_delete=models.CASCADE)
+    city = models.CharField(max_length=30, null=True)
     capacity = models.IntegerField()
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=1)
     created_at = models.DateTimeField(auto_now=True, null=True, blank=True)
@@ -52,6 +56,7 @@ class Location(models.Model):
 
     def __str__(self):
         return f"{self.name} - {self.shortname} - {self.city}"
+
 
 class Sessions(models.Model):
     """Location based sessions."""
@@ -62,8 +67,8 @@ class Sessions(models.Model):
     start_time = models.DateTimeField(null=True, blank=True)
     end_time = models.DateTimeField(null=True, blank=True)
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=1)
-    created_at = models.DateTimeField(auto_now=True, null=True, blank=True)
-    updated_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    created_at = models.TimeField(auto_now=True, null=True, blank=True)
+    updated_at = models.TimeField(auto_now_add=True, null=True, blank=True)
 
     def __str__(self):
         return f"{self.batch} - {self.location} - {self.no_of_students}"

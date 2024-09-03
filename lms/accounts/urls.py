@@ -79,7 +79,11 @@ urlpatterns = [
         BatchViewSet.as_view({"get": "retrieve", "put": "update", "delete": "destroy"}),
         name="batch-detail",
     ),
-    path("batches-by-city/", BatchListByCityView.as_view(), name="batches-by-city"),
+    path(
+        "batches-by-city/<int:pk>",
+        BatchListByCityView.as_view(),
+        name="batches-by-city",
+    ),
     path(
         "location/",
         LocationViewSet.as_view({"get": "list", "post": "create"}),

@@ -18,6 +18,7 @@ class BatchSerializer(serializers.ModelSerializer):
         fields = [
             "batch",
             "city",
+            "city_abb",
             "year",
             "no_of_students",
             "start_date",
