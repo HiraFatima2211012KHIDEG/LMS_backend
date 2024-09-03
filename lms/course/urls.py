@@ -14,6 +14,8 @@ urlpatterns = [
     path('program-course', CreateProgramView.as_view(), name='program-course'),
     path('programs/', ProgramListCreateAPIView.as_view(), name='program-list-create'),
     path('programs/<int:pk>/', ProgramDetailAPIView.as_view(), name='program-detail'),
+
+    path('programs/student/<str:registration_id>/', ProgramByRegistrationIDAPIView.as_view(), name='student-program'),
     path('programs/<int:program_id>/courses/', ProgramCoursesAPIView.as_view(), name='program-courses'),
     path('courses/', CourseListCreateAPIView.as_view(), name='course-list-create'),
     path('courses/<int:pk>/', CourseDetailAPIView.as_view(), name='course-detail'),
