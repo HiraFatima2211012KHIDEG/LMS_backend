@@ -28,10 +28,10 @@ class Course(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=1)
-    theory_credit_hours = models.IntegerField(null=True, blank=True)
-    lab_credit_hours = models.IntegerField(null=True, blank=True)
+    theory_credit_hours = models.IntegerField(blank=True, default=0)
+    lab_credit_hours = models.IntegerField(blank=True, default=0)
     skills = models.ManyToManyField('Skill',  blank=True)
-    instructors = models.ManyToManyField('accounts.Instructor', blank=True) 
+    instructors = models.ManyToManyField('accounts.Instructor', blank=True)
     picture = models.ImageField(
         upload_to="material/course_pictures/", blank=True, null=True
     )
@@ -62,7 +62,7 @@ class ContentFile(models.Model):
                 allowed_extensions=["pdf", "docx", "ppt", "xls", "zip"]
             )
         ],
-        
+
     )
     def __str__(self):
         return f"{self.module} - {self.file}"
@@ -126,15 +126,16 @@ class AssignmentSubmission(models.Model):
         return f"{self.user} - {self.assignment}"
 
     def save(self, *args, **kwargs):
-        if self.pk is None: 
+        if self.pk is None:
             self.remaining_resubmissions = self.assignment.no_of_resubmissions_allowed
-            print(f"Initialized remaining_resubmissions with {self.remaining_resubmissions}") 
+            print(f"Initialized remaining_resubmissions with {self.remaining_resubmissions}")
 
         super().save(*args, **kwargs)
 
     def decrement_resubmissions(self):
         if self.remaining_resubmissions > 0:
             self.remaining_resubmissions -= 1
+
             self.save()
             return True
         return False
@@ -202,9 +203,9 @@ class QuizSubmission(models.Model):
         return f"{self.user} - {self.quiz}"
 
     def save(self, *args, **kwargs):
-        if self.pk is None: 
+        if self.pk is None:
             self.remaining_resubmissions = self.quiz.no_of_resubmissions_allowed
-            print(f"Initialized remaining_resubmissions with {self.remaining_resubmissions}") 
+            print(f"Initialized remaining_resubmissions with {self.remaining_resubmissions}")
 
         super().save(*args, **kwargs)
 
@@ -277,11 +278,11 @@ class ProjectSubmission(models.Model):
 
     def __str__(self):
         return f"{self.user} - {self.project}"
-    
+
     def save(self, *args, **kwargs):
-        if self.pk is None: 
+        if self.pk is None:
             self.remaining_resubmissions = self.project.no_of_resubmissions_allowed
-            print(f"Initialized remaining_resubmissions with {self.remaining_resubmissions}") 
+            print(f"Initialized remaining_resubmissions with {self.remaining_resubmissions}")
 
         super().save(*args, **kwargs)
 

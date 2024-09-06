@@ -239,6 +239,7 @@ class ExamsByCourseIDAPIView(CustomResponseMixin, APIView):
                 'id': exam.id,
                 'question': exam.title,
                 'description': exam.description,
+                'status':exam.status,
                 'due_date': exam.due_date,
                 'created_at': exam.created_at,
                 'submission_status': submission_status,
@@ -249,6 +250,67 @@ class ExamsByCourseIDAPIView(CustomResponseMixin, APIView):
             exams_data.append(exam_data)
 
         return self.custom_response(status.HTTP_200_OK, 'Exams retrieved successfully', exams_data)
+
+
+class ExamStudentListView(CustomResponseMixin, APIView):
+    def get(self, request, exam_id,course_id, *args, **kwargs):
+        try:
+            exam = Exam.objects.get(id=exam_id, course__id=course_id)
+        except Exam.DoesNotExist:
+            return Response({"detail": "Exam not found for the course."}, status=status.HTTP_404_NOT_FOUND)
+
+        enrolled_students = Student.objects.filter(program__courses__id=course_id)
+        student_list = []
+
+        total_grade = None  
+        for student in enrolled_students:
+            user = student.user
+            try:
+                submission = ExamSubmission.objects.get(exam=exam, user=user)
+            except ExamSubmission.DoesNotExist:
+                submission = None
+
+            if submission:
+                if submission.status == 1:  
+                    submission_status = "Submitted"
+                else:
+                    submission_status = "Pending"  
+            else:
+                if timezone.now() > exam.due_date:
+                    submission_status = "Not Submitted" 
+                else:
+                    submission_status = "Pending"  
+
+            student_data = {
+                'student_name': f"{user.first_name} {user.last_name}",
+                'registration_id': student.registration_id,
+                'submitted_at': submission.exam_submitted_at if submission else None,
+                'status': submission_status,
+                'grade': None,
+                'remarks': None
+            }
+
+            if submission:
+                grading = ExamGrading.objects.filter(exam_submission=submission).first()
+                if grading:
+                    student_data['grade'] = grading.grade
+                    student_data['remarks'] = grading.feedback
+                    total_grade = grading.total_grade  
+                else:
+                    student_data['grade'] = None
+                    student_data['remarks'] = None
+
+            student_list.append(student_data)
+
+        response_data = {
+            'due_date': exam.due_date,
+            'total_grade': total_grade,
+            'students': student_list
+        }
+
+        return self.custom_response(
+            status.HTTP_200_OK, "Students retrieved successfully", response_data
+        )
 
 
 

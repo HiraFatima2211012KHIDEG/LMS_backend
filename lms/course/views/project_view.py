@@ -271,13 +271,15 @@ class ProjectsByCourseIDAPIView(CustomResponseMixin, APIView):
                 'id': project.id,
                 'question': project.title,
                 'description': project.description,
+                'status':project.status,
                 'due_date': project.due_date,
                 'created_at': project.created_at,
                 'submission_status': submission_status,
                 'submitted_at': submission.project_submitted_at if submission else None,
                 'submitted_file': submission.project_submitted_file.url if submission and submission.project_submitted_file else None,
-                'resubmission': submission.resubmission if submission else False,
-                'comments': submission.comments if submission else None,
+                'remaining_resubmissions': submission.remaining_resubmissions if submission else False,
+                "no_of_resubmissions_allowed":project.no_of_resubmissions_allowed,
+                'comments': submission.comments if submission else 0,
             }
             projects_data.append(project_data)
 
@@ -328,3 +330,66 @@ class ProjectDetailView(APIView):
             'total_marks_obtained': float(total_marks_obtained),
             'sum_of_total_marks': float(sum_of_total_marks)
         })
+
+
+
+class ProjectStudentListView(CustomResponseMixin, APIView):
+    def get(self, request, project_id,course_id, *args, **kwargs):
+        try:
+            project = Project.objects.get(id=project_id, course__id=course_id)
+        except Project.DoesNotExist:
+            return Response({"detail": "Project not found for the course."}, status=status.HTTP_404_NOT_FOUND)
+
+        enrolled_students = Student.objects.filter(program__courses__id=course_id)
+        student_list = []
+
+        total_grade = None  
+
+        for student in enrolled_students:
+            user = student.user
+            try:
+                submission = ProjectSubmission.objects.get(project=project, user=user)
+            except ProjectSubmission.DoesNotExist:
+                submission = None
+
+            if submission:
+                if submission.status == 1:  
+                    submission_status = "Submitted"
+                else:
+                    submission_status = "Pending"  
+            else:
+                if timezone.now() > project.due_date:
+                    submission_status = "Not Submitted"  
+                else:
+                    submission_status = "Pending"  
+
+            student_data = {
+                'student_name': f"{user.first_name} {user.last_name}",
+                'registration_id': student.registration_id,
+                'submitted_at': submission.project_submitted_at if submission else None,
+                'status': submission_status,
+                'grade': None,
+                'remarks': None
+            }
+
+            if submission:
+                grading = ProjectGrading.objects.filter(project_submissions=submission).first()
+                if grading:
+                    student_data['grade'] = grading.grade
+                    student_data['remarks'] = grading.feedback
+                    total_grade = grading.total_grade  
+                else:
+                    student_data['grade'] = None
+                    student_data['remarks'] = None
+
+            student_list.append(student_data)
+
+        response_data = {
+            'due_date': project.due_date,
+            'total_grade': total_grade,
+            'students': student_list
+        }
+
+        return self.custom_response(
+            status.HTTP_200_OK, "Students retrieved successfully", response_data
+        )

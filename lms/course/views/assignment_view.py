@@ -346,6 +346,7 @@ class AssignmentsByCourseIDAPIView(CustomResponseMixin, APIView):
                 "id": assignment.id,
                 "question": assignment.question,
                 "description": assignment.description,
+                "status":assignment.status,
                 "due_date": assignment.due_date,
                 "created_at": assignment.created_at,
                 "submission_status": submission_status,
@@ -355,7 +356,8 @@ class AssignmentsByCourseIDAPIView(CustomResponseMixin, APIView):
                     if submission and submission.submitted_file
                     else None
                 ),
-                "resubmission": submission.resubmission if submission else False,
+                "no_of_resubmissions_allowed":assignment.no_of_resubmissions_allowed,
+                "remaining_resubmissions": submission.remaining_resubmissions if submission else 0,
             }
             assignments_data.append(assignment_data)
 
@@ -364,6 +366,73 @@ class AssignmentsByCourseIDAPIView(CustomResponseMixin, APIView):
         )
 
 
+class AssignmentStudentListView(CustomResponseMixin, APIView):
+    def get(self, request, assignment_id, course_id, *args, **kwargs):
+        try:
+            assignment = Assignment.objects.get(id=assignment_id, course__id=course_id)
+        except Assignment.DoesNotExist:
+            return Response({"detail": "Assignment not found for the course."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Get all students enrolled in the specified course
+        enrolled_students = Student.objects.filter(program__courses__id=course_id)
+        student_list = []
+
+        total_grade = None  # Initialize total_grade
+
+        for student in enrolled_students:
+            user = student.user
+
+            # Check if the student has submitted the assignment
+            try:
+                submission = AssignmentSubmission.objects.get(assignment=assignment, user=user)
+            except AssignmentSubmission.DoesNotExist:
+                submission = None
+
+            if submission:
+                if submission.status == 1:  # Submitted
+                    submission_status = "Submitted"
+                else:
+                    submission_status = "Pending"  # Status is pending if not yet graded
+            else:
+                if timezone.now() > assignment.due_date:
+                    submission_status = "Not Submitted"  # Due date has passed without submission
+                else:
+                    submission_status = "Pending"  # Due date has not passed, and not yet submitted
+
+            student_data = {
+                'student_name': f"{user.first_name} {user.last_name}",
+                'registration_id': student.registration_id,
+                'submitted_at': submission.submitted_at if submission else None,
+                'status': submission_status,
+                'grade': None,
+                'remarks': None
+            }
+
+            # Add grade and remarks if submission exists
+            if submission:
+                grading = Grading.objects.filter(submission=submission).first()
+                if grading:
+                    student_data['grade'] = grading.grade
+                    student_data['remarks'] = grading.feedback
+                    total_grade = grading.total_grade  # Get total_grade from the first grading instance
+                else:
+                    student_data['grade'] = None
+                    student_data['remarks'] = None
+
+            student_list.append(student_data)
+
+        # Prepare the response data including the due date and total_grade
+        response_data = {
+            'due_date': assignment.due_date,
+            'total_grade': total_grade,
+            'students': student_list
+        }
+
+        return self.custom_response(
+            status.HTTP_200_OK, "Students retrieved successfully", response_data
+        )
+    
+    
 class StudentsWhoSubmittedAssignmentAPIView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
 

@@ -69,7 +69,22 @@ class ProgramDetailAPIView(CustomResponseMixin, APIView):
         logger.info(f"Deleted program with ID: {pk}")
         return self.custom_response(status.HTTP_204_NO_CONTENT, 'Program deleted successfully', {})
 
+    def patch(self, request, pk, format=None):
+        program = get_object_or_404(Program, pk=pk)
+        course_id = request.data.get('course_id')
 
+        if not course_id:
+            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Course ID is required', {})
+
+        try:
+            course = Course.objects.get(id=course_id)
+        except Course.DoesNotExist:
+            return self.custom_response(status.HTTP_404_NOT_FOUND, 'Course not found', {})
+
+        program.courses.add(course)
+        serializer = ProgramSerializer(program)
+        logger.info(f"Added course {course_id} to program with ID: {pk}")
+        return self.custom_response(status.HTTP_200_OK, 'Course added to program successfully', serializer.data)
 
 class ProgramCoursesAPIView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
@@ -80,6 +95,26 @@ class ProgramCoursesAPIView(CustomResponseMixin, APIView):
         serializer = CourseSerializer(courses, many=True)
         return self.custom_response(status.HTTP_200_OK, 'Courses retrieved successfully', serializer.data)
 
+class ProgramByRegistrationIDAPIView(CustomResponseMixin, APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request, registration_id, format=None):
+        try:
+            # Assuming `Student` model has a foreign key relationship with `Program`
+            student = Student.objects.get(registration_id=registration_id)
+            program = student.program
+
+            serializer = ProgramSerializer(program)
+            logger.info(f"Retrieved program for student with registration ID: {registration_id}")
+            return self.custom_response(status.HTTP_200_OK, 'Program retrieved successfully', serializer.data)
+
+        except Student.DoesNotExist:
+            logger.error(f"Student with registration ID {registration_id} not found")
+            return self.custom_response(status.HTTP_404_NOT_FOUND, 'Student not found', {})
+
+        except Program.DoesNotExist:
+            logger.error(f"No program found for student with registration ID {registration_id}")
+            return self.custom_response(status.HTTP_404_NOT_FOUND, 'Program not found for the given student', {})
 
 
 class CreateProgramView(APIView):

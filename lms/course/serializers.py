@@ -40,6 +40,7 @@ class ProgramSerializer(serializers.ModelSerializer):
             "name",
             "short_description",
             "about",
+            "created_at",
             "created_by",
             "status",
             "courses",
@@ -141,7 +142,7 @@ class ExamPendingSerializer(serializers.ModelSerializer):
     class Meta:
         model = Exam
         fields = ['id','type',  'course_id', 'course_name', 'title', 'description', 'created_at', 'due_date', 'status', 'content']
-        
+
 class AssignmentSubmissionSerializer(serializers.ModelSerializer):
     class Meta:
         model = AssignmentSubmission
@@ -159,6 +160,42 @@ class AssignmentSubmissionSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         assignment_submission = AssignmentSubmission.objects.create(**validated_data)
         return assignment_submission
+
+
+
+# class StudentDetailSerializer(serializers.ModelSerializer):
+#     student_name = serializers.SerializerMethodField()
+#     grade = serializers.SerializerMethodField()
+#     remarks = serializers.SerializerMethodField()
+#     status_display = serializers.SerializerMethodField()
+
+#     class Meta:
+#         model = AssignmentSubmission
+#         fields = [
+#             "student_name",
+#             "registration_id",
+#             "submitted_at",
+#             "status",
+#             "status_display",  # Add this field to display the human-readable status
+#             "grade",
+#             "remarks",
+#         ]
+
+#     def get_student_name(self, obj):
+#         user = obj.user
+#         return f"{user.first_name} {user.last_name}"
+
+#     def get_grade(self, obj):
+#         grading = Grading.objects.filter(submission=obj).first()
+#         return grading.grade if grading else None
+
+#     def get_remarks(self, obj):
+#         grading = Grading.objects.filter(submission=obj).first()
+#         return grading.feedback if grading else None
+
+#     def get_status_display(self, obj):
+#         status_choices = dict(ASSESMENT_STATUS_CHOICES)
+#         return status_choices.get(obj.status, "Unknown Status")
 
 class GradingSerializer(serializers.ModelSerializer):
 
