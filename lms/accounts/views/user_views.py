@@ -1,4 +1,4 @@
-from rest_framework import views, status, generics, permissions
+from rest_framework import views, viewsets, status, generics, permissions, filters
 from rest_framework.response import Response
 from ..serializers.user_serializers import *
 from django.contrib.auth import authenticate
@@ -12,6 +12,7 @@ from ..serializers.user_serializers import (
     AdminUserSerializer,
 )
 from ..models.user_models import Student
+from django_filters.rest_framework import DjangoFilterBackend
 import constants
 from utils.custom import CustomResponseMixin, custom_extend_schema
 from course.models.models import Course
@@ -95,7 +96,7 @@ class UserLoginView(views.APIView):
                 tokens = self.get_tokens_for_user(user)
                 user_group = Group.objects.get(user=user.id)
                 permission = self.get_group_permissions(user_group.id)
-                user_profile = UserProfileSerializer(user, context={'user' : user})
+                user_profile = UserProfileSerializer(user, context={"user": user})
                 user_serializer = None
                 session_data = None  # Initialize session_data as None
                 if user_group.name == "student":
@@ -694,6 +695,25 @@ class InstructorListView(CustomResponseMixin, generics.ListAPIView):
         )
 
 
+class InstructorCoursesViewSet(CustomResponseMixin, viewsets.ViewSet):
+    """
+    A viewset for retrieving all courses of an instructor based on the instructor's ID (email).
+    """
+
+    def list(self, request, *args, **kwargs):
+        instructor_id = request.query_params.get('instructor_id')
+        if not instructor_id:
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST, "Instructor ID is required.", None
+            )
+
+        instructor = get_object_or_404(Instructor, id=instructor_id)
+        serializer = InstructorCoursesSerializer(instructor)
+        return self.custom_response(
+            status.HTTP_200_OK, "Courses fetched successfully.", serializer.data
+        )
+
+
 class AssignCoursesView(CustomResponseMixin, views.APIView):
     """Assign courses to an instructor by providing a list of course IDs."""
 
@@ -742,25 +762,69 @@ class StudentCoursesInstructorsView(views.APIView):
         return Response(response_data, status=status.HTTP_200_OK)
 
 
+class StudentFilterViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Student.objects.all()
+    serializer_class = StudentDetailSerializer
 
-class StudentCoursesInstructorsView(views.APIView):
-    def get(self, request, registration_id):
-        student = get_object_or_404(Student, registration_id=registration_id)
+    def get_queryset(self):
+        course_id = self.request.query_params.get("course_id", None)
+        if course_id:
+            return Student.objects.filter(program__courses__id=course_id)
+        return Student.objects.none()
 
-        program = student.program
-        courses = program.courses.all()
 
-        all_instructors = Instructor.objects.filter(courses__in=courses).distinct()
+class UsersCountAdminSectionView(views.APIView, CustomResponseMixin):
+    # permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
 
-        matching_instructors_emails = [
-            instructor.id.email
-            for instructor in all_instructors
-            if instructor.session.filter(location=student.session.location).exists()
-        ]
+    def get(self, request):
+        try:
+            # Fetch all users
+            all_users = User.objects.all()
+            all_users_length = max(len(all_users) - 1, 0)  # 1 superadmin user is excluded
 
-        course_names = [course.name for course in courses]
-        response_data = {
-            "courses": course_names,
-            "instructors": matching_instructors_emails,
-        }
-        return Response(response_data, status=status.HTTP_200_OK)
+            # Fetch active users
+            active_users = User.objects.filter(is_active=True)
+            active_users_length = max(len(active_users) -1, 0)
+            inactive_users_length = max(all_users_length - active_users_length, 0)
+
+            # Fetch student users
+            student_user = User.objects.filter(groups__name='student')
+            student_user_length = len(student_user)
+            active_student = User.objects.filter(groups__name='student', is_active=True)
+            active_student_length = len(active_student)
+            inactive_student_length = max(student_user_length - active_student_length, 0)
+
+            # Fetch instructor users
+            instructor_user = User.objects.filter(groups__name='instructor')
+            instructor_user_length = len(instructor_user)
+            active_instructor = User.objects.filter(groups__name='instructor', is_active=True)
+            active_instructor_length = len(active_instructor)
+            inactive_instructor_length = max(instructor_user_length - active_instructor_length, 0)
+
+            # Data dictionary with all counts
+            data = {
+                'all_users_length': all_users_length,
+                'active_users_length': active_users_length,
+                'inactive_users_length': inactive_users_length,
+                'student_user_length': student_user_length,
+                'active_student_length': active_student_length,
+                'inactive_student_length': inactive_student_length,
+                'instructor_user_length': instructor_user_length,
+                'active_instructor_length': active_instructor_length,
+                'inactive_instructor_length': inactive_instructor_length,
+            }
+
+            # Returning the successful response with data
+            return self.custom_response(
+                status.HTTP_200_OK,
+                "Data fetched successfully.",
+                data
+            )
+
+        except Exception as e:
+            # Handle unexpected errors
+            return self.custom_response(
+                status.HTTP_500_INTERNAL_SERVER_ERROR,
+                f"An error occurred: {str(e)}",
+                None
+            )

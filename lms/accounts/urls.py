@@ -14,6 +14,9 @@ from .views.location_views import (
     AssignSessionsView,
     FilterBatchByCityView,
     FilterLocationByCityView,
+    FilterSessionsByLocationView,
+    FilterSessionsView,
+    CityStatsView
 )
 from .views.attendance_views import *
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
@@ -23,6 +26,7 @@ urlpatterns = [
     path(
         "create-admin/", user_views.CreateAdminUserView.as_view(), name="create-admin"
     ),
+    # Applications
     path("applications/", CreateApplicationView.as_view(), name="create-application"),
     path(
         "applications-process/",
@@ -34,6 +38,7 @@ urlpatterns = [
         ApplicationProcessView.as_view(),
         name="get-all-applications",
     ),
+    # user creation and updation
     # path('registration/', UserRegistrationView.as_view(), name='registration-completion'),
     path("create/", user_views.CreateUserView.as_view(), name="create"),
     path("login/", user_views.UserLoginView.as_view(), name="login"),
@@ -52,6 +57,12 @@ urlpatterns = [
         user_views.UserpasswordResetView.as_view(),
         name="reset-password",
     ),
+    path("verify-email/", VerifyEmailandSetPasswordView.as_view(), name="verify-email"),
+    path(
+        "resend-verification-email/",
+        ResendVerificationEmail.as_view(),
+        name="resend-verification-email",
+    ),
     path("user-profile/", user_views.UserProfileView.as_view(), name="user-profile"),
     # path('set-password/', user_views.SetPasswordView.as_view(), name='set-password'),
     path("token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
@@ -60,6 +71,7 @@ urlpatterns = [
         user_views.UserProfileUpdateView.as_view(),
         name="user-profile-update",
     ),
+    # user management
     path(
         "cities/",
         CityViewSet.as_view({"get": "list", "post": "create"}),
@@ -79,16 +91,6 @@ urlpatterns = [
         "batch/<str:pk>/",
         BatchViewSet.as_view({"get": "retrieve", "put": "update", "delete": "destroy"}),
         name="batch-detail",
-    ),
-    path(
-        "filter-batches-by-city/",
-        FilterBatchByCityView.as_view(),
-        name="filter-batches-by-city",
-    ),
-    path(
-        "filter-locations-by-city/",
-        FilterLocationByCityView.as_view(),
-        name="filter-locations-by-city",
     ),
     path(
         "location/",
@@ -114,14 +116,23 @@ urlpatterns = [
         ),
         name="session-detail",
     ),
-    # path('student/', CreateStudentView.as_view(), name='create-student'),
-    # path('student/<str:registration_id>/', StudentInstructorDetailView.as_view(), name='detail-student'),
-    path("verify-email/", VerifyEmailandSetPasswordView.as_view(), name="verify-email"),
+    # filteration for user management
     path(
-        "resend-verification-email/",
-        ResendVerificationEmail.as_view(),
-        name="resend-verification-email",
+        "filter-batches-by-city/",
+        FilterBatchByCityView.as_view(),
+        name="filter-batches-by-city",
     ),
+    path(
+        "filter-locations-by-city/",
+        FilterLocationByCityView.as_view(),
+        name="filter-locations-by-city",
+    ),
+    path(
+        "filter-sessions-by-location/",
+        FilterSessionsByLocationView.as_view(),
+        name="filter-sessions-by-location",
+    ),
+    path("filter-sessions/", FilterSessionsView.as_view(), name="filter-sessions"),
     path(
         "assign-session/<int:user_id>/<int:session_id>/",
         user_views.AssignSessionView.as_view(),
@@ -132,6 +143,11 @@ urlpatterns = [
         "student/<str:registration_id>/",
         user_views.StudentDetailView.as_view(),
         name="detail-student",
+    ),
+    path(
+        "course-students/",
+        user_views.StudentFilterViewSet.as_view({"get": "list"}),
+        name="course-students",
     ),
     path(
         "student-courses-instructors/<str:registration_id>/",
@@ -146,6 +162,11 @@ urlpatterns = [
         "instructors/<str:instructor_id>/assign-courses/",
         user_views.AssignCoursesView.as_view(),
         name="assign-courses",
+    ),
+    path(
+        "instructor-courses/",
+        user_views.InstructorCoursesViewSet.as_view({"get": "list"}),
+        name="instructor-courses",
     ),
     path(
         "instructors/<str:instructor_id>/assign-sessions/",
@@ -170,6 +191,11 @@ urlpatterns = [
         name="user-attendance-list",
     ),
     path(
+        "api/filter-attendance/",
+        AttendanceFilterViewSet.as_view({"get": "list"}),
+        name="filter-attendance",
+    ),
+    path(
         "create-batch-location-session/",
         CreateBatchLocationSessionView.as_view(),
         name="create-batch-location-session",
@@ -190,5 +216,15 @@ urlpatterns = [
         "application-count/<int:filteration_id>/",
         ApplicationStatusCount.as_view(),
         name="applications-count",
+    ),
+    path(
+        "admin-portal-count/",
+        user_views.UsersCountAdminSectionView.as_view(),
+        name="users-count",
+    ),
+    path(
+        "city-stats/",
+        CityStatsView.as_view(),
+        name="city-capacity-and-users",
     ),
 ]

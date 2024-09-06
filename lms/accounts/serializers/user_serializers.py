@@ -17,6 +17,7 @@ from accounts.utils import send_email
 from ..models.user_models import *
 from course.models.models import Course
 from django.contrib.auth.models import Group
+from course.serializers import CourseSerializer
 
 # from accounts.utils import send_email
 
@@ -74,12 +75,13 @@ class UserSerializer(serializers.ModelSerializer):
         # Save the user and return the created user instance
         return serializer.save()
 
+
 class AdminUserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
 
     class Meta:
         model = User
-        fields = ['email', 'password', 'first_name', 'last_name']
+        fields = ["email", "password", "first_name", "last_name"]
 
     def create(self, validated_data):
         return User.objects.create_admin(**validated_data)
@@ -109,38 +111,60 @@ class UserLoginSerializer(serializers.Serializer):
 #         model = User
 #         fields = ['id', 'first_name', 'last_name', 'contact', 'city']
 
+
 class UserProfileSerializer(serializers.ModelSerializer):
-    registration_id = serializers.CharField(source='student.registration_id', read_only=True)
+    registration_id = serializers.CharField(
+        source="student.registration_id", read_only=True
+    )
     email = serializers.EmailField(read_only=True)
     program = serializers.SerializerMethodField()
-    # session_name = serializers.SerializerMethodField()
+    course = serializers.SerializerMethodField()
+
     class Meta:
         model = User
         fields = [
-            'id', 'first_name', 'last_name', 'contact', 'city',
-            'registration_id', 'email', 'program'
+            "id",
+            "first_name",
+            "last_name",
+            "contact",
+            "city",
+            "registration_id",
+            "email",
+            "program",
+            "course",
         ]
-    def get_program(self, obj):
-        user = self.context.get('user')
 
+    def __init__(self, *args, **kwargs):
+        super(UserProfileSerializer, self).__init__(*args, **kwargs)
+        user = self.context.get("user")
+
+        if user and user.groups.filter(name="student").exists():
+            self.fields.pop("course")
+        elif user and user.groups.filter(name="instructor").exists():
+            self.fields.pop("program")
+
+    def get_program(self, obj):
         try:
-            if user.groups == 'student': 
-                application = Applications.objects.get(email=obj.email)
-                student_program = StudentApplicationSelection.objects.get(application = application)
-                return {  'id': student_program.selected_program.id,
-                        'name': student_program.selected_program.name
-                    }
-            elif user.groups == 'instructor':
-                # application = Applications.objects.get(email = obj.email)
-                pass
-        except Applications.DoesNotExist:
+            application = Applications.objects.get(email=obj.email)
+            student_program = StudentApplicationSelection.objects.get(
+                application=application
+            )
+            return {
+                "id": student_program.selected_program.id,
+                "name": student_program.selected_program.name,
+            }
+        except (Applications.DoesNotExist, StudentApplicationSelection.DoesNotExist):
             return None
-    # def get_session_name(self, obj):
-    #     try:
-    #         student = Student.objects.get(user=obj) 
-    #         return student.session  
-    #     except Student.DoesNotExist:
-    #         return None
+
+    def get_course(self, obj):
+        try:
+            application = Applications.objects.get(email=obj.email)
+            instructor = Instructor.objects.get(id=obj.email)
+            courses = instructor.courses.all()
+            return [{"id": course.id, "name": course.name} for course in courses]
+        except (Applications.DoesNotExist, Instructor.DoesNotExist):
+            return None
+
 
 class UserProfileUpdateSerializer(serializers.ModelSerializer):
     """Serializer for updating user profile."""
@@ -397,9 +421,22 @@ class StudentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Student
-        fields = ["registration_id", "user", "session","session_details"]
+        fields = ["registration_id", "user", "session", "session_details"]
+
     def get_session_details(self, obj):
         return obj.get_session_details()
+
+
+class StudentDetailSerializer(serializers.ModelSerializer):
+    full_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Student
+        fields = ["registration_id", "full_name"]
+
+    def get_full_name(self, obj):
+        return f"{obj.user.first_name} {obj.user.last_name}"
+
 
 class InstructorSerializer(serializers.ModelSerializer):
     session_details = serializers.SerializerMethodField()
@@ -407,8 +444,18 @@ class InstructorSerializer(serializers.ModelSerializer):
     class Meta:
         model = Instructor
         fields = "__all__"
+
     def get_session_details(self, obj):
         return obj.get_session_details()
+
+
+class InstructorCoursesSerializer(serializers.ModelSerializer):
+    courses = CourseSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Instructor
+        fields = ["id", "courses"]
+
 
 class AssignCoursesSerializer(serializers.Serializer):
     course_ids = serializers.ListField(child=serializers.IntegerField())
