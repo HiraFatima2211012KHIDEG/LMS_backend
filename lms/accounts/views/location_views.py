@@ -6,7 +6,7 @@ from ..models.location_models import (
     Location,
     Sessions,
 )
-from ..models.user_models import Instructor
+from ..models.user_models import Instructor, User
 from utils.custom import BaseLocationViewSet
 from ..serializers.location_serializers import (
     CitySerializer,
@@ -18,6 +18,7 @@ from ..serializers.location_serializers import (
 from utils.custom import CustomResponseMixin, custom_extend_schema
 from rest_framework import views
 from drf_spectacular.utils import extend_schema, inline_serializer
+from django.db.models import Sum
 
 
 class CityViewSet(BaseLocationViewSet):
@@ -149,3 +150,164 @@ class FilterLocationByCityView(views.APIView):
 
         return Response({"locations": location_serializer.data})
 
+
+
+# class CityCapacityByLocationView(views.APIView, CustomResponseMixin):
+#     """
+#     API view to check student capacity for each city.
+#     """
+
+#     def get(self, request):
+#         try:
+#             # Aggregate capacities of locations grouped by city
+#             cities_with_capacity = (
+#                 City.objects
+#                 .annotate(total_capacity=Sum('location__capacity'))  # Assuming 'location' is the related_name from Location to City
+#             )
+
+#             # Create a dictionary with city names and their respective capacities
+#             total_city_capacity = {
+#                 city.name: city.total_capacity or 0  # Handle None values by converting them to 0
+#                 for city in cities_with_capacity
+#             }
+
+#             # Return the successful response with city capacities
+#             return self.custom_response(
+#                 status.HTTP_200_OK,
+#                 "Data fetched successfully.",
+#                 total_city_capacity
+#             )
+
+#         except Exception as e:
+#             # Handle unexpected errors and log if necessary
+#             return self.custom_response(
+#                 status.HTTP_500_INTERNAL_SERVER_ERROR,
+#                 f"An error occurred: {str(e)}",
+#                 None
+#             )
+
+
+
+
+# class UserCountByCityView(views.APIView, CustomResponseMixin):
+#     """
+#     API view to get count of student and instructor users in each city.
+#     """
+
+#     def get(self, request):
+#         try:
+#             # Fetch all unique cities from User table, excluding null and empty cities
+#             cities = User.objects.exclude(city__isnull=True).exclude(city__exact='').values_list('city', flat=True).distinct()
+#             data = []
+
+#             for city in cities:
+#                 # Count of student users in the city
+#                 student_count = User.objects.filter(city=city, groups__name='student').count()
+#                 # Count of instructor users in the city
+#                 instructor_count = User.objects.filter(city=city, groups__name='instructor').count()
+
+#                 # Append the results for each city
+#                 data.append({
+#                     'city': city,
+#                     'student_count': student_count,
+#                     'instructor_count': instructor_count
+#                 })
+
+#             return self.custom_response(
+#                 status.HTTP_200_OK,
+#                 "Data fetched successfully.",
+#                 data
+#             )
+
+#         except Exception as e:
+#             # Handle unexpected errors
+#             return self.custom_response(
+#                 status.HTTP_500_INTERNAL_SERVER_ERROR,
+#                 f"An error occurred: {str(e)}",
+#                 None
+#             )
+        
+
+# class CityCapacityView(views.APIView, CustomResponseMixin):
+#     """
+#     API view to get the total capacity for each city based on locations.
+#     """
+
+#     def get(self, request):
+#         try:
+#             # Fetch all unique cities from Location table, excluding null and empty cities
+#             cities = (
+#                 Location.objects.exclude(city__isnull=True)
+#                 .exclude(city__exact="")
+#                 .values_list("city", flat=True)
+#                 .distinct()
+#             )
+
+#             data = []
+
+#             # Calculate total capacity for each city
+#             for city in cities:
+#                 total_capacity = Location.objects.filter(city=city).aggregate(
+#                     total_capacity=Sum("capacity")
+#                 )["total_capacity"] or 0  # Default to 0 if no capacity is found
+
+#                 # Append the city and its total capacity to the response data
+#                 data.append({"city": city, "total_capacity": total_capacity})
+
+#             # Return the successful response with data
+#             return self.custom_response(
+#                 status.HTTP_200_OK, "Data fetched successfully.", data
+#             )
+
+#         except Exception as e:
+#             # Handle unexpected errors
+#             return self.custom_response(
+#                 status.HTTP_500_INTERNAL_SERVER_ERROR,
+#                 f"An error occurred: {str(e)}",
+#                 None,
+#             )
+
+
+class CityStatsView(views.APIView, CustomResponseMixin):
+    """
+    API view to get count of student and instructor users and total capacity for each city.
+    """
+
+    def get(self, request):
+        try:
+            # Fetch all unique cities from User table, excluding null and empty cities
+            cities = User.objects.exclude(city__isnull=True).exclude(city__exact='').values_list('city', flat=True).distinct()
+            data = []
+
+            for city in cities:
+                # Count of student users in the city
+                student_count = User.objects.filter(city=city, groups__name='student').count()
+                # Count of instructor users in the city
+                instructor_count = User.objects.filter(city=city, groups__name='instructor').count()
+                
+                # Calculate total capacity for each city
+                total_capacity = Location.objects.filter(city=city).aggregate(
+                    total_capacity=Sum("capacity")
+                )["total_capacity"] or 0  # Default to 0 if no capacity is found
+
+                # Append the results for each city
+                data.append({
+                    'city': city,
+                    'student_count': student_count,
+                    'instructor_count': instructor_count,
+                    'total_capacity': total_capacity
+                })
+
+            return self.custom_response(
+                status.HTTP_200_OK,
+                "Data fetched successfully.",
+                data
+            )
+
+        except Exception as e:
+            # Handle unexpected errors
+            return self.custom_response(
+                status.HTTP_500_INTERNAL_SERVER_ERROR,
+                f"An error occurred: {str(e)}",
+                None
+            )

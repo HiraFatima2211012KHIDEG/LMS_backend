@@ -79,10 +79,10 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
         group_name = request.query_params.get("group_name")
         application_status = request.query_params.get("status")
 
-        if application_status not in ["pending", "short_listed", "approved"]:
+        if application_status not in ["pending", "short_listed", "approved", "removed"]:
             return self.custom_response(
                 status.HTTP_400_BAD_REQUEST,
-                "Invalid status. Choices are 'pending', 'approved', 'short_listed'.",
+                "Invalid status. Choices are 'pending', 'approved', 'short_listed', 'removed'.",
                 None,
             )
 
@@ -350,7 +350,7 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
                         )
                         print(token)
                         verification_link = (
-                            f"http://localhost:3000/auth/account-verify/{str(token)}"
+                            f"https://lms-phi-two.vercel.app/auth/account-verify/{str(token)}"
                         )
                         body = (
                             f"Congratulations {application_obj.first_name} {application_obj.last_name}!\n"
@@ -516,7 +516,7 @@ class ResendVerificationEmail(views.APIView, CustomResponseMixin):
                 )
 
             token = self.create_signed_token(applicant.id, applicant.email)
-            verification_link = f"http://localhost:3000/?token={str(token)}"
+            verification_link = f"https://lms-phi-two.vercel.app/auth/account-verify/{str(token)}"
             print(token)
             body = (
                 f"Congratulations {applicant.first_name} {applicant.last_name}!\n"
@@ -715,4 +715,25 @@ class ApplicationStatusCount(views.APIView):
                 },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+
+# class VerifiedUnverifiedAccountsCountView(views.APIView, CustomResponseMixin):
+
+#     permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
+
+#     def get(self, request, filteration_id=None):
+#         if filteration_id is None:
+#             return self.custom_response(
+#                 status.HTTP_400_BAD_REQUEST, "filteration_id is not provided.", None
+#             )
+        
+#         status = request.query_params.get('status')
+#         if status != "approved":
+#             return self.custom_response(
+#                 status.HTTP_400_BAD_REQUEST,
+#                 "Invalid status",
+#                 None,
+#             )    
+        
+#         else:
 

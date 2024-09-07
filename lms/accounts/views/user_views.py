@@ -17,6 +17,7 @@ from utils.custom import CustomResponseMixin, custom_extend_schema
 from course.models.models import Course
 from ..serializers.location_serializers import *
 from django.shortcuts import get_object_or_404
+from django.contrib.auth.models import Group
 
 
 class CreateUserView(generics.CreateAPIView):
@@ -764,3 +765,65 @@ class StudentCoursesInstructorsView(views.APIView):
             "instructors": matching_instructors_emails,
         }
         return Response(response_data, status=status.HTTP_200_OK)
+    
+
+class UsersCountAdminSectionView(views.APIView, CustomResponseMixin):
+    # permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
+
+    def get(self, request):
+        try:
+            # Fetch all users
+            all_users = User.objects.all()
+            all_users_length = max(len(all_users) - 1, 0)  # 1 superadmin user is excluded
+
+            # Fetch active users
+            active_users = User.objects.filter(is_active=True)
+            active_users_length = max(len(active_users) -1, 0) 
+            inactive_users_length = max(all_users_length - active_users_length, 0)
+
+            # Fetch student users
+            student_user = User.objects.filter(groups__name='student')
+            student_user_length = len(student_user)
+            active_student = User.objects.filter(groups__name='student', is_active=True)
+            active_student_length = len(active_student)
+            inactive_student_length = max(student_user_length - active_student_length, 0)
+
+            # Fetch instructor users
+            instructor_user = User.objects.filter(groups__name='instructor')
+            instructor_user_length = len(instructor_user)
+            active_instructor = User.objects.filter(groups__name='instructor', is_active=True)
+            active_instructor_length = len(active_instructor)
+            inactive_instructor_length = max(instructor_user_length - active_instructor_length, 0)
+
+            # Data dictionary with all counts
+            data = {
+                'all_users_length': all_users_length,
+                'active_users_length': active_users_length,
+                'inactive_users_length': inactive_users_length,
+                'student_user_length': student_user_length,
+                'active_student_length': active_student_length,
+                'inactive_student_length': inactive_student_length,
+                'instructor_user_length': instructor_user_length,
+                'active_instructor_length': active_instructor_length,
+                'inactive_instructor_length': inactive_instructor_length,
+            }
+
+            # Returning the successful response with data
+            return self.custom_response(
+                status.HTTP_200_OK,
+                "Data fetched successfully.",
+                data
+            )
+
+        except Exception as e:
+            # Handle unexpected errors
+            return self.custom_response(
+                status.HTTP_500_INTERNAL_SERVER_ERROR,
+                f"An error occurred: {str(e)}",
+                None
+            )
+
+
+
+
+

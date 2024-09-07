@@ -14,6 +14,9 @@ from .views.location_views import (
     AssignSessionsView,
     FilterBatchByCityView,
     FilterLocationByCityView,
+    # UserCountByCityView,
+    # CityCapacityView,
+    CityStatsView,
 )
 from .views.attendance_views import *
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
@@ -191,4 +194,26 @@ urlpatterns = [
         ApplicationStatusCount.as_view(),
         name="applications-count",
     ),
+    path(
+        "admin-portal-count/",
+        user_views.UsersCountAdminSectionView.as_view(),
+        name="users-count",
+    ),
+    # path(
+    #     "user-count-by-city/",
+    #     UserCountByCityView.as_view(),
+    #     name="user-count-by-city",
+    # ),
+    # path(
+    #     "city-capacity/",
+    #     CityCapacityView.as_view(),
+    #     name="city-capacity",
+    # ),
+    path(
+        "city-stats/",
+        CityStatsView.as_view(),
+        name="city-capacity-and-users",
+    ),
+
+
 ]
