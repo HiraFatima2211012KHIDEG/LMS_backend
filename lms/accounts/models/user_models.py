@@ -10,6 +10,7 @@ import datetime
 from django.conf import settings
 from .location_models import (
     Sessions,
+    Location
 )
 from utils.custom import STATUS_CHOICES
 from course.models.models import Course
@@ -25,7 +26,7 @@ class Applications(models.Model):
     last_name = models.CharField(max_length=20)
     contact = models.CharField(max_length=12, null=True, blank=True)
     city = models.CharField(max_length=50)
-
+    # location = models.ManyToManyField(Location, blank=True)
     city_abb = models.CharField(max_length=10, null=True)
     program = models.ManyToManyField('course.Program', blank=True)  # Make blank=True to accommodate instructors
     group_name = models.CharField(max_length=20)
@@ -63,6 +64,7 @@ class InstructorApplicationSelection(models.Model):
     selected_skills = models.ManyToManyField(TechSkill)
     status = models.CharField(max_length=15, default='selected')
     selected_at = models.DateTimeField(auto_now_add=True)
+
 
 
 class UserManager(BaseUserManager):

@@ -644,49 +644,55 @@ class TechSkillViewSet(viewsets.ModelViewSet):
     queryset = TechSkill.objects.all()
     serializer_class = TechSkillSerializer
 
-class ApplicationStatusCount(views.APIView):
+
+
+class ApplicationStatusCount(views.APIView, CustomResponseMixin):
     # permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
 
     def get(self, request, filteration_id=None):
         if filteration_id is None:
-            return Response(
-                {
-                    "status_code": status.HTTP_400_BAD_REQUEST,
-                    "message": "filteration_id is not provided.",
-                    "data": None,
-                },
-                status=status.HTTP_400_BAD_REQUEST,
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST,
+                "filteration_id is not provided.",
+                None,
             )
 
+        # Get the group_name from the query parameters
+        group_name = request.query_params.get("group_name")
+
+        # Validate group_name input
+        if group_name not in ["student", "instructor"]:
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST,
+                "Invalid group_name. Choices are 'student' and 'instructor'.",
+                None,
+            )
+
+        # Get the application status from query parameters
         application_status = request.query_params.get("status", None)
 
         # Validate status input
         if application_status not in ["pending", "short_listed", "approved", None]:
-            return Response(
-                {
-                    "status_code": status.HTTP_400_BAD_REQUEST,
-                    "message": "Invalid status. Choices are 'pending', 'approved', 'short_listed'.",
-                    "data": None,
-                },
-                status=status.HTTP_400_BAD_REQUEST,
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST,
+                "Invalid status. Choices are 'pending', 'approved', 'short_listed'.",
+                None,
             )
 
         try:
-            # Base query filtering on filteration_id
+            # Base query filtering on filteration_id and group_name
             base_query = Applications.objects.filter(
-                Q(program__id=filteration_id) | Q(required_skills__id=filteration_id)
+                Q(program__id=filteration_id, group_name=group_name) |
+                Q(required_skills__id=filteration_id, group_name=group_name)
             ).distinct()
 
-            # If a specific status is provided, filter by that status
+            # Filter the base query by the application status if provided
             if application_status:
                 count = base_query.filter(application_status=application_status).count()
-                return Response(
-                    {
-                        "status_code": status.HTTP_200_OK,
-                        "message": f"Count for status '{application_status}' fetched successfully.",
-                        "data": {application_status: count},
-                    },
-                    status=status.HTTP_200_OK,
+                return self.custom_response(
+                    status.HTTP_200_OK,
+                    f"Count for status '{application_status}' fetched successfully.",
+                    {application_status: count},
                 )
 
             # If no specific status is provided, get counts for all statuses
@@ -696,25 +702,36 @@ class ApplicationStatusCount(views.APIView):
                 "pending": base_query.filter(application_status="pending").count(),
             }
 
-            return Response(
-                {
-                    "status_code": status.HTTP_200_OK,
-                    "message": "Counts for all statuses fetched successfully.",
-                    "data": counts,
-                },
-                status=status.HTTP_200_OK,
+            # Count of verified accounts: emails exist in both Applications and User and have status 'approved'
+            verified_count = base_query.filter(
+                email__in=User.objects.values_list('email', flat=True),
+                application_status='approved'
+            ).count()
+
+            # Count of unverified accounts: emails do not exist in User but have status 'approved'
+            unverified_count = base_query.filter(
+                ~Q(email__in=User.objects.values_list('email', flat=True)),
+                application_status='approved'
+            ).count()
+
+            # Add verified and unverified counts to the response data
+            counts["verified"] = verified_count
+            counts["unverified"] = unverified_count
+
+            return self.custom_response(
+                status.HTTP_200_OK,
+                "Counts for all statuses fetched successfully.",
+                counts,
             )
 
         except Exception as e:
             # Catch any unexpected exceptions and log them if necessary
-            return Response(
-                {
-                    "status_code": status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    "message": f"An error occurred: {str(e)}",
-                    "data": None,
-                },
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            return self.custom_response(
+                status.HTTP_500_INTERNAL_SERVER_ERROR,
+                f"An error occurred: {str(e)}",
+                None,
             )
+
 
 
 # class VerifiedUnverifiedAccountsCountView(views.APIView, CustomResponseMixin):
