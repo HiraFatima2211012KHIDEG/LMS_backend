@@ -392,12 +392,12 @@ class AssignmentStudentListView(CustomResponseMixin, APIView):
                 if submission.status == 1:  # Submitted
                     submission_status = "Submitted"
                 else:
-                    submission_status = "Pending"  # Status is pending if not yet graded
+                    submission_status = "Pending" 
             else:
                 if timezone.now() > assignment.due_date:
-                    submission_status = "Not Submitted"  # Due date has passed without submission
+                    submission_status = "Not Submitted" 
                 else:
-                    submission_status = "Pending"  # Due date has not passed, and not yet submitted
+                    submission_status = "Pending"  
 
             student_data = {
                 'student_name': f"{user.first_name} {user.last_name}",

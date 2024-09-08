@@ -14,11 +14,13 @@ from .views.location_views import (
     AssignSessionsView,
     FilterBatchByCityView,
     FilterLocationByCityView,
-    FilterSessionsByLocationView,
-    FilterSessionsView,
-    CityStatsView
+    # FilterSessionsByLocationView,
+    # FilterSessionsView,
+    CityStatsView,
+    SessionCalendarAPIView
+
 )
-from .views.attendance_views import *
+from .views.attendance_views import AttendanceDetailView,AttendanceFilterViewSet,AttendanceListCreateView,UserAttendanceListView
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 
@@ -116,7 +118,7 @@ urlpatterns = [
         ),
         name="session-detail",
     ),
-    # filteration for user management
+    path('sessions/calendar/', SessionCalendarAPIView.as_view(), name='session-list-calendar'),
     path(
         "filter-batches-by-city/",
         FilterBatchByCityView.as_view(),
@@ -127,12 +129,12 @@ urlpatterns = [
         FilterLocationByCityView.as_view(),
         name="filter-locations-by-city",
     ),
-    path(
-        "filter-sessions-by-location/",
-        FilterSessionsByLocationView.as_view(),
-        name="filter-sessions-by-location",
-    ),
-    path("filter-sessions/", FilterSessionsView.as_view(), name="filter-sessions"),
+    # path(
+    #     "filter-sessions-by-location/",
+    #     FilterSessionsByLocationView.as_view(),
+    #     name="filter-sessions-by-location",
+    # ),
+    # path("filter-sessions/", FilterSessionsView.as_view(), name="filter-sessions"),
     path(
         "assign-session/<int:user_id>/<int:session_id>/",
         user_views.AssignSessionView.as_view(),
@@ -227,4 +229,14 @@ urlpatterns = [
         CityStatsView.as_view(),
         name="city-capacity-and-users",
     ),
+    path(
+        "user-process/<int:filteration_id>/",
+        user_views.UserProcessView.as_view(),
+        name="users-count",
+    ),
+    path('preferred-sessions/', user_views.PreferredSessionView.as_view(), name='preferred-sessions'),
+
+    path('user-sessions/<int:user_id>/', user_views.UserSessionsView.as_view(), name='user-sessions'),
+    path('instructor-sessions/', user_views.InstructorSessionsView.as_view(), name='instructor-sessions'),
+
 ]

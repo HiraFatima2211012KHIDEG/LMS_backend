@@ -116,6 +116,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
     registration_id = serializers.CharField(
         source="student.registration_id", read_only=True
     )
+
     email = serializers.EmailField(read_only=True)
     program = serializers.SerializerMethodField()
     course = serializers.SerializerMethodField()
@@ -143,6 +144,10 @@ class UserProfileSerializer(serializers.ModelSerializer):
         elif user and user.groups.filter(name="instructor").exists():
             self.fields.pop("program")
 
+
+
+
+
     def get_program(self, obj):
         try:
             application = Applications.objects.get(email=obj.email)
@@ -158,12 +163,21 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
     def get_course(self, obj):
         try:
-            application = Applications.objects.get(email=obj.email)
-            instructor = Instructor.objects.get(id=obj.email)
-            courses = instructor.courses.all()
+            # Get the instructor based on the user's email (assuming email is the primary key)
+            instructor = Instructor.objects.get(id=obj.id)
+            
+            instructor_sessions = InstructorSession.objects.filter(instructor=instructor)
+
+            # Extract courses from the related sessions
+            courses = [session.session.course for session in instructor_sessions]
+
+            # Return course details (id and name) as a list of dictionaries
             return [{"id": course.id, "name": course.name} for course in courses]
-        except (Applications.DoesNotExist, Instructor.DoesNotExist):
+            
+        except (Instructor.DoesNotExist, InstructorSession.DoesNotExist):
+            # Return None if the instructor or their sessions don't exist
             return None
+
 
 
 class UserProfileUpdateSerializer(serializers.ModelSerializer):
@@ -314,7 +328,7 @@ class ResetPasswordSerializer(serializers.Serializer):
         user = User.objects.get(email=value)
         uid = urlsafe_base64_encode(force_bytes(user.id))
         token = PasswordResetTokenGenerator().make_token(user)
-        link = f"http://localhost:3000/{uid}/{token}"
+        link = f"http://localhost:3000/auth/set-password/{uid}/{token}"
         print("Password reset link:", link)
 
         # Email sending logic can be included here or in a separate function/task
@@ -415,17 +429,15 @@ class UserpasswordResetSerializer(serializers.Serializer):
         except DjangoUnicodeDecodeError:
             raise serializers.ValidationError("Token is not valid or expired.")
 
-
 class StudentSerializer(serializers.ModelSerializer):
-    session_details = serializers.SerializerMethodField()
+    # session_details = serializers.SerializerMethodField()
 
     class Meta:
         model = Student
-        fields = ["registration_id", "user", "session", "session_details"]
+        fields = ["registration_id", "user"]  # Removed 'session' field
 
-    def get_session_details(self, obj):
-        return obj.get_session_details()
-
+    # def get_session_details(self, obj):
+    #     return obj.get_session_details()
 
 class StudentDetailSerializer(serializers.ModelSerializer):
     full_name = serializers.SerializerMethodField()
@@ -439,14 +451,14 @@ class StudentDetailSerializer(serializers.ModelSerializer):
 
 
 class InstructorSerializer(serializers.ModelSerializer):
-    session_details = serializers.SerializerMethodField()
+    # session_details = serializers.SerializerMethodField()
 
     class Meta:
         model = Instructor
         fields = "__all__"
 
-    def get_session_details(self, obj):
-        return obj.get_session_details()
+    # def get_session_details(self, obj):
+    #     return obj.get_session_details()
 
 
 class InstructorCoursesSerializer(serializers.ModelSerializer):
@@ -465,3 +477,14 @@ class AssignCoursesSerializer(serializers.Serializer):
         if not Course.objects.filter(id__in=value).exists():
             raise serializers.ValidationError("Some course IDs are invalid.")
         return value
+
+class InstructorSessionSerializer(serializers.ModelSerializer):
+    instructor_email = serializers.SerializerMethodField()
+
+    class Meta:
+        model = InstructorSession
+        fields = ['session', 'status',  'instructor_email']
+
+    def get_instructor_email(self, obj):
+        # Ensure obj.instructor exists and has an email
+        return obj.instructor.id.email if obj.instructor and obj.instructor.id else None

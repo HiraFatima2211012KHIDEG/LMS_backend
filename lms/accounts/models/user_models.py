@@ -10,6 +10,7 @@ import datetime
 from django.conf import settings
 from .location_models import (
     Sessions,
+    Location
 )
 from utils.custom import STATUS_CHOICES
 from course.models.models import Course
@@ -21,11 +22,11 @@ class TechSkill(models.Model):
 class Applications(models.Model):
     """Users of Registration Request"""
     email = models.EmailField(unique=True)
-    first_name = models.CharField(max_length=20)
-    last_name = models.CharField(max_length=20)
+    first_name = models.CharField(max_length=50)
+    last_name = models.CharField(max_length=50)
     contact = models.CharField(max_length=12, null=True, blank=True)
     city = models.CharField(max_length=50)
-
+    location = models.ManyToManyField(Location)
     city_abb = models.CharField(max_length=10, null=True)
     program = models.ManyToManyField('course.Program', blank=True)  # Make blank=True to accommodate instructors
     group_name = models.CharField(max_length=20)
@@ -53,17 +54,17 @@ class Applications(models.Model):
 
 class StudentApplicationSelection(models.Model):
     application = models.OneToOneField(Applications, on_delete=models.CASCADE)
-    selected_program = models.ForeignKey('course.Program', on_delete=models.CASCADE)
+    selected_program = models.ForeignKey('course.Program', on_delete=models.CASCADE,)
     status = models.CharField(max_length=15, default='selected')
     selected_at = models.DateTimeField(auto_now_add=True)
-
+    selected_location = models.ForeignKey(Location, on_delete=models.CASCADE)
 
 class InstructorApplicationSelection(models.Model):
     application = models.OneToOneField(Applications, on_delete=models.CASCADE)
     selected_skills = models.ManyToManyField(TechSkill)
     status = models.CharField(max_length=15, default='selected')
     selected_at = models.DateTimeField(auto_now_add=True)
-
+    selected_locations = models.ManyToManyField(Location, blank=True)
 
 class UserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
@@ -169,12 +170,12 @@ class AccessControl(models.Model):
 class Student(models.Model):
     """Extra details of Students in the System."""
 
-    registration_id = models.CharField(max_length=20, primary_key=True)
+    registration_id = models.CharField(max_length=50, primary_key=True)
 
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    session = models.ForeignKey(
-        Sessions, on_delete=models.CASCADE, null=True, blank=True
-    )
+    # session = models.ForeignKey(
+    #     Sessions, on_delete=models.CASCADE, null=True, blank=True
+    # )
     program = models.ForeignKey(Program, on_delete=models.CASCADE, null=True)
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=1)
     created_at = models.DateTimeField(auto_now=True, null=True, blank=True)
@@ -195,8 +196,23 @@ class Student(models.Model):
     # class Meta:
     #     unique_together = ('batch', 'user')
 
+    # class Meta:
+    #     unique_together = ("session", "user")
+
+class StudentSession(models.Model):
+    student = models.ForeignKey(
+        Student, on_delete=models.CASCADE, null=True, blank=True
+    )
+    session = models.ForeignKey(
+        Sessions, on_delete=models.CASCADE, null=True, blank=True
+    )
+    status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=1)
+    created_at = models.DateTimeField(auto_now=True, null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    # start_date = models.DateField()         
+    # end_date = models.DateField()
     class Meta:
-        unique_together = ("session", "user")
+        unique_together = ("session", "student")
 
 
 class Instructor(models.Model):
@@ -205,19 +221,32 @@ class Instructor(models.Model):
     id = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        primary_key=True,
-        to_field="email",
-        related_name="instructor_profile",
-    )
-    session = models.ManyToManyField(Sessions)
-    courses = models.ManyToManyField(Course)
+        primary_key=True)
+    # session = models.ManyToManyField(Sessions)
+    # courses = models.ManyToManyField(Course)
     created_at = models.DateTimeField(auto_now=True, null=True, blank=True)
     updated_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
 
-    def get_session_details(self):
-        sessions = self.session.all()
-        return ", ".join([str(session) for session in sessions])
+    # def get_session_details(self):
+    #     sessions = self.session.all()
+    #     return ", ".join([str(session) for session in sessions])
 
 
     def __str__(self):
         return self.id.email
+
+class InstructorSession(models.Model):
+    instructor = models.ForeignKey(
+        Instructor, on_delete=models.CASCADE, null=True, blank=True
+    )
+    session = models.ForeignKey(
+        Sessions, on_delete=models.CASCADE, null=True, blank=True
+    )
+    status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=1)
+    created_at = models.DateTimeField(auto_now=True, null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    # start_date = models.DateField()         
+    # end_date = models.DateField()
+
+    class Meta:
+        unique_together = ("session", "instructor")

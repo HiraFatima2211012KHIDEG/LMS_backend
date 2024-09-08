@@ -6,6 +6,7 @@ from .models import STATUS_CHOICES
 
 class Program(models.Model):
     name = models.CharField(max_length=255, unique=True)
+    program_abb = models.CharField(max_length=8)
     short_description = models.TextField()
     about = models.TextField()
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
