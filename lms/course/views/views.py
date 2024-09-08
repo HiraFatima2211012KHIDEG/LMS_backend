@@ -40,6 +40,7 @@ class CourseListCreateAPIView(CustomResponseMixin, APIView):
     def post(self, request, format=None):
         data = {key: value for key, value in request.data.items()}
         data['created_by'] = request.user.id
+        data['name'] = data.get('name').title()
 
 
         serializer = CourseSerializer(data=data)

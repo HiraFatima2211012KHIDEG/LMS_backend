@@ -18,6 +18,8 @@ from course.models.models import Course
 from ..serializers.location_serializers import *
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.models import Group
+from ..serializers.application_serializers import *
+from course.serializers import *
 
 
 class CreateUserView(generics.CreateAPIView):
@@ -825,4 +827,413 @@ class UsersCountAdminSectionView(views.APIView, CustomResponseMixin):
 
 
 
+class UserProcessView(views.APIView, CustomResponseMixin):
+    """View to handle users based on their group (student or instructor)."""
+
+    def get(self, request, filteration_id=None):
+        if filteration_id is None:
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST, "filteration_id is not provided.", None
+            )
+
+        group_name = request.query_params.get("group_name")
+
+        if group_name not in ["student", "instructor"]:
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST,
+                "Invalid group_name. Choices are 'student' and 'instructor'.",
+                None,
+            )
+
+        try:
+            if group_name == "student":
+                # Filter StudentApplicationSelection based on the selected program
+                student_selection = StudentApplicationSelection.objects.filter(
+                    selected_program_id=filteration_id
+                ).select_related('application')
+
+                if not student_selection.exists():
+                    return self.custom_response(
+                        status.HTTP_404_NOT_FOUND,
+                        "No student applications found for the provided program ID.",
+                        None,
+                    )
+
+                response_data = []
+                for selection in student_selection:
+                    application = selection.application
+
+                    try:
+                        user = User.objects.get(email=application.email)
+                    except User.DoesNotExist:
+                        return self.custom_response(
+                            status.HTTP_404_NOT_FOUND,
+                            f"User with email {application.email} does not exist.",
+                            None,
+                        )
+
+                    response_data.append({
+                        "application": ApplicationSerializer(application).data,
+                        "user": UserSerializer(user).data,
+                        "program": ProgramSerializer(selection.selected_program).data,
+                        "location": LocationSerializer(selection.selected_location).data,
+                    })
+
+                return self.custom_response(
+                    status.HTTP_200_OK,
+                    "Student applications fetched successfully.",
+                    response_data,
+                )
+
+            elif group_name == "instructor":
+                # Filter InstructorApplicationSelection based on selected skills
+                instructor_selection = InstructorApplicationSelection.objects.filter(
+                    selected_skills__id=filteration_id
+                ).select_related('application').distinct()
+
+                if not instructor_selection.exists():
+                    return self.custom_response(
+                        status.HTTP_404_NOT_FOUND,
+                        "No instructor applications found for the provided skills ID.",
+                        None,
+                    )
+
+                response_data = []
+                for selection in instructor_selection:
+                    application = selection.application
+
+                    try:
+                        user = User.objects.get(email=application.email)
+                    except User.DoesNotExist:
+                        return self.custom_response(
+                            status.HTTP_404_NOT_FOUND,
+                            f"User with email {application.email} does not exist.",
+                            None,
+                        )
+
+                    selected_skills = selection.selected_skills.all()
+                    selected_locations = selection.selected_locations.all()
+
+                    # Check if selected_skills and selected_locations exist
+                    if not selected_skills.exists():
+                        return self.custom_response(
+                            status.HTTP_404_NOT_FOUND,
+                            "No skills found for the instructor application.",
+                            None,
+                        )
+
+                    if not selected_locations.exists():
+                        return self.custom_response(
+                            status.HTTP_404_NOT_FOUND,
+                            "No locations found for the instructor application.",
+                            None,
+                        )
+
+                    response_data.append({
+                        "application": ApplicationSerializer(application).data,
+                        "user": UserSerializer(user).data,
+                        "skills": TechSkillSerializer(selected_skills, many=True).data,
+                        "locations": LocationSerializer(selected_locations, many=True).data,
+                    })
+
+                return self.custom_response(
+                    status.HTTP_200_OK,
+                    "Instructor applications fetched successfully.",
+                    response_data,
+                )
+
+        except Exception as e:
+            # Catch any unexpected exceptions and log them if necessary
+            return self.custom_response(
+                status.HTTP_500_INTERNAL_SERVER_ERROR,
+                f"An unexpected error occurred: {str(e)}",
+                None,
+            )
+
+
+class PreferredSessionView(views.APIView, CustomResponseMixin):
+    """
+    View to fetch sessions based on program and location filters.
+    """
+
+    def get(self, request):
+        program_id = request.query_params.get("program_id")
+        location_id = request.query_params.get("location_id")
+
+        # Check if both program_id and location_id are provided
+        if not program_id or not location_id:
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST,
+                "Both program_id and location_id are required.",
+                None,
+            )
+
+        try:
+            # Check if the specified program exists
+            program = Program.objects.prefetch_related('courses').get(id=program_id)
+        except Program.DoesNotExist:
+            return self.custom_response(
+                status.HTTP_404_NOT_FOUND,
+                "The specified program does not exist.",
+                None,
+            )
+
+        try:
+            # Check if the specified location exists
+            location = Location.objects.get(id=location_id)
+        except Location.DoesNotExist:
+            return self.custom_response(
+                status.HTTP_404_NOT_FOUND,
+                "The specified location does not exist.",
+                None,
+            )
+
+        # Get all courses associated with the specified program
+        courses = program.courses.all()
+        print('a', courses)
+
+        # Fetch sessions based on the courses and the specified location
+        sessions = Sessions.objects.filter(course__in=courses, location=location)
+        print('b', sessions)
+
+        # Check if any sessions match the criteria
+        if not sessions.exists():
+            return self.custom_response(
+                status.HTTP_404_NOT_FOUND,
+                "No sessions found for the provided program and location.",
+                None,
+            )
+
+        # Serialize the session data
+        session_data = SessionsSerializer(sessions, many=True).data
+
+        # Prepare the response data with location and program details
+        response_data = {
+            'program': {
+                'id': program.id,
+                'name': program.name,  # Adjust according to your Program model fields
+                # Add other Program fields if needed
+            },
+            'location': {
+                'id': location.id,
+                'name': location.name,  # Adjust according to your Location model fields
+                # Add other Location fields if needed
+            },
+            'sessions': session_data
+        }
+
+        return self.custom_response(
+            status.HTTP_200_OK,
+            "Sessions fetched successfully.",
+            response_data
+        )
+
+    def post(self, request):
+        user_id = request.data.get("user_id")
+        session_ids = request.data.get("session_ids", [])
+
+        # Validate if user_id and session_ids are provided
+        if not user_id or not session_ids:
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST,
+                "user_id and session_ids are required.",
+                None,
+            )
+
+        try:
+            # Get the Student object based on the provided user_id
+            student = Student.objects.get(user_id=user_id)
+        except Student.DoesNotExist:
+            return self.custom_response(
+                status.HTTP_404_NOT_FOUND,
+                "Student does not exist for the provided user_id.",
+                None,
+            )
+
+        # Fetch sessions based on provided session_ids
+        sessions = Sessions.objects.filter(id__in=session_ids)
+
+        if not sessions.exists():
+            return self.custom_response(
+                status.HTTP_404_NOT_FOUND,
+                "No valid sessions found for the provided session_ids.",
+                None,
+            )
+
+        created_sessions = []
+
+        for session in sessions:
+            # Get the associated course for the session
+            course = session.course
+
+            # Create or update StudentSession entries for each session
+            student_session, created = StudentSession.objects.get_or_create(
+                student=student,
+                session=session,
+                defaults={
+                    'status': 1,  # Default status or modify based on your needs
+                    'start_date': course.start_date if course.start_date else None,
+                    'end_date': course.end_date if course.end_date else None,
+                }
+            )
+            created_sessions.append(student_session)
+
+        # Serialize created or updated StudentSession objects
+        # You can use a serializer if needed for better response structure
+        response_data = [{"session_id": sess.session.id, "student_id": sess.student.registration_id} for sess in created_sessions]
+
+        return self.custom_response(
+            status.HTTP_200_OK,
+            "Sessions assigned successfully.",
+            response_data
+        )
+
+
+class UserSessionsView(views.APIView, CustomResponseMixin):
+    """View to get all sessions assigned to a specific user."""
+
+    def get(self, request, user_id):
+        # Determine whether the user is a student or instructor
+        group_name = request.query_params.get("group_name")
+
+        if group_name not in ["student", "instructor"]:
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST,
+                "Invalid group_name. Choices are 'student' and 'instructor'.",
+                None,
+            )
+        if group_name == "student":
+            try:
+                # Fetch the student based on the user_id
+                student = Student.objects.get(user__id=user_id)
+            except Student.DoesNotExist:
+                return self.custom_response(
+                    status.HTTP_404_NOT_FOUND,
+                    "Student with the given user_id does not exist.",
+                    None
+                )
+
+            # Fetch all sessions assigned to this student
+            user_sessions = StudentSession.objects.filter(student=student)
+
+        elif group_name == "instructor":
+            try:
+                # Fetch the instructor based on the user_id
+                instructor = Instructor.objects.get(id__id=user_id)
+            except Instructor.DoesNotExist:
+                return self.custom_response(
+                    status.HTTP_404_NOT_FOUND,
+                    "Instructor with the given user_id does not exist.",
+                    None
+                )
+
+            # Fetch all sessions assigned to this instructor
+            user_sessions = InstructorSession.objects.filter(instructor=instructor)
+
+        else:
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST,
+                "Invalid user_type provided. Use 'student' or 'instructor'.",
+                None
+            )
+
+        if not user_sessions.exists():
+            return self.custom_response(
+                status.HTTP_404_NOT_FOUND,
+                "No sessions found for this user.",
+                None
+            )
+
+        # Serialize the session data
+        session_data = []
+        for session in user_sessions:
+            session_info = {
+                "session_id": session.session.id,
+                "status": session.status,
+                "start_date": session.start_date,
+                "end_date": session.end_date,
+                # "batch": session.session.batch.name if session.session.batch else None, 
+                "course": session.session.course.name if session.session.course else None
+            }
+            session_data.append(session_info)
+
+        return self.custom_response(
+            status.HTTP_200_OK,
+            "Sessions fetched successfully.",
+            session_data
+        )
+
+
+
+class InstructorSessionsView(views.APIView, CustomResponseMixin):
+    """
+    View to assign sessions to an instructor.
+    """
+
+    def post(self, request):
+        user_id = request.data.get("user_id")
+        session_ids = request.data.get("session_ids", [])
+
+        # Validate if user_id and session_ids are provided
+        if not user_id or not session_ids:
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST,
+                "user_id and session_ids are required.",
+                None,
+            )
+
+        try:
+            # Get the Instructor object based on the provided user_id
+            instructor = Instructor.objects.get(id__id=user_id)  # Adjusted to use the email field
+        except Instructor.DoesNotExist:
+            return self.custom_response(
+                status.HTTP_404_NOT_FOUND,
+                "Instructor does not exist for the provided user_id.",
+                None,
+            )
+
+        # Fetch sessions based on provided session_ids
+        sessions = Sessions.objects.filter(id__in=session_ids)
+
+        if not sessions.exists():
+            return self.custom_response(
+                status.HTTP_404_NOT_FOUND,
+                "No valid sessions found for the provided session_ids.",
+                None,
+            )
+
+        created_sessions = []
+
+        for session in sessions:
+            course = session.course
+            # Create or update InstructorSession entries for each session
+            instructor_session, created = InstructorSession.objects.get_or_create(
+                instructor=instructor,
+                session=session,
+                defaults={
+                    'status': 1,  # Default status or modify based on your needs
+                    'start_date': course.start_date if course.start_date else None,
+                    'end_date': course.end_date if course.end_date else None,
+                }
+            )
+            created_sessions.append(instructor_session)
+
+        # Serialize created or updated InstructorSession objects with detailed session data
+        response_data = [{
+            "instructor_email": sess.instructor.id.email,  # Instructor's email
+            "session": {
+                "session_id": sess.session.id,
+                # "session_name": sess.session.name,  # Replace with actual field name if different
+                "course_name": sess.session.course.name,  # Accessing course details
+                "start_date": sess.start_date,
+                "end_date": sess.end_date,
+                "status": sess.status,
+            }
+        } for sess in created_sessions]
+
+        return self.custom_response(
+            status.HTTP_200_OK,
+            "Sessions assigned successfully.",
+            response_data
+        )
 

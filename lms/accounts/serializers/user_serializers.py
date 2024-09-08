@@ -110,37 +110,58 @@ class UserLoginSerializer(serializers.Serializer):
 #         fields = ['id', 'first_name', 'last_name', 'contact', 'city']
 
 class UserProfileSerializer(serializers.ModelSerializer):
-    registration_id = serializers.CharField(source='student.registration_id', read_only=True)
+    registration_id = serializers.CharField(
+        source="student.registration_id", read_only=True
+    )
     email = serializers.EmailField(read_only=True)
     program = serializers.SerializerMethodField()
-    # session_name = serializers.SerializerMethodField()
+    course = serializers.SerializerMethodField()
+
     class Meta:
         model = User
         fields = [
-            'id', 'first_name', 'last_name', 'contact', 'city',
-            'registration_id', 'email', 'program'
+            "id",
+            "first_name",
+            "last_name",
+            "contact",
+            "city",
+            "registration_id",
+            "email",
+            "program",
+            "course",
         ]
-    def get_program(self, obj):
-        user = self.context.get('user')
 
+    def __init__(self, *args, **kwargs):
+        super(UserProfileSerializer, self).__init__(*args, **kwargs)
+        user = self.context.get("user")
+
+        if user and user.groups.filter(name="student").exists():
+            self.fields.pop("course")
+        elif user and user.groups.filter(name="instructor").exists():
+            self.fields.pop("program")
+
+    def get_program(self, obj):
         try:
-            if user.groups == 'student': 
-                application = Applications.objects.get(email=obj.email)
-                student_program = StudentApplicationSelection.objects.get(application = application)
-                return {  'id': student_program.selected_program.id,
-                        'name': student_program.selected_program.name
-                    }
-            elif user.groups == 'instructor':
-                # application = Applications.objects.get(email = obj.email)
-                pass
-        except Applications.DoesNotExist:
+            application = Applications.objects.get(email=obj.email)
+            student_program = StudentApplicationSelection.objects.get(
+                application=application
+            )
+            return {
+                "id": student_program.selected_program.id,
+                "name": student_program.selected_program.name,
+            }
+        except (Applications.DoesNotExist, StudentApplicationSelection.DoesNotExist):
             return None
-    # def get_session_name(self, obj):
-    #     try:
-    #         student = Student.objects.get(user=obj) 
-    #         return student.session  
-    #     except Student.DoesNotExist:
-    #         return None
+
+    def get_course(self, obj):
+        try:
+            application = Applications.objects.get(email=obj.email)
+            instructor = Instructor.objects.get(id=obj.email)
+            courses = instructor.courses.all()
+            return [{"id": course.id, "name": course.name} for course in courses]
+        except (Applications.DoesNotExist, Instructor.DoesNotExist):
+            return None
+
 
 class UserProfileUpdateSerializer(serializers.ModelSerializer):
     """Serializer for updating user profile."""
@@ -382,3 +403,14 @@ class AssignCoursesSerializer(serializers.Serializer):
         if not Course.objects.filter(id__in=value).exists():
             raise serializers.ValidationError("Some course IDs are invalid.")
         return value
+
+class InstructorSessionSerializer(serializers.ModelSerializer):
+    instructor_email = serializers.SerializerMethodField()
+
+    class Meta:
+        model = InstructorSession
+        fields = ['session', 'status', 'start_date', 'end_date', 'instructor_email']
+
+    def get_instructor_email(self, obj):
+        # Ensure obj.instructor exists and has an email
+        return obj.instructor.id.email if obj.instructor and obj.instructor.id else None

@@ -1,7 +1,8 @@
 from rest_framework import serializers
 
-from ..models.user_models import Student
+from ..models.user_models import Student, StudentSession, InstructorSession
 from ..models.location_models import City, Batch, Location, Sessions
+from course.serializers import CourseSerializer
 
 
 class CitySerializer(serializers.ModelSerializer):
@@ -35,11 +36,14 @@ class LocationSerializer(serializers.ModelSerializer):
 
 class SessionsSerializer(serializers.ModelSerializer):
     location_name = serializers.CharField(source="location.name", read_only=True)
+    course = CourseSerializer() 
+
 
     class Meta:
         model = Sessions
 
         fields = [
+            "id",
             "location",
             "location_name",
             "no_of_students",
@@ -47,8 +51,14 @@ class SessionsSerializer(serializers.ModelSerializer):
             "start_time",
             "end_time",
             "status",
+            "course"
         ]
 
+class StudentSessionsSerializer(serializers.ModelSerializer):
+
+        class Meta:
+            model = StudentSession
+            fields = "__all__"
 
 
 class AssignSessionsSerializer(serializers.Serializer):
@@ -60,3 +70,14 @@ class AssignSessionsSerializer(serializers.Serializer):
             raise serializers.ValidationError("Some session IDs are invalid.")
         return value
 
+
+class InstructorSessionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = InstructorSession
+        fields = ['session_id', 'instructor_email', 'status', 'start_date', 'end_date']
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        # Ensure to include only serializable fields
+        representation['instructor_email'] = instance.instructor.id  # Email as string
+        return representation

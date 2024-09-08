@@ -17,25 +17,51 @@ class City(models.Model):
 
 class Batch(models.Model):
     """Batches of cities."""
-
+    
     batch = models.CharField(max_length=10, primary_key=True)
-    city = models.CharField(max_length=30, null=True)
-    city_abb = models.CharField(max_length=3, null=True)
+    city = models.CharField(max_length=30)
+    city_abb = models.CharField(max_length=3)
     year = models.IntegerField()
     no_of_students = models.IntegerField()
     start_date = models.DateField()
     end_date = models.DateField()
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=1)
-    created_at = models.DateTimeField(auto_now=True, null=True, blank=True)
-    updated_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
+    
+    TERM_CHOICES = [
+        ('Fall', 'Fall'),
+        ('Winter', 'Winter'),
+        ('Spring', 'Spring'),
+        ('Summer', 'Summer'),
+        ('Annual', 'Annual')
+    ]
+    term = models.CharField(max_length=10, choices=TERM_CHOICES, null=True, blank=True)
 
     def save(self, *args, **kwargs):
+        # Assign the term based on the current month if term is not provided
+        if not self.term:
+            current_month = timezone.now().month
+            if current_month in [9, 10, 11]:
+                self.term = 'Fall'
+            elif current_month in [12, 1, 2]:
+                self.term = 'Winter'
+            elif current_month in [3, 4, 5]:
+                self.term = 'Spring'
+            elif current_month in [6, 7, 8]:
+                self.term = 'Summer'
+            else:
+                self.term = 'Annual'  # Default if no match
+        
+        # Generate the batch code if not provided
         if not self.batch:
-            self.batch = f"{self.city_abb.upper()}-{str(self.year)[-2:]}"
-        super(Batch, self).save(*args, **kwargs)
+            city_abbr = self.city[:3].upper() if self.city else 'XXX'
+            self.batch = f"{city_abbr}-{self.term[:2]}-{str(self.year)[-2:]}"
+
+        super().save(*args, **kwargs)
 
     class Meta:
-        unique_together = ("city", "year")
+        unique_together = ("city", "year", "term")
 
     def __str__(self):
         return f"{self.batch}"
@@ -58,19 +84,22 @@ class Location(models.Model):
 
 class Sessions(models.Model):
     """Location based sessions."""
-
+    
     location = models.ForeignKey(Location, on_delete=models.CASCADE)
     no_of_students = models.IntegerField()
     batch = models.ForeignKey(Batch, on_delete=models.CASCADE)
+    course = models.ForeignKey('course.Course', on_delete=models.CASCADE)
     start_time = models.DateTimeField(null=True, blank=True)
     end_time = models.DateTimeField(null=True, blank=True)
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=1)
-    created_at = models.TimeField(auto_now=True, null=True, blank=True)
-    updated_at = models.TimeField(auto_now_add=True, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
+
+    class Meta:
+        unique_together = ("location", "batch", "course", "start_time", "end_time")
 
     def __str__(self):
-        return f"{self.batch} - {self.location} - {self.no_of_students}"
-
+        return f"{self.batch}-{self.location}-{self.no_of_students}-{self.course}"
 
 # class Batch(models.Model):
 #     """Batches of cities."""
