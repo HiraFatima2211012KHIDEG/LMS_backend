@@ -39,6 +39,9 @@ class ApplicationSerializer(serializers.ModelSerializer):
             if not attrs.get('location'):
                 raise serializers.ValidationError({"location": "This field is required for instructors."})
 
+            if not attrs.get('city_abb'):
+                raise serializers.ValidationError({"city_abb": "This field is required for instructors."})                
+
         elif group_name == 'student':
             if not attrs.get('program'):
                 raise serializers.ValidationError({"program": "This field is required for students."})
@@ -52,6 +55,9 @@ class ApplicationSerializer(serializers.ModelSerializer):
             # Ensure location is provided for students
             if not attrs.get('location'):
                 raise serializers.ValidationError({"location": "This field is required for students."})
+
+            if not attrs.get('city_abb'):
+                raise serializers.ValidationError({"city_abb": "This field is required for student."})                
 
         return attrs
 

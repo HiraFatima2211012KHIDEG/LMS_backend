@@ -387,13 +387,13 @@ class StudentSerializer(serializers.ModelSerializer):
         return obj.get_session_details()
 
 class InstructorSerializer(serializers.ModelSerializer):
-    session_details = serializers.SerializerMethodField()
+    # session_details = serializers.SerializerMethodField()
 
     class Meta:
         model = Instructor
         fields = "__all__"
-    def get_session_details(self, obj):
-        return obj.get_session_details()
+    # def get_session_details(self, obj):
+    #     return obj.get_session_details()
 
 class AssignCoursesSerializer(serializers.Serializer):
     course_ids = serializers.ListField(child=serializers.IntegerField())

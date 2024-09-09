@@ -232,13 +232,13 @@ class Instructor(models.Model):
     created_at = models.DateTimeField(auto_now=True, null=True, blank=True)
     updated_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
 
-    def get_session_details(self):
-        sessions = self.session.all()
-        return ", ".join([str(session) for session in sessions])
+    # def get_session_details(self):
+    #     sessions = self.session.all()
+    #     return ", ".join([str(session) for session in sessions])
 
 
-    def __str__(self):
-        return self.id.email
+    # def __str__(self):
+    #     return self.id
 
 class InstructorSession(models.Model):
     instructor = models.ForeignKey(

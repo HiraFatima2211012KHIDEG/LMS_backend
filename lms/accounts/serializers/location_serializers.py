@@ -36,7 +36,7 @@ class LocationSerializer(serializers.ModelSerializer):
 
 class SessionsSerializer(serializers.ModelSerializer):
     location_name = serializers.CharField(source="location.name", read_only=True)
-    course = CourseSerializer() 
+    course = CourseSerializer(read_only=True) 
 
 
     class Meta:

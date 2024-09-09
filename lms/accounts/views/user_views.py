@@ -55,7 +55,7 @@ class CreateAdminUserView(generics.CreateAPIView):
     # permission_classes = [permissions.IsAdminUser]
 
 
-class UserLoginView(views.APIView):
+class UserLoginView(views.APIView, CustomResponseMixin):
     """
     View to handle user login and generate authentication tokens.
     """
@@ -97,29 +97,61 @@ class UserLoginView(views.APIView):
             if user is not None:
                 tokens = self.get_tokens_for_user(user)
                 user_group = Group.objects.get(user=user.id)
+                print("user_group", user_group)
                 permission = self.get_group_permissions(user_group.id)
                 user_profile = UserProfileSerializer(user, context={'user' : user})
+                user_object_id = User.objects.get(email= user.email).id
+                print("user_object", user_object_id)
                 user_serializer = None
                 session_data = None  # Initialize session_data as None
                 if user_group.name == "student":
                     student = Student.objects.get(user=user.id)
                     user_serializer = StudentSerializer(student)
-                    session = user_serializer.data.get("session", None)
-                    if session:
-                        session_instance = Sessions.objects.get(id=session)
-                        session_data = SessionsSerializer(session_instance)
-                    else:
-                        session_data = None
+                    try:
+                        student_session = StudentSession.objects.get(student=student)
+                        # Serialize session details if needed
+                        if student_session:
+                            session_data = SessionsSerializer(student_session.session).data
+                        else:
+                            session_data = None
+                    except StudentSession.DoesNotExist:
+                        return self.custom_response(
+                                status.HTTP_404_NOT_FOUND,
+                                "No student session found.",
+                                None,
+                        )  # Handle case when no session is assigned
 
                 elif user_group.name == "instructor":
-                    instructor = Instructor.objects.get(id=user.email)
+                    print("inside instuctor")
+                    print(user_object_id)
+                    instructor = Instructor.objects.get(id_id=user_object_id)
+                    print("instructor", instructor)
                     user_serializer = InstructorSerializer(instructor)
-                    session = user_serializer.data.get("session", None)
-                    if session:
-                        session_instance = Sessions.objects.filter(id__in=session)
-                        session_data = SessionsSerializer(session_instance, many=True)
-                    else:
-                        session_data = None
+                    print("user_serializer for instructor", user_serializer.data)
+                    try:
+                        # Use .filter() to get all sessions for the instructor
+                        print("inside instructor session")
+                        instructor_sessions = InstructorSession.objects.filter(instructor=instructor)
+                        print("instructor session", instructor_sessions)
+
+                        # Serialize all sessions if needed
+                        if instructor_sessions.exists():
+                            print("inside if")
+                            # Serialize all sessions as a list
+                            session_data = SessionsSerializer(
+                                [session.session for session in instructor_sessions], many=True
+                            ).data
+                            print("if working")
+                        else:
+                            session_data = None
+                    except InstructorSession.DoesNotExist:
+                        return self.custom_response(
+                            status.HTTP_404_NOT_FOUND,
+                            "No instructor session found.",
+                            None,
+                        )
+
+
                 return Response(
                     {
                         "status_code": status.HTTP_200_OK,
@@ -132,7 +164,7 @@ class UserLoginView(views.APIView):
                             "user_data": (
                                 user_serializer.data if user_serializer else None
                             ),
-                            "session": session_data.data if session_data else None,
+                            "session": session_data if session_data else None,
                         },
                     }
                 )
