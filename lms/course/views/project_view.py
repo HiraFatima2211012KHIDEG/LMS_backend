@@ -340,10 +340,22 @@ class ProjectStudentListView(CustomResponseMixin, APIView):
         except Project.DoesNotExist:
             return Response({"detail": "Project not found for the course."}, status=status.HTTP_404_NOT_FOUND)
 
-        enrolled_students = Student.objects.filter(program__courses__id=course_id)
-        student_list = []
+        # Retrieve the session associated with the course
+        try:
+            session = Sessions.objects.get(course__id=course_id)
+        except Sessions.DoesNotExist:
+            return Response(
+                {"detail": "Session not found for the course."}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Filter students who are enrolled in this session
+        enrolled_students = Student.objects.filter(
+            studentsession__session=session
+        )
 
-        total_grade = None  
+        student_list = []
+        total_grade = None  # To track the total grade
 
         for student in enrolled_students:
             user = student.user

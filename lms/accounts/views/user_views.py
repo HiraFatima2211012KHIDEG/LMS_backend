@@ -117,9 +117,8 @@ class UserLoginView(views.APIView):
                     user_serializer = InstructorSerializer(instructor)
                     try:
                         instructor_session = InstructorSession.objects.get(instructor=instructor)
-                        # Serialize session details if needed
                         session_data = SessionsSerializer(instructor_session.session).data
-                    except StudentSession.DoesNotExist:
+                    except InstructorSession.DoesNotExist:
                         session_data = None
                 return Response(
                     {

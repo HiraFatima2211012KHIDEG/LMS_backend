@@ -321,21 +321,37 @@ class QuizDetailView(APIView):
             'sum_of_total_marks': float(sum_of_total_marks)
         })
 
-
 class QuizStudentListView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
-    def get(self, request, quiz_id,course_id, *args, **kwargs):
+
+    def get(self, request, quiz_id, course_id, *args, **kwargs):
         try:
-            quiz = Quizzes.objects.get(id=quiz_id,course__id=course_id)
+            # Retrieve the quiz based on quiz ID and course ID
+            quiz = Quizzes.objects.get(id=quiz_id, course__id=course_id)
         except Quizzes.DoesNotExist:
-            return Response({"detail": "Quiz not found for the course."}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"detail": "Quiz not found for the course."}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
 
-        # Get all students for the quiz
-        enrolled_students = Student.objects.filter(program__courses__id=course_id)
+        # Retrieve the session associated with the course
+        try:
+            session = Sessions.objects.get(course__id=course_id)
+        except Sessions.DoesNotExist:
+            return Response(
+                {"detail": "Session not found for the course."}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Filter students who are enrolled in this session
+        enrolled_students = Student.objects.filter(
+            studentsession__session=session
+        )
+
         student_list = []
+        total_grade = None  # To track the total grade
 
-        total_grade = None  # Initialize total_grade
-
+        # Process each student's quiz submission
         for student in enrolled_students:
             user = student.user
             try:
@@ -344,16 +360,13 @@ class QuizStudentListView(CustomResponseMixin, APIView):
                 submission = None
 
             if submission:
-                if submission.status == 1:  # Submitted
-                    submission_status = "Submitted"
-                else:
-                    submission_status = "Pending"  # Status is pending if not yet graded
+                submission_status = "Submitted" if submission.status == 1 else "Pending"
             else:
-                if timezone.now() > quiz.due_date:
-                    submission_status = "Not Submitted"  # Due date has passed without submission
-                else:
-                    submission_status = "Pending"  # Due date has not passed, and not yet submitted
+                submission_status = (
+                    "Not Submitted" if timezone.now() > quiz.due_date else "Pending"
+                )
 
+            # Collect student data
             student_data = {
                 'student_name': f"{user.first_name} {user.last_name}",
                 'registration_id': student.registration_id,
@@ -368,10 +381,7 @@ class QuizStudentListView(CustomResponseMixin, APIView):
                 if grading:
                     student_data['grade'] = grading.grade
                     student_data['remarks'] = grading.feedback
-                    total_grade = grading.total_grade  
-                else:
-                    student_data['grade'] = None
-                    student_data['remarks'] = None
+                    total_grade = grading.total_grade
 
             student_list.append(student_data)
 

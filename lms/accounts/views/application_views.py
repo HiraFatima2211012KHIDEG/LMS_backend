@@ -412,7 +412,7 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
                         )
                         print(token)
                         verification_link = (
-                            f"https://lms-phi-two.vercel.app/auth/account-verify/{str(token)}"
+                            f"http://localhost:3000/auth/account-verify/{str(token)}"
                         )
                         body = (
                             f"Congratulations {application_obj.first_name} {application_obj.last_name}!\n"
@@ -594,7 +594,7 @@ class ResendVerificationEmail(views.APIView, CustomResponseMixin):
                 )
 
             token = self.create_signed_token(applicant.id, applicant.email)
-            verification_link = f"https://lms-phi-two.vercel.app/auth/account-verify/{str(token)}"
+            verification_link = f"http://localhost:3000/auth/account-verify/{str(token)}"
             print(token)
             body = (
                 f"Congratulations {applicant.first_name} {applicant.last_name}!\n"
