@@ -716,7 +716,6 @@ class InstructorCoursesViewSet(CustomResponseMixin, viewsets.ViewSet):
             status.HTTP_200_OK, "Courses fetched successfully.", serializer.data
         )
 
-
 class AssignCoursesView(CustomResponseMixin, views.APIView):
     """Assign courses to an instructor by providing a list of course IDs."""
 

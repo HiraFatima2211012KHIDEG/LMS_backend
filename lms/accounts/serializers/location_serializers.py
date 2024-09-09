@@ -4,6 +4,7 @@ from ..models.user_models import Student, StudentSession, InstructorSession
 from ..models.location_models import City, Batch, Location, Sessions
 from course.serializers import CourseSerializer
 from datetime import datetime
+from course.models.models import Course
 
 
 class CitySerializer(serializers.ModelSerializer):
@@ -37,7 +38,10 @@ class LocationSerializer(serializers.ModelSerializer):
 
 class SessionsSerializer(serializers.ModelSerializer):
     location_name = serializers.CharField(source="location.name", read_only=True)
-    course = CourseSerializer() 
+    course = CourseSerializer(read_only=True)
+    course_id = serializers.PrimaryKeyRelatedField(
+        queryset=Course.objects.all(), source='course', write_only=True
+    )
     class Meta:
         model = Sessions
 
@@ -50,7 +54,8 @@ class SessionsSerializer(serializers.ModelSerializer):
             "start_time",
             "end_time",
             "status",
-            "course"
+            "course",
+            "course_id"
         ]
 
 class StudentSessionsSerializer(serializers.ModelSerializer):

@@ -259,14 +259,17 @@ class ExamStudentListView(CustomResponseMixin, APIView):
         except Exam.DoesNotExist:
             return Response({"detail": "Exam not found for the course."}, status=status.HTTP_404_NOT_FOUND)
         # Retrieve the session associated with the course
-        try:
-            session = Sessions.objects.get(course__id=course_id)
-        except Sessions.DoesNotExist:
-            return Response(
-                {"detail": "Session not found for the course."}, 
-                status=status.HTTP_404_NOT_FOUND
-            )
-        
+        # try:
+        #     session = Sessions.objects.get(course__id=course_id)
+        # except Sessions.DoesNotExist:
+        #     return Response(
+        #         {"detail": "Session not found for the course."}, 
+        #         status=status.HTTP_404_NOT_FOUND
+        #     )
+        sessions = Sessions.objects.filter(course__id=course_id)
+   
+   
+        session = sessions.first()
         # Filter students who are enrolled in this session
         enrolled_students = Student.objects.filter(
             studentsession__session=session

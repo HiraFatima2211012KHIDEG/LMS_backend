@@ -87,6 +87,7 @@ WEEKDAYS = {
     5: ('Saturday', 'Sat'),
     6: ('Sunday', 'Sun'),
 }
+
 class Sessions(models.Model):
     """Location-based sessions."""
     location = models.ForeignKey(Location, on_delete=models.CASCADE)

@@ -462,11 +462,17 @@ class InstructorSerializer(serializers.ModelSerializer):
 
 
 class InstructorCoursesSerializer(serializers.ModelSerializer):
-    courses = CourseSerializer(many=True, read_only=True)
+    courses = serializers.SerializerMethodField()
 
     class Meta:
         model = Instructor
         fields = ["id", "courses"]
+
+    def get_courses(self, obj):
+        sessions = InstructorSession.objects.filter(instructor=obj)
+        courses = Sessions.objects.filter(id__in=sessions.values_list('session', flat=True)).values_list('course', flat=True)
+        courses = Course.objects.filter(id__in=courses)
+        return CourseSerializer(courses, many=True).data
 
 
 class AssignCoursesSerializer(serializers.Serializer):
