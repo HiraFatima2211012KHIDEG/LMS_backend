@@ -94,6 +94,7 @@ WEEKDAYS = {
     5: ('Saturday', 'Sat'),
     6: ('Sunday', 'Sun'),
 }
+
 class SessionsCalendarSerializer(serializers.ModelSerializer):
     batch_start_date = serializers.DateField(source="batch.start_date", read_only=True)
     batch_end_date = serializers.DateField(source="batch.end_date", read_only=True)

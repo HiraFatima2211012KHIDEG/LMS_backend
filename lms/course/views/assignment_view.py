@@ -374,16 +374,21 @@ class AssignmentStudentListView(CustomResponseMixin, APIView):
             return Response({"detail": "Assignment not found for the course."}, status=status.HTTP_404_NOT_FOUND)
 
      
+        # Retrieve the session associated with the course
         sessions = Sessions.objects.filter(course__id=course_id)
-   
-   
+        if not sessions:
+            return Response(
+                {"detail": "Session not found for the course."}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Assuming you want to work with the first session in the list
         session = sessions.first()
         
         # Filter students who are enrolled in this session
         enrolled_students = Student.objects.filter(
             studentsession__session=session
         )
-
         student_list = []
         total_grade = None  # To track the total grade
 
@@ -410,7 +415,7 @@ class AssignmentStudentListView(CustomResponseMixin, APIView):
             student_data = {
                 'student_name': f"{user.first_name} {user.last_name}",
                 'registration_id': student.registration_id,
-                "submission_id": submission.id,
+                'submission_id': submission.id if submission else None,
                 'submitted_at': submission.submitted_at if submission else None,
                 'status': submission_status,
                 'grade': None,

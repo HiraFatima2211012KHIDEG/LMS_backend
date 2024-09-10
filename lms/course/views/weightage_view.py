@@ -70,7 +70,21 @@ class WeightageDetailAPIView(APIView, CustomResponseMixin):
             message='Weightage deleted successfully',
             data=None
         )
+    
+class WeightageListByCourseId(APIView, CustomResponseMixin):
+    permission_classes = (permissions.IsAuthenticated,)
 
+    def get(self, request, course_id=None, format=None):
+        # Filter weightages based on the provided course_id
+
+        weightages = Weightage.objects.filter(course_id=course_id)
+
+        serializer = WeightageSerializer(weightages, many=True)
+        return self.custom_response(
+            status_code=status.HTTP_200_OK,
+            message='Courses Weightages retrieved successfully',
+            data=serializer.data
+        )
 
 # Skill Views
 class SkillListCreateAPIView(APIView, CustomResponseMixin):

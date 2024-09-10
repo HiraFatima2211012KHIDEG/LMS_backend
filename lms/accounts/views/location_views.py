@@ -6,7 +6,7 @@ from ..models.location_models import (
     Location,
     Sessions,
 )
-from ..models.user_models import Instructor, User
+from ..models.user_models import Instructor, User, Student
 from utils.custom import BaseLocationViewSet
 from ..serializers.location_serializers import (
     CitySerializer,
@@ -347,4 +347,3 @@ class SessionCalendarAPIView(APIView):
                 **details
             })
         return Response(formatted_data)
-        

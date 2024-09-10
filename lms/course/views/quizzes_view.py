@@ -367,6 +367,7 @@ class QuizStudentListView(CustomResponseMixin, APIView):
             student_data = {
                 'student_name': f"{user.first_name} {user.last_name}",
                 'registration_id': student.registration_id,
+                'submission_id': submission.id if submission else None,
                 'submitted_at': submission.quiz_submitted_at if submission else None,
                 'status': submission_status,
                 'grade': None,

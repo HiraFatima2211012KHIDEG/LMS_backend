@@ -101,25 +101,27 @@ class UserLoginView(views.APIView):
                 permission = self.get_group_permissions(user_group.id)
                 user_profile = UserProfileSerializer(user, context={'user' : user})
                 user_serializer = None
-                session_data = None  # Initialize session_data as None
+                session_data = [] 
                 if user_group.name == "student":
                     student = Student.objects.get(user=user.id)
                     user_serializer = StudentSerializer(student)
                     try:
-                        student_session = StudentSession.objects.get(student=student)
-                        # Serialize session details if needed
-                        session_data = SessionsSerializer(student_session.session).data
-                    except StudentSession.DoesNotExist:
-                        session_data = None  # Handle case when no session is assigned
+                        student_sessions = StudentSession.objects.filter(student=student)
+                        for student_session in student_sessions:
+                            session_data.append(SessionsSerializer(student_session.session).data)
 
+                    except StudentSession.DoesNotExist:
+                        session_data = []  
                 elif user_group.name == "instructor":
                     instructor = Instructor.objects.get(id=user.id)
                     user_serializer = InstructorSerializer(instructor)
                     try:
-                        instructor_session = InstructorSession.objects.get(instructor=instructor)
-                        session_data = SessionsSerializer(instructor_session.session).data
+                        instructor_sessions = InstructorSession.objects.filter(instructor=instructor)
+                        for instructor_session in instructor_sessions:
+                            session_data.append(SessionsSerializer(instructor_session.session).data)
+
                     except InstructorSession.DoesNotExist:
-                        session_data = None
+                        session_data = []
                 return Response(
                     {
                         "status_code": status.HTTP_200_OK,
