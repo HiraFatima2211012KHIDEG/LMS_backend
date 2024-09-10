@@ -528,7 +528,7 @@ class VerifyEmailandSetPasswordView(views.APIView, CustomResponseMixin):
                     )
                 elif application.group_name == "instructor":
                     # Handle instructor logic if needed
-                    Instructor.objects.create(id=user)
+                    Instructor.objects.create(user=user)
                 else:
                     return self.custom_response(
                         status.HTTP_400_BAD_REQUEST, "Invalid group_name.", None

@@ -140,27 +140,27 @@ class UserProfileSerializer(serializers.ModelSerializer):
         elif user and user.groups.filter(name="instructor").exists():
             self.fields.pop("program")
 
-    def get_program(self, obj):
-        try:
-            application = Applications.objects.get(email=obj.email)
-            student_program = StudentApplicationSelection.objects.get(
-                application=application
-            )
-            return {
-                "id": student_program.selected_program.id,
-                "name": student_program.selected_program.name,
-            }
-        except (Applications.DoesNotExist, StudentApplicationSelection.DoesNotExist):
-            return None
+    # def get_program(self, obj):
+    #     try:
+    #         application = Applications.objects.get(email=obj.email)
+    #         student_program = StudentApplicationSelection.objects.get(
+    #             application=application
+    #         )
+    #         return {
+    #             "id": student_program.selected_program.id,
+    #             "name": student_program.selected_program.name,
+    #         }
+    #     except (Applications.DoesNotExist, StudentApplicationSelection.DoesNotExist):
+    #         return None
 
-    def get_course(self, obj):
-        try:
-            application = Applications.objects.get(email=obj.email)
-            instructor = Instructor.objects.get(id=obj.email)
-            courses = instructor.courses.all()
-            return [{"id": course.id, "name": course.name} for course in courses]
-        except (Applications.DoesNotExist, Instructor.DoesNotExist):
-            return None
+    # def get_course(self, obj):
+    #     try:
+    #         application = Applications.objects.get(email=obj.email)
+    #         instructor = Instructor.objects.get(user=obj)
+    #         courses = instructor.courses.all()
+    #         return [{"id": course.id, "name": course.name} for course in courses]
+    #     except (Applications.DoesNotExist, Instructor.DoesNotExist):
+    #         return None
 
 
 class UserProfileUpdateSerializer(serializers.ModelSerializer):
@@ -405,12 +405,12 @@ class AssignCoursesSerializer(serializers.Serializer):
         return value
 
 class InstructorSessionSerializer(serializers.ModelSerializer):
-    instructor_email = serializers.SerializerMethodField()
+    # instructor_email = serializers.SerializerMethodField()
 
     class Meta:
         model = InstructorSession
-        fields = ['session', 'status', 'start_date', 'end_date', 'instructor_email']
+        fields = ['session', 'instructor' ,'status', 'start_date', 'end_date']
 
-    def get_instructor_email(self, obj):
-        # Ensure obj.instructor exists and has an email
-        return obj.instructor.id.email if obj.instructor and obj.instructor.id else None
+    # def get_instructor_email(self, obj):
+    #     # Ensure obj.instructor exists and has an email
+    #     return obj.instructor.id.email if obj.instructor and obj.instructor.id else None

@@ -155,6 +155,9 @@ class User(AbstractBaseUser, PermissionsMixin):
 
         super(User, self).save(*args, **kwargs)
 
+    def __str__(self):
+        return f"{self.id} - {self.email}"
+
 
 
 class AccessControl(models.Model):
@@ -223,10 +226,7 @@ class StudentSession(models.Model):
 class Instructor(models.Model):
     """Extra details of Instructors in the System."""
 
-    id = models.OneToOneField(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        primary_key=True,    )
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
     # session = models.ManyToManyField(Sessions)
     # courses = models.ManyToManyField(Course)
     created_at = models.DateTimeField(auto_now=True, null=True, blank=True)

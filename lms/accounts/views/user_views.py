@@ -95,13 +95,14 @@ class UserLoginView(views.APIView, CustomResponseMixin):
                 password=serializer.validated_data["password"],
             )
             if user is not None:
+                print("user", user.id)
                 tokens = self.get_tokens_for_user(user)
                 user_group = Group.objects.get(user=user.id)
                 print("user_group", user_group)
                 permission = self.get_group_permissions(user_group.id)
                 user_profile = UserProfileSerializer(user, context={'user' : user})
-                user_object_id = User.objects.get(email= user.email).id
-                print("user_object", user_object_id)
+                # user_object_id = User.objects.get(email= user.email).id
+                # print("user_object", user_object_id)
                 user_serializer = None
                 session_data = None  # Initialize session_data as None
                 if user_group.name == "student":
@@ -123,8 +124,8 @@ class UserLoginView(views.APIView, CustomResponseMixin):
 
                 elif user_group.name == "instructor":
                     print("inside instuctor")
-                    print(user_object_id)
-                    instructor = Instructor.objects.get(id_id=user_object_id)
+                    # print(user_object_id)
+                    instructor = Instructor.objects.get(user=user.id)
                     print("instructor", instructor)
                     user_serializer = InstructorSerializer(instructor)
                     print("user_serializer for instructor", user_serializer.data)
@@ -965,7 +966,7 @@ class UserProcessView(views.APIView, CustomResponseMixin):
                         "application": ApplicationSerializer(application).data,
                         "user": UserSerializer(user).data,
                         "skills": TechSkillSerializer(selected_skills, many=True).data,
-                        "locations": LocationSerializer(selected_locations, many=True).data,
+                        "location": LocationSerializer(selected_locations, many=True).data,
                     })
 
                 return self.custom_response(
@@ -1151,7 +1152,7 @@ class UserSessionsView(views.APIView, CustomResponseMixin):
         elif group_name == "instructor":
             try:
                 # Fetch the instructor based on the user_id
-                instructor = Instructor.objects.get(id__id=user_id)
+                instructor = Instructor.objects.get(user_id=user_id)
             except Instructor.DoesNotExist:
                 return self.custom_response(
                     status.HTTP_404_NOT_FOUND,
@@ -1216,7 +1217,7 @@ class InstructorSessionsView(views.APIView, CustomResponseMixin):
 
         try:
             # Get the Instructor object based on the provided user_id
-            instructor = Instructor.objects.get(id__id=user_id)  # Adjusted to use the email field
+            instructor = Instructor.objects.get(user_id=user_id)  # Adjusted to use the email field
         except Instructor.DoesNotExist:
             return self.custom_response(
                 status.HTTP_404_NOT_FOUND,
@@ -1252,7 +1253,7 @@ class InstructorSessionsView(views.APIView, CustomResponseMixin):
 
         # Serialize created or updated InstructorSession objects with detailed session data
         response_data = [{
-            "instructor_email": sess.instructor.id.email,  # Instructor's email
+            "instructor_email": sess.instructor.user.email,  # Instructor's email
             "session": {
                 "session_id": sess.session.id,
                 # "session_name": sess.session.name,  # Replace with actual field name if different
