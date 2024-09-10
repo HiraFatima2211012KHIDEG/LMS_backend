@@ -373,11 +373,24 @@ class AssignmentStudentListView(CustomResponseMixin, APIView):
         except Assignment.DoesNotExist:
             return Response({"detail": "Assignment not found for the course."}, status=status.HTTP_404_NOT_FOUND)
 
-        # Get all students enrolled in the specified course
-        enrolled_students = Student.objects.filter(program__courses__id=course_id)
-        student_list = []
+     
+        # Retrieve the session associated with the course
+        sessions = Sessions.objects.filter(course__id=course_id)
+        if not sessions:
+            return Response(
+                {"detail": "Session not found for the course."}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
 
-        total_grade = None  # Initialize total_grade
+        # Assuming you want to work with the first session in the list
+        session = sessions.first()
+        
+        # Filter students who are enrolled in this session
+        enrolled_students = Student.objects.filter(
+            studentsession__session=session
+        )
+        student_list = []
+        total_grade = None  # To track the total grade
 
         for student in enrolled_students:
             user = student.user
@@ -392,16 +405,17 @@ class AssignmentStudentListView(CustomResponseMixin, APIView):
                 if submission.status == 1:  # Submitted
                     submission_status = "Submitted"
                 else:
-                    submission_status = "Pending"  # Status is pending if not yet graded
+                    submission_status = "Pending" 
             else:
                 if timezone.now() > assignment.due_date:
-                    submission_status = "Not Submitted"  # Due date has passed without submission
+                    submission_status = "Not Submitted" 
                 else:
-                    submission_status = "Pending"  # Due date has not passed, and not yet submitted
+                    submission_status = "Pending"  
 
             student_data = {
                 'student_name': f"{user.first_name} {user.last_name}",
                 'registration_id': student.registration_id,
+                'submission_id': submission.id if submission else None,
                 'submitted_at': submission.submitted_at if submission else None,
                 'status': submission_status,
                 'grade': None,

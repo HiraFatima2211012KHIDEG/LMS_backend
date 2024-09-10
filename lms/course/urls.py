@@ -79,4 +79,5 @@ urlpatterns = [
     path('weightages/<int:pk>/', WeightageDetailAPIView.as_view(), name='weightage-detail'),
     path('skills/', SkillListCreateAPIView.as_view(), name='skill-list-create'),
     path('skills/<int:pk>/', SkillRetrieveUpdateDestroyAPIView.as_view(), name='skill-detail'),
+    path('course_weightages/<int:course_id>/', WeightageListByCourseId.as_view(), name='weightage-list-by-course'),
 ]

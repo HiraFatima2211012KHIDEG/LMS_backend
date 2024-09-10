@@ -258,11 +258,25 @@ class ExamStudentListView(CustomResponseMixin, APIView):
             exam = Exam.objects.get(id=exam_id, course__id=course_id)
         except Exam.DoesNotExist:
             return Response({"detail": "Exam not found for the course."}, status=status.HTTP_404_NOT_FOUND)
+        # Retrieve the session associated with the course
+        # try:
+        #     session = Sessions.objects.get(course__id=course_id)
+        # except Sessions.DoesNotExist:
+        #     return Response(
+        #         {"detail": "Session not found for the course."}, 
+        #         status=status.HTTP_404_NOT_FOUND
+        #     )
+        sessions = Sessions.objects.filter(course__id=course_id)
+   
+   
+        session = sessions.first()
+        # Filter students who are enrolled in this session
+        enrolled_students = Student.objects.filter(
+            studentsession__session=session
+        )
 
-        enrolled_students = Student.objects.filter(program__courses__id=course_id)
         student_list = []
-
-        total_grade = None  
+        total_grade = None  # To track the total grade
         for student in enrolled_students:
             user = student.user
             try:
@@ -284,6 +298,7 @@ class ExamStudentListView(CustomResponseMixin, APIView):
             student_data = {
                 'student_name': f"{user.first_name} {user.last_name}",
                 'registration_id': student.registration_id,
+                'submission_id': submission.id if submission else None,
                 'submitted_at': submission.exam_submitted_at if submission else None,
                 'status': submission_status,
                 'grade': None,
