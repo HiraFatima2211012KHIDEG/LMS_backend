@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from ..models.models import *
 from ..serializers import *
-from utils.custom import CustomResponseMixin
+from utils.custom import CustomResponseMixin, custom_extend_schema
 
 
 class WeightageListCreateAPIView(APIView, CustomResponseMixin):
@@ -70,7 +70,7 @@ class WeightageDetailAPIView(APIView, CustomResponseMixin):
             message='Weightage deleted successfully',
             data=None
         )
-    
+
 class WeightageListByCourseId(APIView, CustomResponseMixin):
     permission_classes = (permissions.IsAuthenticated,)
 
@@ -88,6 +88,8 @@ class WeightageListByCourseId(APIView, CustomResponseMixin):
 
 # Skill Views
 class SkillListCreateAPIView(APIView, CustomResponseMixin):
+
+    @custom_extend_schema(SkillSerializer)
     def get(self, request):
         skills = Skill.objects.all()
         serializer = SkillSerializer(skills, many=True)
@@ -123,7 +125,7 @@ class SkillRetrieveUpdateDestroyAPIView(APIView, CustomResponseMixin):
                 message='Skill not found',
                 data=None
             )
-        
+
         serializer = SkillSerializer(skill)
         return self.custom_response(
             status_code=status.HTTP_200_OK,
@@ -140,7 +142,7 @@ class SkillRetrieveUpdateDestroyAPIView(APIView, CustomResponseMixin):
                 message='Skill not found',
                 data=None
             )
-        
+
         serializer = SkillSerializer(skill, data=request.data)
         if serializer.is_valid():
             serializer.save()
@@ -164,7 +166,7 @@ class SkillRetrieveUpdateDestroyAPIView(APIView, CustomResponseMixin):
                 message='Skill not found',
                 data=None
             )
-        
+
         skill.delete()
         return self.custom_response(
             status_code=status.HTTP_204_NO_CONTENT,

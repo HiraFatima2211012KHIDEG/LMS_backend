@@ -17,6 +17,7 @@ from ..serializers.location_serializers import (
     SessionsCalendarSerializer
 )
 from utils.custom import CustomResponseMixin, custom_extend_schema
+from drf_spectacular.utils import extend_schema, OpenApiParameter
 from rest_framework import views
 from drf_spectacular.utils import extend_schema, inline_serializer
 from django.db.models import Sum
@@ -125,6 +126,13 @@ class FilterBatchByCityView(views.APIView):
     """
     API view to filter Batches by city.
     """
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(name='city', description='Filter by batches', required=False, type=str)
+        ],
+        responses={200: 'application/json'}
+    )
+
     def get(self, request):
         city_name = request.query_params.get('city', None)
 
@@ -228,7 +236,7 @@ class FilterLocationByCityView(views.APIView):
 #                 f"An error occurred: {str(e)}",
 #                 None
 #             )
-        
+
 
 # class CityCapacityView(views.APIView, CustomResponseMixin):
 #     """
@@ -286,7 +294,7 @@ class CityStatsView(views.APIView, CustomResponseMixin):
                 student_count = User.objects.filter(city=city, groups__name='student').count()
                 # Count of instructor users in the city
                 instructor_count = User.objects.filter(city=city, groups__name='instructor').count()
-                
+
                 # Calculate total capacity for each city
                 total_capacity = Location.objects.filter(city=city).aggregate(
                     total_capacity=Sum("capacity")

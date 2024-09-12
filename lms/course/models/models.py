@@ -35,7 +35,7 @@ class Course(models.Model):
     picture = models.ImageField(
         upload_to="material/course_pictures/", blank=True, null=True
     )
-    # start_date = models.DateField()         
+    # start_date = models.DateField()
     # end_date = models.DateField()
     def __str__(self):
         return self.name

@@ -11,7 +11,7 @@ from ..serializers.user_serializers import (
     StudentSerializer,
     AdminUserSerializer,
     InstructorCoursesSerializer
-    
+
 )
 from ..models.user_models import Student
 from django_filters.rest_framework import DjangoFilterBackend
@@ -101,7 +101,7 @@ class UserLoginView(views.APIView):
                 permission = self.get_group_permissions(user_group.id)
                 user_profile = UserProfileSerializer(user, context={'user' : user})
                 user_serializer = None
-                session_data = [] 
+                session_data = []
                 if user_group.name == "student":
                     student = Student.objects.get(user=user.id)
                     user_serializer = StudentSerializer(student)
@@ -111,7 +111,7 @@ class UserLoginView(views.APIView):
                             session_data.append(SessionsSerializer(student_session.session).data)
 
                     except StudentSession.DoesNotExist:
-                        session_data = []  
+                        session_data = []
                 elif user_group.name == "instructor":
                     instructor = Instructor.objects.get(id=user.id)
                     user_serializer = InstructorSerializer(instructor)
@@ -799,10 +799,10 @@ class StudentCoursesInstructorsView(views.APIView):
             "instructors": matching_instructors_emails,
         }
         return Response(response_data, status=status.HTTP_200_OK)
-    
+
 
 class UsersCountAdminSectionView(views.APIView, CustomResponseMixin):
-    # permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
+    permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
 
     def get(self, request):
         try:
@@ -812,7 +812,7 @@ class UsersCountAdminSectionView(views.APIView, CustomResponseMixin):
 
             # Fetch active users
             active_users = User.objects.filter(is_active=True)
-            active_users_length = max(len(active_users) -1, 0) 
+            active_users_length = max(len(active_users) -1, 0)
             inactive_users_length = max(all_users_length - active_users_length, 0)
 
             # Fetch student users
@@ -1184,7 +1184,7 @@ class UserSessionsView(views.APIView, CustomResponseMixin):
                 "status": session.status,
                 # "start_date": session.start_date,
                 # "end_date": session.end_date,
-                # "batch": session.session.batch.name if session.session.batch else None, 
+                # "batch": session.session.batch.name if session.session.batch else None,
                 "course": session.session.course.name if session.session.course else None
             }
             session_data.append(session_info)
