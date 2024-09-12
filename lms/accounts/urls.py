@@ -118,7 +118,7 @@ urlpatterns = [
         ),
         name="session-detail",
     ),
-    path('sessions/calendar/', SessionCalendarAPIView.as_view(), name='session-list-calendar'),
+    path('sessions/calendar/<int:user_id>/', SessionCalendarAPIView.as_view(), name='session-list-calendar'),
     path(
         "filter-batches-by-city/",
         FilterBatchByCityView.as_view(),

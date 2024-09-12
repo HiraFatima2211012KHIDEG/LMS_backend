@@ -858,7 +858,6 @@ class UsersCountAdminSectionView(views.APIView, CustomResponseMixin):
             )
 
 
-
 class UserProcessView(views.APIView, CustomResponseMixin):
     """View to handle users based on their group (student or instructor)."""
 
@@ -878,6 +877,8 @@ class UserProcessView(views.APIView, CustomResponseMixin):
             )
 
         try:
+            response_data = {"count": 0, "data": []}
+
             if group_name == "student":
                 # Filter StudentApplicationSelection based on the selected program
                 student_selection = StudentApplicationSelection.objects.filter(
@@ -891,7 +892,10 @@ class UserProcessView(views.APIView, CustomResponseMixin):
                         None,
                     )
 
-                response_data = []
+                # Count of student applications
+                response_data["count"] = student_selection.count()
+
+                # Fetching student applications details
                 for selection in student_selection:
                     application = selection.application
 
@@ -904,7 +908,7 @@ class UserProcessView(views.APIView, CustomResponseMixin):
                             None,
                         )
 
-                    response_data.append({
+                    response_data["data"].append({
                         "application": ApplicationSerializer(application).data,
                         "user": UserSerializer(user).data,
                         "program": ProgramSerializer(selection.selected_program).data,
@@ -930,7 +934,10 @@ class UserProcessView(views.APIView, CustomResponseMixin):
                         None,
                     )
 
-                response_data = []
+                # Count of instructor applications
+                response_data["count"] = instructor_selection.count()
+
+                # Fetching instructor applications details
                 for selection in instructor_selection:
                     application = selection.application
 
@@ -961,11 +968,11 @@ class UserProcessView(views.APIView, CustomResponseMixin):
                             None,
                         )
 
-                    response_data.append({
+                    response_data["data"].append({
                         "application": ApplicationSerializer(application).data,
                         "user": UserSerializer(user).data,
                         "skills": TechSkillSerializer(selected_skills, many=True).data,
-                        "locations": LocationSerializer(selected_locations, many=True).data,
+                        "location": LocationSerializer(selected_locations, many=True).data,
                     })
 
                 return self.custom_response(
@@ -1094,6 +1101,8 @@ class PreferredSessionView(views.APIView, CustomResponseMixin):
 
         created_sessions = []
 
+        session_details = []  # To collect details for email content
+
         for session in sessions:
             # Get the associated course for the session
             course = session.course
@@ -1104,22 +1113,46 @@ class PreferredSessionView(views.APIView, CustomResponseMixin):
                 session=session,
                 defaults={
                     'status': 1,  # Default status or modify based on your needs
-                    # 'start_date': course.start_date if course.start_date else None,
-                    # 'end_date': course.end_date if course.end_date else None,
                 }
             )
             created_sessions.append(student_session)
 
+            # Collect session details for email
+            session_details.append(
+                f"Course: {course.name}\n"
+                f"Location: {session.location.name} Center\n"
+                f"Timings: {session.start_time} - {session.end_time}\n"  # Adjust field names as per your model
+            )
+
         # Serialize created or updated StudentSession objects
-        # You can use a serializer if needed for better response structure
         response_data = [{"session_id": sess.session.id, "student_id": sess.student.registration_id} for sess in created_sessions]
+
+        # Compose the email content
+        email_subject = "Session Assignment Confirmation"
+        email_body = (
+            f"Dear {student.user.first_name} {student.user.last_name},\n\n"
+            f"You have been successfully assigned to the following sessions as per your program:\n\n"
+            + "\n\n".join(session_details) +
+            "\n\nPlease make sure to attend these sessions on time.\n"
+            f"Login to the portal from the link below, and start your learning journey.\n"
+            f"https://lms-phi-two.vercel.app/auth/login"
+        )
+
+        # Email configuration
+        email_data = {
+            "email_subject": email_subject,
+            "body": email_body,
+            "to_email": student.user.email,  # Assuming your Student model has access to user.email
+        }
+        
+        # Send email (using the existing send_email function or Django's default send_mail)
+        send_email(email_data)
 
         return self.custom_response(
             status.HTTP_200_OK,
-            "Sessions assigned successfully.",
+            "Sessions assigned successfully and email sent.",
             response_data
         )
-
 
 class UserSessionsView(views.APIView, CustomResponseMixin):
     """View to get all sessions assigned to a specific user."""
@@ -1134,6 +1167,7 @@ class UserSessionsView(views.APIView, CustomResponseMixin):
                 "Invalid group_name. Choices are 'student' and 'instructor'.",
                 None,
             )
+
         if group_name == "student":
             try:
                 # Fetch the student based on the user_id
@@ -1142,7 +1176,7 @@ class UserSessionsView(views.APIView, CustomResponseMixin):
                 return self.custom_response(
                     status.HTTP_404_NOT_FOUND,
                     "Student with the given user_id does not exist.",
-                    None
+                    None,
                 )
 
             # Fetch all sessions assigned to this student
@@ -1156,7 +1190,7 @@ class UserSessionsView(views.APIView, CustomResponseMixin):
                 return self.custom_response(
                     status.HTTP_404_NOT_FOUND,
                     "Instructor with the given user_id does not exist.",
-                    None
+                    None,
                 )
 
             # Fetch all sessions assigned to this instructor
@@ -1165,36 +1199,41 @@ class UserSessionsView(views.APIView, CustomResponseMixin):
         else:
             return self.custom_response(
                 status.HTTP_400_BAD_REQUEST,
-                "Invalid user_type provided. Use 'student' or 'instructor'.",
-                None
+                "Invalid group_name provided. Use 'student' or 'instructor'.",
+                None,
             )
 
         if not user_sessions.exists():
             return self.custom_response(
                 status.HTTP_404_NOT_FOUND,
                 "No sessions found for this user.",
-                None
+                None,
             )
 
-        # Serialize the session data
+        # Serialize the session data with all relevant fields
         session_data = []
         for session in user_sessions:
+            session_details = session.session  # Access the related session object
             session_info = {
-                "session_id": session.session.id,
+                "session_id": session_details.id,
                 "status": session.status,
-                # "start_date": session.start_date,
-                # "end_date": session.end_date,
-                # "batch": session.session.batch.name if session.session.batch else None, 
-                "course": session.session.course.name if session.session.course else None
+                "location": session_details.location.name if session_details.location else None,
+                "no_of_students": session_details.no_of_students,
+                # "batch": session_details.batch.name if session_details.batch else None,
+                "course": session_details.course.name if session_details.course else None,
+                "start_time": session_details.start_time,
+                "end_time": session_details.end_time,
+                # "days_of_week": session_details.days_of_week,
+                # "created_at": session_details.created_at,
+                # "updated_at": session_details.updated_at,
             }
             session_data.append(session_info)
 
         return self.custom_response(
             status.HTTP_200_OK,
             "Sessions fetched successfully.",
-            session_data
+            session_data,
         )
-
 
 
 class InstructorSessionsView(views.APIView, CustomResponseMixin):
@@ -1216,7 +1255,7 @@ class InstructorSessionsView(views.APIView, CustomResponseMixin):
 
         try:
             # Get the Instructor object based on the provided user_id
-            instructor = Instructor.objects.get(id__id=user_id)  # Adjusted to use the email field
+            instructor = Instructor.objects.get(id__id=user_id)  # Assuming Instructor has a user field for user_id
         except Instructor.DoesNotExist:
             return self.custom_response(
                 status.HTTP_404_NOT_FOUND,
@@ -1235,6 +1274,7 @@ class InstructorSessionsView(views.APIView, CustomResponseMixin):
             )
 
         created_sessions = []
+        session_details = []  # To collect details for email content
 
         for session in sessions:
             course = session.course
@@ -1244,27 +1284,50 @@ class InstructorSessionsView(views.APIView, CustomResponseMixin):
                 session=session,
                 defaults={
                     'status': 1,  # Default status or modify based on your needs
-                    # 'start_date': course.start_date if course.start_date else None,
-                    # 'end_date': course.end_date if course.end_date else None,
                 }
             )
             created_sessions.append(instructor_session)
+
+            # Collect session details for email
+            session_details.append(
+                f"Course: {course.name}\n"
+                f"Location: {session.location.name} Center\n"
+                f"Timings: {session.start_time} - {session.end_time}\n"  # Adjust field names as per your model
+            )
 
         # Serialize created or updated InstructorSession objects with detailed session data
         response_data = [{
             "instructor_email": sess.instructor.id.email,  # Instructor's email
             "session": {
                 "session_id": sess.session.id,
-                # "session_name": sess.session.name,  # Replace with actual field name if different
                 "course_name": sess.session.course.name,  # Accessing course details
-                # "start_date": sess.start_date,
-                # "end_date": sess.end_date,
                 "status": sess.status,
             }
         } for sess in created_sessions]
 
+        # Compose the email content
+        email_subject = "Session Assignment Notification"
+        email_body = (
+            f"Dear {instructor.id.first_name} {instructor.id.last_name},\n\n"
+            f"You have been assigned to the following sessions:\n\n"
+            + "\n\n".join(session_details) +
+            "\n\nPlease review your schedule and be prepared for your upcoming sessions.\n"
+            f"Login to the portal from the link below to view details and manage your sessions.\n"
+            f"https://lms-phi-two.vercel.app/auth/login"
+        )
+
+        # Email configuration
+        email_data = {
+            "email_subject": email_subject,
+            "body": email_body,
+            "to_email": instructor.id.email,  # Assuming the Instructor model has access to user.email
+        }
+
+        # Send email (using the existing send_email function or Django's default send_mail)
+        send_email(email_data)
+
         return self.custom_response(
             status.HTTP_200_OK,
-            "Sessions assigned successfully.",
+            "Sessions assigned successfully and email sent.",
             response_data
         )

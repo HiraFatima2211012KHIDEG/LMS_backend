@@ -275,169 +275,187 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
 
     @custom_extend_schema(ApplicationSerializer)
     def patch(self, request, filteration_id=None):
-        data = request.data
-        application_id = request.query_params.get("application_id")
+            data = request.data
+            application_id = request.query_params.get("application_id")
 
-        if not application_id:
-            return self.custom_response(
-                status.HTTP_400_BAD_REQUEST, "Application ID is not provided.", None
-            )
-
-        if "application_status" not in data:
-            return self.custom_response(
-                status.HTTP_400_BAD_REQUEST, "Application status is not provided.", None
-            )
-
-        try:
-            application_obj = Applications.objects.get(id=application_id)
-        except Applications.DoesNotExist:
-            return self.custom_response(
-                status.HTTP_404_NOT_FOUND,
-                "No application object found for this application ID.",
-                None,
-            )
-
-        application_status = data.get("application_status").lower()
-        if application_status not in ["short_listed", "approved", "removed"]:
-            return self.custom_response(
-                status.HTTP_400_BAD_REQUEST, "Invalid application status.", None
-            )
-
-        try:
-            with transaction.atomic():
-                serializer = ApplicationSerializer(
-                    application_obj,
-                    data={"application_status": application_status},
-                    partial=True,
+            if not application_id:
+                return self.custom_response(
+                    status.HTTP_400_BAD_REQUEST, "Application ID is not provided.", None
                 )
-                if serializer.is_valid(raise_exception=True):
-                    if application_status in ["short_listed", "removed"]:
-                        serializer.save()
-                        return self.custom_response(
-                            status.HTTP_200_OK,
-                            f"Application status has been changed to {application_status}.",
-                            serializer.data,
-                        )
 
-                    elif application_status == "approved":
-                        if application_obj.group_name == "student":
-                            program_id = data.get("program_id")
-                            location_id = data.get("location_id")
-                            if program_id is None:
-                                return self.custom_response(
-                                    status.HTTP_400_BAD_REQUEST,
-                                    "Selected program_id is not provided.",
-                                    None,
-                                )
-                            if location_id is None:
-                                return self.custom_response(
-                                    status.HTTP_400_BAD_REQUEST,
-                                    "Selected location_id is not provided.",
-                                    None,
-                                )                               
-                            try:
-                                program = Program.objects.get(id=program_id)
-                                location = Location.objects.get(id=location_id)
-                            except Program.DoesNotExist:
-                                return self.custom_response(
-                                    status.HTTP_404_NOT_FOUND,
-                                    "No program object found for this ID.",
-                                    None,
-                                )
-                            except Location.DoesNotExist:
-                                return self.custom_response(
-                                    status.HTTP_404_NOT_FOUND,
-                                    "No location object found for this ID.",
-                                    None,
-                                )                                
+            if "application_status" not in data:
+                return self.custom_response(
+                    status.HTTP_400_BAD_REQUEST, "Application status is not provided.", None
+                )
 
-                            related_programs = application_obj.program.all()
+            try:
+                application_obj = Applications.objects.get(id=application_id)
+            except Applications.DoesNotExist:
+                return self.custom_response(
+                    status.HTTP_404_NOT_FOUND,
+                    "No application object found for this application ID.",
+                    None,
+                )
 
-                            if program not in related_programs:
-                                return self.custom_response(
-                                    status.HTTP_400_BAD_REQUEST,
-                                    f"Invalid program_id.",
-                                    None,
-                                )
-                            related_locations = application_obj.location.all()    
-                            if location not in related_locations:
-                                return self.custom_response(
-                                    status.HTTP_400_BAD_REQUEST,
-                                    f"Invalid location_id.",
-                                    None,
-                                )                                    
+            application_status = data.get("application_status").lower()
+            if application_status not in ["short_listed", "approved", "removed"]:
+                return self.custom_response(
+                    status.HTTP_400_BAD_REQUEST, "Invalid application status.", None
+                )
 
-                            StudentApplicationSelection.objects.create(
-                                application=application_obj, selected_program=program, selected_location = location
+            try:
+                with transaction.atomic():
+                    serializer = ApplicationSerializer(
+                        application_obj,
+                        data={"application_status": application_status},
+                        partial=True,
+                    )
+                    if serializer.is_valid(raise_exception=True):
+                        if application_status in ["short_listed", "removed"]:
+                            serializer.save()
+                            return self.custom_response(
+                                status.HTTP_200_OK,
+                                f"Application status has been changed to {application_status}.",
+                                serializer.data,
                             )
 
-                        elif application_obj.group_name == "instructor":
-                            skills_ids = data.get("skills_id", [])
-                            location_ids = data.get("locations_id", [])
-                            if not skills_ids or not set(skills_ids).issubset(
-                                application_obj.required_skills.values_list(
-                                    "id", flat=True
-                                )
-                            ):
-                                return self.custom_response(
-                                    status.HTTP_400_BAD_REQUEST,
-                                    "Selected skills_id is not provided or Invalid skills_id found.",
-                                    None,
+                        elif application_status == "approved":
+                            email_content = ""
+                            if application_obj.group_name == "student":
+                                program_id = data.get("program_id")
+                                location_id = data.get("location_id")
+                                if program_id is None:
+                                    return self.custom_response(
+                                        status.HTTP_400_BAD_REQUEST,
+                                        "Selected program_id is not provided.",
+                                        None,
+                                    )
+                                if location_id is None:
+                                    return self.custom_response(
+                                        status.HTTP_400_BAD_REQUEST,
+                                        "Selected location_id is not provided.",
+                                        None,
+                                    )                               
+                                try:
+                                    program = Program.objects.get(id=program_id)
+                                    location = Location.objects.get(id=location_id)
+                                except Program.DoesNotExist:
+                                    return self.custom_response(
+                                        status.HTTP_404_NOT_FOUND,
+                                        "No program object found for this ID.",
+                                        None,
+                                    )
+                                except Location.DoesNotExist:
+                                    return self.custom_response(
+                                        status.HTTP_404_NOT_FOUND,
+                                        "No location object found for this ID.",
+                                        None,
+                                    )                                
+
+                                related_programs = application_obj.program.all()
+
+                                if program not in related_programs:
+                                    return self.custom_response(
+                                        status.HTTP_400_BAD_REQUEST,
+                                        f"Invalid program_id.",
+                                        None,
+                                    )
+                                related_locations = application_obj.location.all()    
+                                if location not in related_locations:
+                                    return self.custom_response(
+                                        status.HTTP_400_BAD_REQUEST,
+                                        f"Invalid location_id.",
+                                        None,
+                                    )                                    
+
+                                StudentApplicationSelection.objects.create(
+                                    application=application_obj, selected_program=program, selected_location=location
                                 )
 
-                            if not location_ids or not set(location_ids).issubset(
-                                application_obj.location.values_list(
-                                    "id", flat=True
-                                )
-                            ):
-                                return self.custom_response(
-                                    status.HTTP_400_BAD_REQUEST,
-                                    "Selected location_id is not provided or Invalid location_id found.",
-                                    None,
+                                # Customize email body for students
+                                email_content = (
+                                    f"Congratulations {application_obj.first_name} {application_obj.last_name}!\n\n"
+                                    f"You have been selected for the program '{program.name}' "
+                                    f"at the location '{location.name} Center'.\n\n"
+                                    f"Please complete your selection process by verifying your account using the link below."
                                 )
 
-                            skills = TechSkill.objects.filter(id__in=skills_ids)
-                            locations = Location.objects.filter(id__in = location_ids)
-                            instructor_selection = (
-                                InstructorApplicationSelection.objects.create(
-                                    application=application_obj
+                            elif application_obj.group_name == "instructor":
+                                skills_ids = data.get("skills_id", [])
+                                location_ids = data.get("locations_id", [])
+                                if not skills_ids or not set(skills_ids).issubset(
+                                    application_obj.required_skills.values_list(
+                                        "id", flat=True
+                                    )
+                                ):
+                                    return self.custom_response(
+                                        status.HTTP_400_BAD_REQUEST,
+                                        "Selected skills_id is not provided or Invalid skills_id found.",
+                                        None,
+                                    )
+
+                                if not location_ids or not set(location_ids).issubset(
+                                    application_obj.location.values_list(
+                                        "id", flat=True
+                                    )
+                                ):
+                                    return self.custom_response(
+                                        status.HTTP_400_BAD_REQUEST,
+                                        "Selected location_id is not provided or Invalid location_id found.",
+                                        None,
+                                    )
+
+                                skills = TechSkill.objects.filter(id__in=skills_ids)
+                                locations = Location.objects.filter(id__in=location_ids)
+                                instructor_selection = (
+                                    InstructorApplicationSelection.objects.create(
+                                        application=application_obj
+                                    )
                                 )
+
+                                instructor_selection.selected_skills.set(skills)
+                                instructor_selection.selected_locations.set(locations)
+
+                                # Customize email body for instructors
+                                selected_skills_list = ', '.join([skill.name for skill in skills])
+                                selected_locations_list = ', '.join([f"{location.name} Center" for location in locations])
+                                email_content = (
+                                    f"Congratulations {application_obj.first_name} {application_obj.last_name}!\n\n"
+                                    f"You have been selected as an instructor for the following skills:\n"
+                                    f"- Skills: {selected_skills_list}\n"
+                                    f"- Locations: {selected_locations_list}\n\n"
+                                    f"Please complete your selection process by verifying your account using the link below."
+                                )
+
+                            # Generate verification link and send email
+                            token = self.create_signed_token(
+                                application_id, application_obj.email
                             )
+                            verification_link = (
+                                f"http://localhost:3000/auth/account-verify/{str(token)}"
+                            )
+                            body = f"{email_content}\n\nVerification Link:\n{verification_link}\n\nThis link will expire in 3 days."
 
-                            instructor_selection.selected_skills.set(skills)
-                            instructor_selection.selected_locations.set(locations)
+                            email_data = {
+                                "email_subject": "Verify your account",
+                                "body": body,
+                                "to_email": application_obj.email,
+                            }
+                            send_email(email_data)
 
-                        token = self.create_signed_token(
-                            application_id, application_obj.email
-                        )
-                        print(token)
-                        verification_link = (
-                            f"http://localhost:3000/auth/account-verify/{str(token)}"
-                        )
-                        body = (
-                            f"Congratulations {application_obj.first_name} {application_obj.last_name}!\n"
-                            f"You are requested to complete the selection process by verifying your account. "
-                            f"Please click the following link to proceed.\n{verification_link}"
-                        )
+                            serializer.save()
+                            return self.custom_response(
+                                status.HTTP_200_OK,
+                                f"Application status has been changed to {application_status}.",
+                                serializer.data,
+                            )
+            except Exception as e:
+                return self.custom_response(
+                    status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    f"An error occurred while processing the application: {str(e)}",
+                    None,
+                )
 
-                        email_data = {
-                            "email_subject": "Verify your account",
-                            "body": body,
-                            "to_email": application_obj.email,
-                        }
-                        send_email(email_data)
-                        serializer.save()
-                        return self.custom_response(
-                            status.HTTP_200_OK,
-                            f"Application status has been changed to {application_status}.",
-                            serializer.data,
-                        )
-        except Exception as e:
-            return self.custom_response(
-                status.HTTP_500_INTERNAL_SERVER_ERROR,
-                f"An error occurred while processing the application: {str(e)}",
-                None,
-            )
 
     def create_signed_token(self, id, email):
         signer = TimestampSigner()

@@ -244,7 +244,7 @@ class ExamsByCourseIDAPIView(CustomResponseMixin, APIView):
                 'created_at': exam.created_at,
                 'submission_status': submission_status,
                 'submitted_at': submission.exam_submitted_at if submission else None,
-                'exam_submitted_file': submission.exam_submitted_file.url if submission and submission.exam_submitted_file else None,
+                'submitted_file': submission.exam_submitted_file.url if submission and submission.exam_submitted_file else None,
                 'resubmission': submission.resubmission if submission else False,
             }
             exams_data.append(exam_data)
@@ -299,6 +299,7 @@ class ExamStudentListView(CustomResponseMixin, APIView):
                 'student_name': f"{user.first_name} {user.last_name}",
                 'registration_id': student.registration_id,
                 'submission_id': submission.id if submission else None,
+                'submitted_file': submission.exam_submitted_file.url if submission and submission.exam_submitted_file else None,
                 'submitted_at': submission.exam_submitted_at if submission else None,
                 'status': submission_status,
                 'grade': None,

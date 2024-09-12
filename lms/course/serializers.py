@@ -79,6 +79,7 @@ class ModuleSerializer(serializers.ModelSerializer):
             "course",
             "description",
             "created_by",
+            "created_at",
             "status",
             "files",
         ]

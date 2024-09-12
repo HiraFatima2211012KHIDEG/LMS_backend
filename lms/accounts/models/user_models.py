@@ -213,7 +213,8 @@ class StudentSession(models.Model):
     # end_date = models.DateField()
     class Meta:
         unique_together = ("session", "student")
-
+    def __str__(self):
+        return f"{self.student} - {self.session}"
 
 class Instructor(models.Model):
     """Extra details of Instructors in the System."""
@@ -250,3 +251,5 @@ class InstructorSession(models.Model):
 
     class Meta:
         unique_together = ("session", "instructor")
+    def __str__(self):
+        return f"{self.instructor} - {self.session}"

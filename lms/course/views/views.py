@@ -92,16 +92,20 @@ class ModuleListCreateAPIView(CustomResponseMixin, APIView):
         serializer = ModuleSerializer(modules, many=True)
         return self.custom_response(status.HTTP_200_OK, 'Modules retrieved successfully', serializer.data)
 
+
     @custom_extend_schema(ModuleSerializer)
     def post(self, request, format=None):
         data = {key: value for key, value in request.data.items()}
         data['created_by'] = request.user.id
 
+        # Validate the number of files
+        files = request.FILES.getlist('files')
+        if len(files) > 5:
+            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'You can upload a maximum of 5 files per module.', {})
 
         serializer = ModuleSerializer(data=data)
         if serializer.is_valid():
             module = serializer.save()
-            files = request.FILES.getlist('files')
             for file in files:
                 ContentFile.objects.create(module=module, file=file)
             return self.custom_response(status.HTTP_201_CREATED, 'Module created successfully', serializer.data)
@@ -122,25 +126,26 @@ class ModuleDetailAPIView(CustomResponseMixin, APIView):
         data = {key: value for key, value in request.data.items()}
         data['created_by'] = request.user.id
 
-
         module = get_object_or_404(Module, pk=pk)
         serializer = ModuleSerializer(module, data=data)
         if serializer.is_valid():
             module = serializer.save()
-            # files = request.FILES.getlist('files')
-            # for file in files:
-            #     ContentFile.objects.create(module=module, file=file)
-        # Handle file updates
+
+            # Validate the number of files
+            files = request.FILES.getlist('files')
+            if len(files) > 5:
+                return self.custom_response(status.HTTP_400_BAD_REQUEST, 'You can upload a maximum of 5 files per module.', {})
+
+            # Handle file updates
             existing_files = set(module.files.values_list('id', flat=True))
             uploaded_files = set()
 
             # Create new files
-            files = request.FILES.getlist('files')
             for file in files:
                 content_file = ContentFile.objects.create(module=module, file=file)
                 uploaded_files.add(content_file.id)
 
-
+            # Delete old files that are not in the uploaded files
             files_to_delete = existing_files - uploaded_files
             ContentFile.objects.filter(id__in=files_to_delete).delete()
             return self.custom_response(status.HTTP_200_OK, 'Module updated successfully', serializer.data)

@@ -81,8 +81,8 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = "lms.wsgi.application"
-
-
+USE_TZ = True
+TIME_ZONE = 'Asia/Karachi'
 # Database
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
 

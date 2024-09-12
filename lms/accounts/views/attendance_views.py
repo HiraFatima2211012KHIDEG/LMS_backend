@@ -6,7 +6,6 @@ from ..serializers.attendance_serializers import AttendanceSerializer
 from .location_views import BaseLocationViewSet
 from django_filters.rest_framework import DjangoFilterBackend
 from utils.custom import CustomResponseMixin
-
 class AttendanceListCreateView(BaseLocationViewSet):
     queryset = Attendance.objects.all()
     serializer_class = AttendanceSerializer
@@ -25,21 +24,52 @@ class AttendanceListCreateView(BaseLocationViewSet):
     def create(self, request, *args, **kwargs):
         user = request.user
         course_id = request.query_params.get('course_id')
+
         if not course_id:
             return self.custom_response(
                 status.HTTP_400_BAD_REQUEST,
                 "course_id query parameter is required.",
                 None
             )
+
+        if isinstance(request.data, list):  # Check if data is a list (bulk creation)
+            data = request.data
+            for item in data:
+                item['course'] = course_id
+                item['marked_by'] = user.email
+
+            serializer = self.get_serializer(data=data, many=True)
+            if serializer.is_valid():
+                serializer.save()
+                return self.custom_response(
+                    status.HTTP_201_CREATED,
+                    "Attendances created successfully",
+                    serializer.data
+                )
+            else:
+                return self.custom_response(
+                    status.HTTP_400_BAD_REQUEST,
+                    "Invalid data",
+                    serializer.errors
+                )
+
+        # Single record creation handling
         request.data['marked_by'] = user.email
         request.data['course'] = course_id
 
-        response = super().create(request, *args, **kwargs)
-        return self.custom_response(
-            status.HTTP_201_CREATED, "created successfully", response.data
-        )
-
-
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return self.custom_response(
+                status.HTTP_201_CREATED, "created successfully", serializer.data
+            )
+        else:
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST,
+                "Invalid data",
+                serializer.errors
+            )
+        
 class AttendanceDetailView(BaseLocationViewSet):
     queryset = Attendance.objects.all()
     serializer_class = AttendanceSerializer
