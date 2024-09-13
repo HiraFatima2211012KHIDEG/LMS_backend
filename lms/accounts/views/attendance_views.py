@@ -6,20 +6,39 @@ from ..serializers.attendance_serializers import AttendanceSerializer
 from .location_views import BaseLocationViewSet
 from django_filters.rest_framework import DjangoFilterBackend
 from utils.custom import CustomResponseMixin
+
+
+# class AttendanceListCreateView(BaseLocationViewSet):
+#     queryset = Attendance.objects.all()
+#     serializer_class = AttendanceSerializer
+#     filter_backends = [DjangoFilterBackend]
+
+#     # Specify the fields that can be used for filtering
+#     filterset_fields = ["student", "date", "course", "marked_by"]
+
+#     def create(self, request, *args, **kwargs):
+#         user = request.user
+#         course_id = request.query_params.get('course_id')
+#         if not course_id:
+#             return self.custom_response(
+#                 status.HTTP_400_BAD_REQUEST,
+#                 "course_id query parameter is required.",
+#                 None
+#             )
+#         request.data['marked_by'] = user.email
+#         request.data['course'] = course_id
+
+#         response = super().create(request, *args, **kwargs)
+#         return self.custom_response(
+#             status.HTTP_201_CREATED, "created successfully", response.data
+#         )
+
+
 class AttendanceListCreateView(BaseLocationViewSet):
     queryset = Attendance.objects.all()
     serializer_class = AttendanceSerializer
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
-
-    # Specify the fields that can be used for filtering
+    filter_backends = [DjangoFilterBackend]
     filterset_fields = ["student", "date", "course", "marked_by"]
-
-    # Specify the fields that can be searched
-    search_fields = [
-        "student__user__first_name",
-        "student__user__last_name",
-        "course__name",
-    ]
 
     def create(self, request, *args, **kwargs):
         user = request.user
@@ -32,43 +51,35 @@ class AttendanceListCreateView(BaseLocationViewSet):
                 None
             )
 
-        if isinstance(request.data, list):  # Check if data is a list (bulk creation)
-            data = request.data
-            for item in data:
-                item['course'] = course_id
+        # Determine if the request is for bulk creation
+        if isinstance(request.data, list):
+            for item in request.data:
                 item['marked_by'] = user.email
+                item['course'] = course_id
 
-            serializer = self.get_serializer(data=data, many=True)
-            if serializer.is_valid():
-                serializer.save()
-                return self.custom_response(
-                    status.HTTP_201_CREATED,
-                    "Attendances created successfully",
-                    serializer.data
-                )
-            else:
-                return self.custom_response(
-                    status.HTTP_400_BAD_REQUEST,
-                    "Invalid data",
-                    serializer.errors
-                )
-
-        # Single record creation handling
-        request.data['marked_by'] = user.email
-        request.data['course'] = course_id
-
-        serializer = self.get_serializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return self.custom_response(
-                status.HTTP_201_CREATED, "created successfully", serializer.data
-            )
+            # Validate and create multiple instances
+            serializer = self.get_serializer(data=request.data, many=True)
         else:
-            return self.custom_response(
-                status.HTTP_400_BAD_REQUEST,
-                "Invalid data",
-                serializer.errors
-            )
+            # Single attendance record creation
+            request.data['marked_by'] = user.email
+            request.data['course'] = course_id
+            serializer = self.get_serializer(data=request.data)
+
+        # Validate the data
+        serializer.is_valid(raise_exception=True)
+
+        # Perform the creation
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return self.custom_response(
+            status.HTTP_201_CREATED,
+            "created successfully",
+            serializer.data,
+            headers=headers
+        )
+
+
+
         
 class AttendanceDetailView(BaseLocationViewSet):
     queryset = Attendance.objects.all()

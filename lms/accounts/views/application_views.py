@@ -2,27 +2,20 @@
 Views for the Accounts Applications API.
 """
 
+from rest_framework import viewsets
 from rest_framework import generics
-from ..serializers.application_serializers import ApplicationSerializer, TechSkillSerializer
+from ..serializers.application_serializers import (
+    ApplicationSerializer,
+    TechSkillSerializer,
+)
 from ..serializers.location_serializers import *
 from rest_framework import views, status, generics, permissions
-from rest_framework.response import Response
 from ..serializers.user_serializers import *
-from django.contrib.auth import authenticate
-from rest_framework_simplejwt.tokens import RefreshToken
 from accounts.models import *
-from django.contrib.auth.models import Group
-from drf_spectacular.utils import extend_schema
-from ..serializers.user_serializers import (
-    UserSerializer,
-)
-from ..models.user_models import AccessControl, TechSkill
-import constants
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
+from ..models.user_models import TechSkill
 from django.db import transaction
 from accounts.utils import send_email
-from datetime import timedelta
-from rest_framework_simplejwt.tokens import AccessToken
-from rest_framework_simplejwt.exceptions import TokenError
 from django.core.signing import TimestampSigner
 import base64
 from django.core.signing import TimestampSigner, SignatureExpired, BadSignature
@@ -69,8 +62,25 @@ class CreateApplicationView(generics.CreateAPIView):
 class ApplicationProcessView(views.APIView, CustomResponseMixin):
     """View to handle application status"""
 
-    # permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
+    permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="group_name",
+                description="Filter by group_name of user.",
+                required=False,
+                type=str,
+            ),
+            OpenApiParameter(
+                name="status",
+                description="Filter by status of application.",
+                required=False,
+                type=str,
+            ),
+        ],
+        responses={200: "application/json"},
+    )
     def get(self, request, filteration_id=None):
         if filteration_id is None:
             return self.custom_response(
@@ -185,12 +195,14 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
                         id=selected_user.selected_program.id
                     )
                     selected_location = Location.objects.get(
-                        id = selected_user.selected_location.id
+                        id=selected_user.selected_location.id
                     )
                     application["program"] = [ProgramSerializer(selected_program).data]
-                    application["location"] = [LocationSerializer(selected_location).data]
+                    application["location"] = [
+                        LocationSerializer(selected_location).data
+                    ]
                 except StudentApplicationSelection.DoesNotExist:
-                    application["program"] = None  # or handle the case appropriately    
+                    application["program"] = None  # or handle the case appropriately
                     application["location"] = None
             else:
                 complete_related_programs = Program.objects.filter(id__in=programs)
@@ -203,11 +215,11 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
                 complete_related_locations = Location.objects.filter(id__in=locations)
                 # application["location"] = application.get("location", None)
                 application["location"] = [
-                        {"id": location["id"], "name": location["name"]}
-                        for location in LocationSerializer(
-                            complete_related_locations, many=True
-                        ).data
-                    ]            
+                    {"id": location["id"], "name": location["name"]}
+                    for location in LocationSerializer(
+                        complete_related_locations, many=True
+                    ).data
+                ]
 
     def handle_instructor_applications(self, serialized_data, application_status):
         """Handle processing of instructor applications based on their status."""
@@ -233,13 +245,15 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
                     application["location"] = []
             else:
                 # Check if related_skills is a list of integers or dictionaries
-                if (related_skills and isinstance(related_skills[0], dict)) and (related_locations and isinstance(related_locations[0], dict)):
+                if (related_skills and isinstance(related_skills[0], dict)) and (
+                    related_locations and isinstance(related_locations[0], dict)
+                ):
                     # related_skills is a list of dictionaries
                     related_skills_objects = TechSkill.objects.filter(
                         id__in=[skill["id"] for skill in related_skills]
                     )
                     related_locations_objects = Location.objects.filter(
-                        id__in = [location["id"] for location in related_locations]
+                        id__in=[location["id"] for location in related_locations]
                     )
                 else:
                     # related_skills is a list of integers
@@ -247,7 +261,7 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
                         id__in=related_skills
                     )
                     related_locations_objects = Location.objects.filter(
-                        id__in = related_locations
+                        id__in=related_locations
                     )
 
                 application["skill"] = TechSkillSerializer(
@@ -255,7 +269,7 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
                 ).data
                 application["location"] = LocationSerializer(
                     related_locations_objects, many=True
-                ).data            
+                ).data
 
         # # Handle location similarly to skills
         # if related_locations and isinstance(related_locations[0], dict):
@@ -273,188 +287,199 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
         #     related_locations_objects, many=True
         # ).data
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="application_id",
+                description="Filter by group_name of user.",
+                required=False,
+                type=str,
+            )
+        ],
+        responses={200: "application/json"},
+    )
     @custom_extend_schema(ApplicationSerializer)
     def patch(self, request, filteration_id=None):
-            data = request.data
-            application_id = request.query_params.get("application_id")
+        data = request.data
+        application_id = request.query_params.get("application_id")
 
-            if not application_id:
-                return self.custom_response(
-                    status.HTTP_400_BAD_REQUEST, "Application ID is not provided.", None
+        if not application_id:
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST, "Application ID is not provided.", None
+            )
+
+        if "application_status" not in data:
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST, "Application status is not provided.", None
+            )
+
+        try:
+            application_obj = Applications.objects.get(id=application_id)
+        except Applications.DoesNotExist:
+            return self.custom_response(
+                status.HTTP_404_NOT_FOUND,
+                "No application object found for this application ID.",
+                None,
+            )
+
+        application_status = data.get("application_status").lower()
+        if application_status not in ["short_listed", "approved", "removed"]:
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST, "Invalid application status.", None
+            )
+
+        try:
+            with transaction.atomic():
+                serializer = ApplicationSerializer(
+                    application_obj,
+                    data={"application_status": application_status},
+                    partial=True,
                 )
+                if serializer.is_valid(raise_exception=True):
+                    if application_status in ["short_listed", "removed"]:
+                        serializer.save()
+                        return self.custom_response(
+                            status.HTTP_200_OK,
+                            f"Application status has been changed to {application_status}.",
+                            serializer.data,
+                        )
 
-            if "application_status" not in data:
-                return self.custom_response(
-                    status.HTTP_400_BAD_REQUEST, "Application status is not provided.", None
-                )
+                    elif application_status == "approved":
+                        email_content = ""
+                        if application_obj.group_name == "student":
+                            program_id = data.get("program_id")
+                            location_id = data.get("location_id")
+                            if program_id is None:
+                                return self.custom_response(
+                                    status.HTTP_400_BAD_REQUEST,
+                                    "Selected program_id is not provided.",
+                                    None,
+                                )
+                            if location_id is None:
+                                return self.custom_response(
+                                    status.HTTP_400_BAD_REQUEST,
+                                    "Selected location_id is not provided.",
+                                    None,
+                                )                               
+                            try:
+                                program = Program.objects.get(id=program_id)
+                                location = Location.objects.get(id=location_id)
+                            except Program.DoesNotExist:
+                                return self.custom_response(
+                                    status.HTTP_404_NOT_FOUND,
+                                    "No program object found for this ID.",
+                                    None,
+                                )
+                            except Location.DoesNotExist:
+                                return self.custom_response(
+                                    status.HTTP_404_NOT_FOUND,
+                                    "No location object found for this ID.",
+                                    None,
+                                )                                
 
-            try:
-                application_obj = Applications.objects.get(id=application_id)
-            except Applications.DoesNotExist:
-                return self.custom_response(
-                    status.HTTP_404_NOT_FOUND,
-                    "No application object found for this application ID.",
-                    None,
-                )
+                            related_programs = application_obj.program.all()
 
-            application_status = data.get("application_status").lower()
-            if application_status not in ["short_listed", "approved", "removed"]:
-                return self.custom_response(
-                    status.HTTP_400_BAD_REQUEST, "Invalid application status.", None
-                )
+                            if program not in related_programs:
+                                return self.custom_response(
+                                    status.HTTP_400_BAD_REQUEST,
+                                    f"Invalid program_id.",
+                                    None,
+                                )
+                            related_locations = application_obj.location.all()    
+                            if location not in related_locations:
+                                return self.custom_response(
+                                    status.HTTP_400_BAD_REQUEST,
+                                    f"Invalid location_id.",
+                                    None,
+                                )                                    
 
-            try:
-                with transaction.atomic():
-                    serializer = ApplicationSerializer(
-                        application_obj,
-                        data={"application_status": application_status},
-                        partial=True,
-                    )
-                    if serializer.is_valid(raise_exception=True):
-                        if application_status in ["short_listed", "removed"]:
-                            serializer.save()
-                            return self.custom_response(
-                                status.HTTP_200_OK,
-                                f"Application status has been changed to {application_status}.",
-                                serializer.data,
+                            StudentApplicationSelection.objects.create(
+                                application=application_obj, selected_program=program, selected_location=location
                             )
 
-                        elif application_status == "approved":
-                            email_content = ""
-                            if application_obj.group_name == "student":
-                                program_id = data.get("program_id")
-                                location_id = data.get("location_id")
-                                if program_id is None:
-                                    return self.custom_response(
-                                        status.HTTP_400_BAD_REQUEST,
-                                        "Selected program_id is not provided.",
-                                        None,
-                                    )
-                                if location_id is None:
-                                    return self.custom_response(
-                                        status.HTTP_400_BAD_REQUEST,
-                                        "Selected location_id is not provided.",
-                                        None,
-                                    )                               
-                                try:
-                                    program = Program.objects.get(id=program_id)
-                                    location = Location.objects.get(id=location_id)
-                                except Program.DoesNotExist:
-                                    return self.custom_response(
-                                        status.HTTP_404_NOT_FOUND,
-                                        "No program object found for this ID.",
-                                        None,
-                                    )
-                                except Location.DoesNotExist:
-                                    return self.custom_response(
-                                        status.HTTP_404_NOT_FOUND,
-                                        "No location object found for this ID.",
-                                        None,
-                                    )                                
-
-                                related_programs = application_obj.program.all()
-
-                                if program not in related_programs:
-                                    return self.custom_response(
-                                        status.HTTP_400_BAD_REQUEST,
-                                        f"Invalid program_id.",
-                                        None,
-                                    )
-                                related_locations = application_obj.location.all()    
-                                if location not in related_locations:
-                                    return self.custom_response(
-                                        status.HTTP_400_BAD_REQUEST,
-                                        f"Invalid location_id.",
-                                        None,
-                                    )                                    
-
-                                StudentApplicationSelection.objects.create(
-                                    application=application_obj, selected_program=program, selected_location=location
-                                )
-
-                                # Customize email body for students
-                                email_content = (
-                                    f"Congratulations {application_obj.first_name} {application_obj.last_name}!\n\n"
-                                    f"You have been selected for the program '{program.name}' "
-                                    f"at the location '{location.name} Center'.\n\n"
-                                    f"Please complete your selection process by verifying your account using the link below."
-                                )
-
-                            elif application_obj.group_name == "instructor":
-                                skills_ids = data.get("skills_id", [])
-                                location_ids = data.get("locations_id", [])
-                                if not skills_ids or not set(skills_ids).issubset(
-                                    application_obj.required_skills.values_list(
-                                        "id", flat=True
-                                    )
-                                ):
-                                    return self.custom_response(
-                                        status.HTTP_400_BAD_REQUEST,
-                                        "Selected skills_id is not provided or Invalid skills_id found.",
-                                        None,
-                                    )
-
-                                if not location_ids or not set(location_ids).issubset(
-                                    application_obj.location.values_list(
-                                        "id", flat=True
-                                    )
-                                ):
-                                    return self.custom_response(
-                                        status.HTTP_400_BAD_REQUEST,
-                                        "Selected location_id is not provided or Invalid location_id found.",
-                                        None,
-                                    )
-
-                                skills = TechSkill.objects.filter(id__in=skills_ids)
-                                locations = Location.objects.filter(id__in=location_ids)
-                                instructor_selection = (
-                                    InstructorApplicationSelection.objects.create(
-                                        application=application_obj
-                                    )
-                                )
-
-                                instructor_selection.selected_skills.set(skills)
-                                instructor_selection.selected_locations.set(locations)
-
-                                # Customize email body for instructors
-                                selected_skills_list = ', '.join([skill.name for skill in skills])
-                                selected_locations_list = ', '.join([f"{location.name} Center" for location in locations])
-                                email_content = (
-                                    f"Congratulations {application_obj.first_name} {application_obj.last_name}!\n\n"
-                                    f"You have been selected as an instructor for the following skills:\n"
-                                    f"- Skills: {selected_skills_list}\n"
-                                    f"- Locations: {selected_locations_list}\n\n"
-                                    f"Please complete your selection process by verifying your account using the link below."
-                                )
-
-                            # Generate verification link and send email
-                            token = self.create_signed_token(
-                                application_id, application_obj.email
+                            # Customize email body for students
+                            email_content = (
+                                f"Congratulations {application_obj.first_name} {application_obj.last_name}!\n\n"
+                                f"You have been selected for the program '{program.name}' "
+                                f"at the location '{location.name} Center'.\n\n"
+                                f"Please complete your selection process by verifying your account using the link below."
                             )
-                            verification_link = (
-                                f"http://localhost:3000/auth/account-verify/{str(token)}"
-                            )
-                            body = f"{email_content}\n\nVerification Link:\n{verification_link}\n\nThis link will expire in 3 days."
 
-                            email_data = {
-                                "email_subject": "Verify your account",
-                                "body": body,
-                                "to_email": application_obj.email,
-                            }
-                            send_email(email_data)
+                        elif application_obj.group_name == "instructor":
+                            skills_ids = data.get("skills_id", [])
+                            location_ids = data.get("locations_id", [])
+                            if not skills_ids or not set(skills_ids).issubset(
+                                application_obj.required_skills.values_list(
+                                    "id", flat=True
+                                )
+                            ):
+                                return self.custom_response(
+                                    status.HTTP_400_BAD_REQUEST,
+                                    "Selected skills_id is not provided or Invalid skills_id found.",
+                                    None,
+                                )
 
-                            serializer.save()
-                            return self.custom_response(
-                                status.HTTP_200_OK,
-                                f"Application status has been changed to {application_status}.",
-                                serializer.data,
+                            if not location_ids or not set(location_ids).issubset(
+                                application_obj.location.values_list(
+                                    "id", flat=True
+                                )
+                            ):
+                                return self.custom_response(
+                                    status.HTTP_400_BAD_REQUEST,
+                                    "Selected location_id is not provided or Invalid location_id found.",
+                                    None,
+                                )
+
+                            skills = TechSkill.objects.filter(id__in=skills_ids)
+                            locations = Location.objects.filter(id__in=location_ids)
+                            instructor_selection = (
+                                InstructorApplicationSelection.objects.create(
+                                    application=application_obj
+                                )
                             )
-            except Exception as e:
-                return self.custom_response(
-                    status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    f"An error occurred while processing the application: {str(e)}",
-                    None,
-                )
+
+                            instructor_selection.selected_skills.set(skills)
+                            instructor_selection.selected_locations.set(locations)
+
+                            # Customize email body for instructors
+                            selected_skills_list = ', '.join([skill.name for skill in skills])
+                            selected_locations_list = ', '.join([f"{location.name} Center" for location in locations])
+                            email_content = (
+                                f"Congratulations {application_obj.first_name} {application_obj.last_name}!\n\n"
+                                f"You have been selected as an instructor for the following skills:\n"
+                                f"- Skills: {selected_skills_list}\n"
+                                f"- Locations: {selected_locations_list}\n\n"
+                                f"Please complete your selection process by verifying your account using the link below."
+                            )
+
+                        # Generate verification link and send email
+                        token = self.create_signed_token(
+                            application_id, application_obj.email
+                        )
+                        verification_link = (
+                            f"http://localhost:3000/auth/account-verify/{str(token)}"
+                        )
+                        body = f"{email_content}\n\nVerification Link:\n{verification_link}\n\nThis link will expire in 3 days."
+
+                        email_data = {
+                            "email_subject": "Verify your account",
+                            "body": body,
+                            "to_email": application_obj.email,
+                        }
+                        send_email(email_data)
+
+                        serializer.save()
+                        return self.custom_response(
+                            status.HTTP_200_OK,
+                            f"Application status has been changed to {application_status}.",
+                            serializer.data,
+                        )
+        except Exception as e:
+            return self.custom_response(
+                status.HTTP_500_INTERNAL_SERVER_ERROR,
+                f"An error occurred while processing the application: {str(e)}",
+                None,
+            )
 
 
     def create_signed_token(self, id, email):
@@ -466,9 +491,38 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
         # Sign the encoded data
         signed_token = signer.sign(encoded_data)
         return signed_token
+
+
 class VerifyEmailandSetPasswordView(views.APIView, CustomResponseMixin):
     permission_classes = [permissions.AllowAny]
 
+    @extend_schema(
+        request={
+            "application/json": {
+                "type": "object",
+                "properties": {
+                    "token": {
+                        "type": "string",
+                        "description": "Verification token received via email",
+                    },
+                    "password": {
+                        "type": "string",
+                        "description": "New password to set for the user",
+                    },
+                    "password2": {
+                        "type": "string",
+                        "description": "Confirm new password to set for the user",
+                    },
+                },
+                "required": ["token", "password", "password2"],
+            }
+        },
+        responses={
+            200: OpenApiTypes.OBJECT,
+            400: OpenApiTypes.OBJECT,
+        },
+        description="Verifies the user's email and sets a password.",
+    )
     def post(self, request):
         token = request.data.get("token")
         password = request.data.get("password")
@@ -521,10 +575,16 @@ class VerifyEmailandSetPasswordView(views.APIView, CustomResponseMixin):
                 # Create StudentInstructor record based on group_name
                 if application.group_name == "student":
                     try:
-                        selected_student_program = StudentApplicationSelection.objects.get(application=application).selected_program
+                        selected_student_program = (
+                            StudentApplicationSelection.objects.get(
+                                application=application
+                            ).selected_program
+                        )
                     except StudentApplicationSelection.DoesNotExist:
                         return self.custom_response(
-                            status.HTTP_400_BAD_REQUEST, "Program selection not found for the application.", None
+                            status.HTTP_400_BAD_REQUEST,
+                            "Program selection not found for the application.",
+                            None,
                         )
                     program_name = selected_student_program.program_abb
                     city_abb = application.city_abb
@@ -532,17 +592,17 @@ class VerifyEmailandSetPasswordView(views.APIView, CustomResponseMixin):
                     month = application.created_at.month
                     category = None
                     if month in [9, 10, 11]:
-                        category = 'Fall'
+                        category = "Fall"
                     elif month in [12, 1, 2]:
-                        category = 'Winter'
+                        category = "Winter"
                     elif month in [3, 4, 5]:
-                        category = 'Spring'
+                        category = "Spring"
                     elif month in [6, 7, 8]:
-                        category = 'Summer'
+                        category = "Summer"
                     else:
-                        category = 'Annual' 
+                        category = "Annual"
 
-                    batch = f"{city_abb}-{year}-{category[:3]}-{program_name}"
+                    batch = f"{city_abb.upper()}-{year}-{category[:3]}-{program_name}"
                     Student.objects.create(
                         user=user, registration_id=f"{batch}-{user.id}"
                     )
@@ -593,7 +653,7 @@ class VerifyEmailandSetPasswordView(views.APIView, CustomResponseMixin):
 
 class ResendVerificationEmail(views.APIView, CustomResponseMixin):
 
-    # permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
+    permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
 
     def post(self, request):
         email = request.data.get("email")
@@ -612,7 +672,9 @@ class ResendVerificationEmail(views.APIView, CustomResponseMixin):
                 )
 
             token = self.create_signed_token(applicant.id, applicant.email)
-            verification_link = f"http://localhost:3000/auth/account-verify/{str(token)}"
+            verification_link = (
+                f"http://localhost:3000/auth/account-verify/{str(token)}"
+            )
             print(token)
             body = (
                 f"Congratulations {applicant.first_name} {applicant.last_name}!\n"
@@ -647,8 +709,6 @@ class ResendVerificationEmail(views.APIView, CustomResponseMixin):
         # Sign the encoded data
         signed_token = signer.sign(encoded_data)
         return signed_token
-
-
 
 
 # from rest_framework import status
@@ -735,18 +795,32 @@ class ResendVerificationEmail(views.APIView, CustomResponseMixin):
 
 # views.py
 
-from rest_framework import viewsets
-
 
 class TechSkillViewSet(viewsets.ModelViewSet):
     queryset = TechSkill.objects.all()
     serializer_class = TechSkillSerializer
 
 
-
 class ApplicationStatusCount(views.APIView, CustomResponseMixin):
-    # permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
+    permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="group_name",
+                description="Filter by group_name of user.",
+                required=False,
+                type=str,
+            ),
+            OpenApiParameter(
+                name="status",
+                description="Filter by status of application.",
+                required=False,
+                type=str,
+            ),
+        ],
+        responses={200: "application/json"},
+    )
     def get(self, request, filteration_id=None):
         if filteration_id is None:
             return self.custom_response(
@@ -780,8 +854,8 @@ class ApplicationStatusCount(views.APIView, CustomResponseMixin):
         try:
             # Base query filtering on filteration_id and group_name
             base_query = Applications.objects.filter(
-                Q(program__id=filteration_id, group_name=group_name) |
-                Q(required_skills__id=filteration_id, group_name=group_name)
+                Q(program__id=filteration_id, group_name=group_name)
+                | Q(required_skills__id=filteration_id, group_name=group_name)
             ).distinct()
 
             # Filter the base query by the application status if provided
@@ -796,20 +870,22 @@ class ApplicationStatusCount(views.APIView, CustomResponseMixin):
             # If no specific status is provided, get counts for all statuses
             counts = {
                 "approved": base_query.filter(application_status="approved").count(),
-                "short_listed": base_query.filter(application_status="short_listed").count(),
+                "short_listed": base_query.filter(
+                    application_status="short_listed"
+                ).count(),
                 "pending": base_query.filter(application_status="pending").count(),
             }
 
             # Count of verified accounts: emails exist in both Applications and User and have status 'approved'
             verified_count = base_query.filter(
-                email__in=User.objects.values_list('email', flat=True),
-                application_status='approved'
+                email__in=User.objects.values_list("email", flat=True),
+                application_status="approved",
             ).count()
 
             # Count of unverified accounts: emails do not exist in User but have status 'approved'
             unverified_count = base_query.filter(
-                ~Q(email__in=User.objects.values_list('email', flat=True)),
-                application_status='approved'
+                ~Q(email__in=User.objects.values_list("email", flat=True)),
+                application_status="approved",
             ).count()
 
             # Add verified and unverified counts to the response data
@@ -830,6 +906,7 @@ class ApplicationStatusCount(views.APIView, CustomResponseMixin):
                 None,
             )
 
+
 # class VerifiedUnverifiedAccountsCountView(views.APIView, CustomResponseMixin):
 
 #     permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
@@ -839,13 +916,13 @@ class ApplicationStatusCount(views.APIView, CustomResponseMixin):
 #             return self.custom_response(
 #                 status.HTTP_400_BAD_REQUEST, "filteration_id is not provided.", None
 #             )
-        
+
 #         status = request.query_params.get('status')
 #         if status != "approved":
 #             return self.custom_response(
 #                 status.HTTP_400_BAD_REQUEST,
 #                 "Invalid status",
 #                 None,
-#             )    
-        
+#             )
+
 #         else:

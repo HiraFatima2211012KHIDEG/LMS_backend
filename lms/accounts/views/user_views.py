@@ -11,7 +11,7 @@ from ..serializers.user_serializers import (
     StudentSerializer,
     AdminUserSerializer,
     InstructorCoursesSerializer
-    
+
 )
 from ..models.user_models import Student
 from django_filters.rest_framework import DjangoFilterBackend
@@ -22,6 +22,7 @@ from ..serializers.location_serializers import *
 from django.shortcuts import get_object_or_404
 from ..serializers.application_serializers import *
 from course.serializers import *
+from datetime import datetime
 
 class CreateUserView(generics.CreateAPIView):
     """Create a new user in the system."""
@@ -101,7 +102,7 @@ class UserLoginView(views.APIView):
                 permission = self.get_group_permissions(user_group.id)
                 user_profile = UserProfileSerializer(user, context={'user' : user})
                 user_serializer = None
-                session_data = [] 
+                session_data = []
                 if user_group.name == "student":
                     student = Student.objects.get(user=user.id)
                     user_serializer = StudentSerializer(student)
@@ -111,7 +112,7 @@ class UserLoginView(views.APIView):
                             session_data.append(SessionsSerializer(student_session.session).data)
 
                     except StudentSession.DoesNotExist:
-                        session_data = []  
+                        session_data = []
                 elif user_group.name == "instructor":
                     instructor = Instructor.objects.get(id=user.id)
                     user_serializer = InstructorSerializer(instructor)
@@ -799,10 +800,10 @@ class StudentCoursesInstructorsView(views.APIView):
             "instructors": matching_instructors_emails,
         }
         return Response(response_data, status=status.HTTP_200_OK)
-    
+
 
 class UsersCountAdminSectionView(views.APIView, CustomResponseMixin):
-    # permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
+    permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
 
     def get(self, request):
         try:
@@ -812,7 +813,7 @@ class UsersCountAdminSectionView(views.APIView, CustomResponseMixin):
 
             # Fetch active users
             active_users = User.objects.filter(is_active=True)
-            active_users_length = max(len(active_users) -1, 0) 
+            active_users_length = max(len(active_users) -1, 0)
             inactive_users_length = max(all_users_length - active_users_length, 0)
 
             # Fetch student users
@@ -1102,10 +1103,69 @@ class PreferredSessionView(views.APIView, CustomResponseMixin):
         created_sessions = []
 
         session_details = []  # To collect details for email content
-
+        date_time_slots = {}
         for session in sessions:
-            # Get the associated course for the session
-            course = session.course
+            if StudentSession.objects.filter(
+                student=student,
+                
+            ).exclude(session__location=session.location):
+                return self.custom_response(
+                    status.HTTP_400_BAD_REQUEST,
+                    f"Location must be the same to this student",
+                    None,
+                )
+            if StudentSession.objects.filter(
+                student=student,
+                session__course=session.course,
+                session__start_time=session.start_time,
+                session__end_time=session.end_time
+            ).exists():
+                return self.custom_response(
+                    status.HTTP_400_BAD_REQUEST,
+                    f"Session with course {session.course.name} and timings {session.start_time} - {session.end_time} is already assigned to this student.",
+                    None,
+                )
+            if StudentSession.objects.filter(
+                student=student,
+            
+                session__start_time=session.start_time,
+                session__end_time=session.end_time
+            ).exists():
+                return self.custom_response(
+                    status.HTTP_400_BAD_REQUEST,
+                    f"Session with course {session.course.name} same timings {session.start_time} - {session.end_time} is already assigned to this student.",
+                    None,
+                )
+
+            # Check for overlapping session timings for the student
+            overlapping_sessions = StudentSession.objects.filter(
+                student=student,
+                session__location=session.location,
+                session__start_time__lt=session.end_time,
+                session__end_time__gt=session.start_time
+            )
+
+            if overlapping_sessions.exists():
+                return self.custom_response(
+                    status.HTTP_400_BAD_REQUEST,
+                    f"Session timings overlap with existing sessions for this student.",
+                    None,
+                )
+            # Collect start and end times for each date
+            for date_str in session.days_of_week:
+                try:
+                    date = datetime.strptime(date_str, "%Y-%m-%d").date()
+                except ValueError:
+                    return self.custom_response(
+                        status.HTTP_400_BAD_REQUEST,
+                        f"Invalid date format in days_of_week: {date_str}",
+                        None,
+                    )
+
+                if date not in date_time_slots:
+                    date_time_slots[date] = []
+
+                date_time_slots[date].append((session.start_time, session.end_time))
 
             # Create or update StudentSession entries for each session
             student_session, created = StudentSession.objects.get_or_create(
@@ -1119,7 +1179,7 @@ class PreferredSessionView(views.APIView, CustomResponseMixin):
 
             # Collect session details for email
             session_details.append(
-                f"Course: {course.name}\n"
+                f"Course: {session.course.name}\n"
                 f"Location: {session.location.name} Center\n"
                 f"Timings: {session.start_time} - {session.end_time}\n"  # Adjust field names as per your model
             )
@@ -1217,15 +1277,10 @@ class UserSessionsView(views.APIView, CustomResponseMixin):
             session_info = {
                 "session_id": session_details.id,
                 "status": session.status,
-                "location": session_details.location.name if session_details.location else None,
-                "no_of_students": session_details.no_of_students,
-                # "batch": session_details.batch.name if session_details.batch else None,
-                "course": session_details.course.name if session_details.course else None,
-                "start_time": session_details.start_time,
-                "end_time": session_details.end_time,
-                # "days_of_week": session_details.days_of_week,
-                # "created_at": session_details.created_at,
-                # "updated_at": session_details.updated_at,
+                # "start_date": session.start_date,
+                # "end_date": session.end_date,
+                # "batch": session.session.batch.name if session.session.batch else None,
+                "course": session.session.course.name if session.session.course else None
             }
             session_data.append(session_info)
 
@@ -1275,9 +1330,70 @@ class InstructorSessionsView(views.APIView, CustomResponseMixin):
 
         created_sessions = []
         session_details = []  # To collect details for email content
-
+        date_time_slots = {}
         for session in sessions:
             course = session.course
+            # if InstructorSession.objects.filter(
+            #     instructor=instructor,
+            
+            # ).exclude(session__location=session.location):
+            #     return self.custom_response(
+            #         status.HTTP_400_BAD_REQUEST,
+            #         f"Location must be the same to this instructor",
+            #         None,
+            #     )
+            # if InstructorSession.objects.filter(
+            #     instructor=instructor,
+            #     session__course=session.course,
+            #     session__start_time=session.start_time,
+            #     session__end_time=session.end_time
+            # ).exists():
+            #     return self.custom_response(
+            #         status.HTTP_400_BAD_REQUEST,
+            #         f"Session with course {session.course.name} and timings {session.start_time} - {session.end_time} is already assigned to this instructor.",
+            #         None,
+            #     )
+            if InstructorSession.objects.filter(
+                instructor=instructor,
+                session__start_time=session.start_time,
+                session__end_time=session.end_time
+            ).exists():
+                return self.custom_response(
+                    status.HTTP_400_BAD_REQUEST,
+                    f"Session with course {session.course.name} same timings {session.start_time} - {session.end_time} is already assigned to this instructor.",
+                    None,
+                )
+
+            # Check for overlapping session timings for the student
+            overlapping_sessions = InstructorSession.objects.filter(
+                instructor=instructor,
+                session__location=session.location,
+                session__start_time__lt=session.end_time,
+                session__end_time__gt=session.start_time
+            )
+
+            if overlapping_sessions.exists():
+                return self.custom_response(
+                    status.HTTP_400_BAD_REQUEST,
+                    f"Session timings overlap with existing sessions for this instructor.",
+                    None,
+                )
+            # Collect start and end times for each date
+            for date_str in session.days_of_week:
+                try:
+                    date = datetime.strptime(date_str, "%Y-%m-%d").date()
+                except ValueError:
+                    return self.custom_response(
+                        status.HTTP_400_BAD_REQUEST,
+                        f"Invalid date format in days_of_week: {date_str}",
+                        None,
+                    )
+
+                if date not in date_time_slots:
+                    date_time_slots[date] = []
+
+                date_time_slots[date].append((session.start_time, session.end_time))
+
             # Create or update InstructorSession entries for each session
             instructor_session, created = InstructorSession.objects.get_or_create(
                 instructor=instructor,

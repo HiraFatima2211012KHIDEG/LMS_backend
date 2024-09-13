@@ -94,7 +94,7 @@ DATABASES = {
         'USER': os.getenv('DB_USER'),
         'PASSWORD': os.getenv('DB_PASSWORD'),
         # "HOST": "localhost",
-        # "NAME": "testlms",
+        # "NAME": "newdb",
         # "USER": "postgres",
         # "PASSWORD": "password",
     }
