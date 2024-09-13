@@ -859,136 +859,136 @@ class UsersCountAdminSectionView(views.APIView, CustomResponseMixin):
             )
 
 
-class UserProcessView(views.APIView, CustomResponseMixin):
-    """View to handle users based on their group (student or instructor)."""
+# class UserProcessView(views.APIView, CustomResponseMixin):
+#     """View to handle users based on their group (student or instructor)."""
 
-    def get(self, request, filteration_id=None):
-        if filteration_id is None:
-            return self.custom_response(
-                status.HTTP_400_BAD_REQUEST, "filteration_id is not provided.", None
-            )
+#     def get(self, request, filteration_id=None):
+#         if filteration_id is None:
+#             return self.custom_response(
+#                 status.HTTP_400_BAD_REQUEST, "filteration_id is not provided.", None
+#             )
 
-        group_name = request.query_params.get("group_name")
+#         group_name = request.query_params.get("group_name")
 
-        if group_name not in ["student", "instructor"]:
-            return self.custom_response(
-                status.HTTP_400_BAD_REQUEST,
-                "Invalid group_name. Choices are 'student' and 'instructor'.",
-                None,
-            )
+#         if group_name not in ["student", "instructor"]:
+#             return self.custom_response(
+#                 status.HTTP_400_BAD_REQUEST,
+#                 "Invalid group_name. Choices are 'student' and 'instructor'.",
+#                 None,
+#             )
 
-        try:
-            response_data = {"count": 0, "data": []}
+#         try:
+#             response_data = {"count": 0, "data": []}
 
-            if group_name == "student":
-                # Filter StudentApplicationSelection based on the selected program
-                student_selection = StudentApplicationSelection.objects.filter(
-                    selected_program_id=filteration_id
-                ).select_related('application')
+#             if group_name == "student":
+#                 # Filter StudentApplicationSelection based on the selected program
+#                 student_selection = StudentApplicationSelection.objects.filter(
+#                     selected_program_id=filteration_id
+#                 ).select_related('application')
 
-                if not student_selection.exists():
-                    return self.custom_response(
-                        status.HTTP_404_NOT_FOUND,
-                        "No student applications found for the provided program ID.",
-                        None,
-                    )
+#                 if not student_selection.exists():
+#                     return self.custom_response(
+#                         status.HTTP_404_NOT_FOUND,
+#                         "No student applications found for the provided program ID.",
+#                         None,
+#                     )
 
-                # Count of student applications
-                response_data["count"] = student_selection.count()
+#                 # Count of student applications
+#                 response_data["count"] = student_selection.count()
 
-                # Fetching student applications details
-                for selection in student_selection:
-                    application = selection.application
+#                 # Fetching student applications details
+#                 for selection in student_selection:
+#                     application = selection.application
 
-                    try:
-                        user = User.objects.get(email=application.email)
-                    except User.DoesNotExist:
-                        return self.custom_response(
-                            status.HTTP_404_NOT_FOUND,
-                            f"User with email {application.email} does not exist.",
-                            None,
-                        )
+#                     try:
+#                         user = User.objects.get(email=application.email)
+#                     except User.DoesNotExist:
+#                         return self.custom_response(
+#                             status.HTTP_404_NOT_FOUND,
+#                             f"User with email {application.email} does not exist.",
+#                             None,
+#                         )
 
-                    response_data["data"].append({
-                        "application": ApplicationSerializer(application).data,
-                        "user": UserSerializer(user).data,
-                        "program": ProgramSerializer(selection.selected_program).data,
-                        "location": LocationSerializer(selection.selected_location).data,
-                    })
+#                     response_data["data"].append({
+#                         "application": ApplicationSerializer(application).data,
+#                         "user": UserSerializer(user).data,
+#                         "program": ProgramSerializer(selection.selected_program).data,
+#                         "location": LocationSerializer(selection.selected_location).data,
+#                     })
 
-                return self.custom_response(
-                    status.HTTP_200_OK,
-                    "Student applications fetched successfully.",
-                    response_data,
-                )
+#                 return self.custom_response(
+#                     status.HTTP_200_OK,
+#                     "Student applications fetched successfully.",
+#                     response_data,
+#                 )
 
-            elif group_name == "instructor":
-                # Filter InstructorApplicationSelection based on selected skills
-                instructor_selection = InstructorApplicationSelection.objects.filter(
-                    selected_skills__id=filteration_id
-                ).select_related('application').distinct()
+#             elif group_name == "instructor":
+#                 # Filter InstructorApplicationSelection based on selected skills
+#                 instructor_selection = InstructorApplicationSelection.objects.filter(
+#                     selected_skills__id=filteration_id
+#                 ).select_related('application').distinct()
 
-                if not instructor_selection.exists():
-                    return self.custom_response(
-                        status.HTTP_404_NOT_FOUND,
-                        "No instructor applications found for the provided skills ID.",
-                        None,
-                    )
+#                 if not instructor_selection.exists():
+#                     return self.custom_response(
+#                         status.HTTP_404_NOT_FOUND,
+#                         "No instructor applications found for the provided skills ID.",
+#                         None,
+#                     )
 
-                # Count of instructor applications
-                response_data["count"] = instructor_selection.count()
+#                 # Count of instructor applications
+#                 response_data["count"] = instructor_selection.count()
 
-                # Fetching instructor applications details
-                for selection in instructor_selection:
-                    application = selection.application
+#                 # Fetching instructor applications details
+#                 for selection in instructor_selection:
+#                     application = selection.application
 
-                    try:
-                        user = User.objects.get(email=application.email)
-                    except User.DoesNotExist:
-                        return self.custom_response(
-                            status.HTTP_404_NOT_FOUND,
-                            f"User with email {application.email} does not exist.",
-                            None,
-                        )
+#                     try:
+#                         user = User.objects.get(email=application.email)
+#                     except User.DoesNotExist:
+#                         return self.custom_response(
+#                             status.HTTP_404_NOT_FOUND,
+#                             f"User with email {application.email} does not exist.",
+#                             None,
+#                         )
 
-                    selected_skills = selection.selected_skills.all()
-                    selected_locations = selection.selected_locations.all()
+#                     selected_skills = selection.selected_skills.all()
+#                     selected_locations = selection.selected_locations.all()
 
-                    # Check if selected_skills and selected_locations exist
-                    if not selected_skills.exists():
-                        return self.custom_response(
-                            status.HTTP_404_NOT_FOUND,
-                            "No skills found for the instructor application.",
-                            None,
-                        )
+#                     # Check if selected_skills and selected_locations exist
+#                     if not selected_skills.exists():
+#                         return self.custom_response(
+#                             status.HTTP_404_NOT_FOUND,
+#                             "No skills found for the instructor application.",
+#                             None,
+#                         )
 
-                    if not selected_locations.exists():
-                        return self.custom_response(
-                            status.HTTP_404_NOT_FOUND,
-                            "No locations found for the instructor application.",
-                            None,
-                        )
+#                     if not selected_locations.exists():
+#                         return self.custom_response(
+#                             status.HTTP_404_NOT_FOUND,
+#                             "No locations found for the instructor application.",
+#                             None,
+#                         )
 
-                    response_data["data"].append({
-                        "application": ApplicationSerializer(application).data,
-                        "user": UserSerializer(user).data,
-                        "skills": TechSkillSerializer(selected_skills, many=True).data,
-                        "location": LocationSerializer(selected_locations, many=True).data,
-                    })
+#                     response_data["data"].append({
+#                         "application": ApplicationSerializer(application).data,
+#                         "user": UserSerializer(user).data,
+#                         "skills": TechSkillSerializer(selected_skills, many=True).data,
+#                         "location": LocationSerializer(selected_locations, many=True).data,
+#                     })
 
-                return self.custom_response(
-                    status.HTTP_200_OK,
-                    "Instructor applications fetched successfully.",
-                    response_data,
-                )
+#                 return self.custom_response(
+#                     status.HTTP_200_OK,
+#                     "Instructor applications fetched successfully.",
+#                     response_data,
+#                 )
 
-        except Exception as e:
-            # Catch any unexpected exceptions and log them if necessary
-            return self.custom_response(
-                status.HTTP_500_INTERNAL_SERVER_ERROR,
-                f"An unexpected error occurred: {str(e)}",
-                None,
-            )
+#         except Exception as e:
+#             # Catch any unexpected exceptions and log them if necessary
+#             return self.custom_response(
+#                 status.HTTP_500_INTERNAL_SERVER_ERROR,
+#                 f"An unexpected error occurred: {str(e)}",
+#                 None,
+#             )
 
 
 class PreferredSessionView(views.APIView, CustomResponseMixin):
@@ -1447,3 +1447,217 @@ class InstructorSessionsView(views.APIView, CustomResponseMixin):
             "Sessions assigned successfully and email sent.",
             response_data
         )
+
+
+class ApplicationUserView(views.APIView, CustomResponseMixin):
+    """View to fetch applications and user details based on group (student or instructor)."""
+
+    def get(self, request, filteration_id=None):
+        if filteration_id is None:
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST, "filteration_id is not provided.", None
+            )
+
+        group_name = request.query_params.get("group_name")
+
+        if group_name not in ["student", "instructor"]:
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST,
+                "Invalid group_name. Choices are 'student' and 'instructor'.",
+                None,
+            )
+
+        try:
+            response_data = {"count": 0, "data": []}
+
+            if group_name == "student":
+                student_selection = StudentApplicationSelection.objects.filter(
+                    selected_program_id=filteration_id
+                ).select_related('application')
+
+                if not student_selection.exists():
+                    return self.custom_response(
+                        status.HTTP_404_NOT_FOUND,
+                        "No student applications found for the provided program ID.",
+                        None,
+                    )
+
+                response_data["count"] = student_selection.count()
+
+                for selection in student_selection:
+                    application = selection.application
+
+                    try:
+                        user = User.objects.get(email=application.email)
+                    except User.DoesNotExist:
+                        return self.custom_response(
+                            status.HTTP_404_NOT_FOUND,
+                            f"User with email {application.email} does not exist.",
+                            None,
+                        )
+
+                    response_data["data"].append({
+                        "application": ApplicationSerializer(application).data,
+                        "user": UserSerializer(user).data,
+                    })
+
+            elif group_name == "instructor":
+                instructor_selection = InstructorApplicationSelection.objects.filter(
+                    selected_skills__id=filteration_id
+                ).select_related('application').distinct()
+
+                if not instructor_selection.exists():
+                    return self.custom_response(
+                        status.HTTP_404_NOT_FOUND,
+                        "No instructor applications found for the provided skills ID.",
+                        None,
+                    )
+
+                response_data["count"] = instructor_selection.count()
+
+                for selection in instructor_selection:
+                    application = selection.application
+
+                    try:
+                        user = User.objects.get(email=application.email)
+                    except User.DoesNotExist:
+                        return self.custom_response(
+                            status.HTTP_404_NOT_FOUND,
+                            f"User with email {application.email} does not exist.",
+                            None,
+                        )
+
+                    response_data["data"].append({
+                        "application": ApplicationSerializer(application).data,
+                        "user": UserSerializer(user).data,
+                    })
+
+            return self.custom_response(
+                status.HTTP_200_OK,
+                "Applications fetched successfully.",
+                response_data,
+            )
+
+        except Exception as e:
+            return self.custom_response(
+                status.HTTP_500_INTERNAL_SERVER_ERROR,
+                f"An unexpected error occurred: {str(e)}",
+                None,
+            )
+
+class UserDetailsView(views.APIView, CustomResponseMixin):
+    """View to fetch program, location, skills, and other details based on user ID."""
+
+    def get(self, request, user_id=None):
+        if user_id is None:
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST, "user_id is not provided.", None
+            )
+
+        group_name = request.query_params.get("group_name")
+
+        if group_name not in ["student", "instructor"]:
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST,
+                "Invalid group_name. Choices are 'student' and 'instructor'.",
+                None,
+            )
+
+        try:
+            response_data = {}
+
+            if group_name == "student":
+                # Retrieve the student object using user_id
+                try:
+                    student = Student.objects.get(user_id=user_id)
+                    user = student.user  # Get the associated User object
+                except Student.DoesNotExist:
+                    return self.custom_response(
+                        status.HTTP_404_NOT_FOUND,
+                        "Student does not exist for the provided user ID.",
+                        None,
+                    )
+
+                # Fetch the application using the user's email
+                try:
+                    application = Applications.objects.get(email=user.email)
+                except Applications.DoesNotExist:
+                    return self.custom_response(
+                        status.HTTP_404_NOT_FOUND,
+                        f"No application found for user email {user.email}.",
+                        None,
+                    )
+
+                # Retrieve program and location details from StudentApplicationSelection
+                student_selection = StudentApplicationSelection.objects.filter(application=application)
+
+                if not student_selection.exists():
+                    return self.custom_response(
+                        status.HTTP_404_NOT_FOUND,
+                        "No related student application selections found.",
+                        None,
+                    )
+
+                response_data["programs"] = [
+                    ProgramSerializer(selection.selected_program).data
+                    for selection in student_selection
+                ]
+                response_data["locations"] = [
+                    LocationSerializer(selection.selected_location).data
+                    for selection in student_selection
+                ]
+
+            elif group_name == "instructor":
+                # Retrieve the instructor object using user_id
+                try:
+                    instructor = Instructor.objects.get(id__id=user_id)
+                    user = instructor.id  # Get the associated User object
+                except Instructor.DoesNotExist:
+                    return self.custom_response(
+                        status.HTTP_404_NOT_FOUND,
+                        "Instructor does not exist for the provided user ID.",
+                        None,
+                    )
+
+                # Fetch the application using the user's email
+                try:
+                    application = Applications.objects.get(email=user.email)
+                except Applications.DoesNotExist:
+                    return self.custom_response(
+                        status.HTTP_404_NOT_FOUND,
+                        f"No application found for user email {user.email}.",
+                        None,
+                    )
+
+                # Retrieve skills and location details from InstructorApplicationSelection
+                instructor_selection = InstructorApplicationSelection.objects.filter(application=application)
+
+                if not instructor_selection.exists():
+                    return self.custom_response(
+                        status.HTTP_404_NOT_FOUND,
+                        "No related instructor application selections found.",
+                        None,
+                    )
+
+                # Gather skills and locations from the selections
+                response_data["skills"] = TechSkillSerializer(
+                    [skill for selection in instructor_selection for skill in selection.selected_skills.all()],
+                    many=True
+                ).data
+                response_data["locations"] = LocationSerializer(
+                    [location for selection in instructor_selection for location in selection.selected_locations.all()],
+                    many=True
+                ).data
+
+            return self.custom_response(
+                status.HTTP_200_OK,
+                "Details fetched successfully.",
+                response_data,
+            )
+
+        except Exception as e:
+            return self.custom_response(
+                status.HTTP_500_INTERNAL_SERVER_ERROR,
+                f"An unexpected error occurred: {str(e)}",
+                None,
+            )

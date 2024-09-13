@@ -134,7 +134,7 @@ class Sessions(models.Model):
         return days
 
     def __str__(self):
-        return f"{self.batch}-{self.location}-{self.no_of_students}-{self.course}"
+        return f"{self.batch}-{self.location}-{self.no_of_students}-{self.course}-{self.start_time}-{self.end_time}"
 
 
 # class Batch(models.Model):
