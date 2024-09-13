@@ -18,7 +18,7 @@ class Attendance(models.Model):
     attendance = models.CharField(
         max_length=10,
         choices=[("Present", "Present"), ("Absent", "Absent"), ("Leave", "Leave")],
-        default=0,
+        default="Present",
     )
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=1)
     marked_by = models.CharField(max_length=50, null=True)

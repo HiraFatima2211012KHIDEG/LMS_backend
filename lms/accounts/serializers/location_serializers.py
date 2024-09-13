@@ -27,6 +27,7 @@ class BatchSerializer(serializers.ModelSerializer):
             "start_date",
             "end_date",
             "status",
+            "term",
         ]
 
 
@@ -40,8 +41,9 @@ class SessionsSerializer(serializers.ModelSerializer):
     location_name = serializers.CharField(source="location.name", read_only=True)
     course = CourseSerializer(read_only=True)
     course_id = serializers.PrimaryKeyRelatedField(
-        queryset=Course.objects.all(), source='course', write_only=True
+        queryset=Course.objects.all(), source="course", write_only=True
     )
+
     class Meta:
         model = Sessions
 
@@ -55,14 +57,16 @@ class SessionsSerializer(serializers.ModelSerializer):
             "end_time",
             "status",
             "course",
-            "course_id"
+            "course_id",
         ]
+
 
 class StudentSessionsSerializer(serializers.ModelSerializer):
 
-        class Meta:
-            model = StudentSession
-            fields = "__all__"
+    class Meta:
+        model = StudentSession
+        fields = "__all__"
+
 
 class AssignSessionsSerializer(serializers.Serializer):
     session_ids = serializers.ListField(child=serializers.IntegerField())
@@ -73,27 +77,29 @@ class AssignSessionsSerializer(serializers.Serializer):
             raise serializers.ValidationError("Some session IDs are invalid.")
         return value
 
+
 class InstructorSessionSerializer(serializers.ModelSerializer):
     class Meta:
         model = InstructorSession
-        fields = ['session_id', 'instructor_email', 'status', 'start_date', 'end_date']
+        fields = ["session_id", "instructor_email", "status", "start_date", "end_date"]
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
         # Ensure to include only serializable fields
-        representation['instructor_email'] = instance.instructor.id  # Email as string
+        representation["instructor_email"] = instance.instructor.id  # Email as string
         return representation
 
 
 WEEKDAYS = {
-    0: ('Monday', 'Mon'),
-    1: ('Tuesday', 'Tue'),
-    2: ('Wednesday', 'Wed'),
-    3: ('Thursday', 'Thu'),
-    4: ('Friday', 'Fri'),
-    5: ('Saturday', 'Sat'),
-    6: ('Sunday', 'Sun'),
+    0: ("Monday", "Mon"),
+    1: ("Tuesday", "Tue"),
+    2: ("Wednesday", "Wed"),
+    3: ("Thursday", "Thu"),
+    4: ("Friday", "Fri"),
+    5: ("Saturday", "Sat"),
+    6: ("Sunday", "Sun"),
 }
+
 
 class SessionsCalendarSerializer(serializers.ModelSerializer):
     batch_start_date = serializers.DateField(source="batch.start_date", read_only=True)
@@ -101,8 +107,12 @@ class SessionsCalendarSerializer(serializers.ModelSerializer):
     location_name = serializers.CharField(source="location.name", read_only=True)
     # weekdays = serializers.SerializerMethodField()
     day_names = serializers.SerializerMethodField()
-    course_id = serializers.IntegerField(source='course.id', read_only=True)  # Include course ID
-    course_name = serializers.CharField(source='course.name', read_only=True)  # Include course name
+    course_id = serializers.IntegerField(
+        source="course.id", read_only=True
+    )  # Include course ID
+    course_name = serializers.CharField(
+        source="course.name", read_only=True
+    )  # Include course name
 
     class Meta:
         model = Sessions
@@ -122,10 +132,14 @@ class SessionsCalendarSerializer(serializers.ModelSerializer):
             "day_names",
             "status",
         ]
+
     def get_weekdays(self, obj):
         # Assuming obj.days_of_week contains integers (0-6)
         return [WEEKDAYS[day][1] for day in obj.days_of_week]
+
     def get_day_names(self, obj):
         """Convert the list of dates to a list of day names."""
-        return [WEEKDAYS[datetime.strptime(day, '%Y-%m-%d').weekday()] for day in obj.days_of_week]
-        
+        return [
+            WEEKDAYS[datetime.strptime(day, "%Y-%m-%d").weekday()]
+            for day in obj.days_of_week
+        ]
