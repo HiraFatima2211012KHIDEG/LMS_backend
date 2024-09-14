@@ -320,6 +320,7 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
                         )
 
                     elif application_status == "approved":
+                        email_content = ""
                         if application_obj.group_name == "student":
                             program_id = data.get("program_id")
                             location_id = data.get("location_id")
@@ -368,7 +369,15 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
                                 )                                    
 
                             StudentApplicationSelection.objects.create(
-                                application=application_obj, selected_program=program, selected_location = location
+                                application=application_obj, selected_program=program, selected_location=location
+                            )
+
+                            # Customize email body for students
+                            email_content = (
+                                f"Congratulations {application_obj.first_name} {application_obj.last_name}!\n\n"
+                                f"You have been selected for the program '{program.name}' "
+                                f"at the location '{location.name} Center'.\n\n"
+                                f"Please complete your selection process by verifying your account using the link below."
                             )
 
                         elif application_obj.group_name == "instructor":
@@ -397,7 +406,7 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
                                 )
 
                             skills = TechSkill.objects.filter(id__in=skills_ids)
-                            locations = Location.objects.filter(id__in = location_ids)
+                            locations = Location.objects.filter(id__in=location_ids)
                             instructor_selection = (
                                 InstructorApplicationSelection.objects.create(
                                     application=application_obj
@@ -407,18 +416,25 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
                             instructor_selection.selected_skills.set(skills)
                             instructor_selection.selected_locations.set(locations)
 
+                            # Customize email body for instructors
+                            selected_skills_list = ', '.join([skill.name for skill in skills])
+                            selected_locations_list = ', '.join([f"{location.name} Center" for location in locations])
+                            email_content = (
+                                f"Congratulations {application_obj.first_name} {application_obj.last_name}!\n\n"
+                                f"You have been selected as an instructor for the following skills:\n"
+                                f"- Skills: {selected_skills_list}\n"
+                                f"- Locations: {selected_locations_list}\n\n"
+                                f"Please complete your selection process by verifying your account using the link below."
+                            )
+
+                        # Generate verification link and send email
                         token = self.create_signed_token(
                             application_id, application_obj.email
                         )
-                        print(token)
                         verification_link = (
                             f"http://localhost:3000/auth/account-verify/{str(token)}"
                         )
-                        body = (
-                            f"Congratulations {application_obj.first_name} {application_obj.last_name}!\n"
-                            f"You are requested to complete the selection process by verifying your account. "
-                            f"Please click the following link to proceed.\n{verification_link}"
-                        )
+                        body = f"{email_content}\n\nVerification Link:\n{verification_link}\n\nThis link will expire in 3 days."
 
                         email_data = {
                             "email_subject": "Verify your account",
@@ -426,6 +442,7 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
                             "to_email": application_obj.email,
                         }
                         send_email(email_data)
+
                         serializer.save()
                         return self.custom_response(
                             status.HTTP_200_OK,
@@ -439,6 +456,7 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
                 None,
             )
 
+
     def create_signed_token(self, id, email):
         signer = TimestampSigner()
         # Combine the user_id and email into a single string
@@ -448,6 +466,7 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
         # Sign the encoded data
         signed_token = signer.sign(encoded_data)
         return signed_token
+
 class VerifyEmailandSetPasswordView(views.APIView, CustomResponseMixin):
     permission_classes = [permissions.AllowAny]
 
@@ -478,7 +497,7 @@ class VerifyEmailandSetPasswordView(views.APIView, CustomResponseMixin):
                 # user_email = token.get('user_email')
                 # print(user_email)
                 # Check if user already exists
-                unsigned_data = signer.unsign(token, max_age=3600)
+                unsigned_data = signer.unsign(token, max_age=259200)
                 decoded_data = base64.urlsafe_b64decode(unsigned_data).decode()
                 print(decoded_data)
                 user_id, email = decoded_data.split(":")
@@ -594,7 +613,7 @@ class ResendVerificationEmail(views.APIView, CustomResponseMixin):
                 )
 
             token = self.create_signed_token(applicant.id, applicant.email)
-            verification_link = f"http://localhost:3000/auth/account-verify/{str(token)}"
+            verification_link = f"http://localhost:3000/auth/account-verify/{str(token)}\n\nThis link will expire in 3 days."
             print(token)
             body = (
                 f"Congratulations {applicant.first_name} {applicant.last_name}!\n"

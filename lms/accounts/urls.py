@@ -1,7 +1,6 @@
 """
 Urls for the Accounts app
 """
-
 from django.urls import path
 from .views.application_views import *
 from .views import user_views
@@ -229,14 +228,15 @@ urlpatterns = [
         CityStatsView.as_view(),
         name="city-capacity-and-users",
     ),
-    path(
-        "user-process/<int:filteration_id>/",
-        user_views.UserProcessView.as_view(),
-        name="users-count",
-    ),
+    # path(
+    #     "user-process/<int:filteration_id>/",
+    #     user_views.UserProcessView.as_view(),
+    #     name="users-count",
+    # ),
     path('preferred-sessions/', user_views.PreferredSessionView.as_view(), name='preferred-sessions'),
 
     path('user-sessions/<int:user_id>/', user_views.UserSessionsView.as_view(), name='user-sessions'),
     path('instructor-sessions/', user_views.InstructorSessionsView.as_view(), name='instructor-sessions'),
-
+    path('user-process/<int:filteration_id>/', user_views.ApplicationUserView.as_view(), name='application-user'),
+    path('user-details/<int:user_id>/', user_views.UserDetailsView.as_view(), name='user-details'),
 ]

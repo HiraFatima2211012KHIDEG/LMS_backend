@@ -21,10 +21,10 @@ class Attendance(models.Model):
         default=0,
     )
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=1)
-    marked_by = models.CharField(max_length=30, null=True)
+    marked_by = models.CharField(max_length=100, null=True)
 
     class Meta:
         unique_together = ("student", "date")
 
     def __str__(self):
-        return f"{self.student} - {self.session} - {self.date}"
+        return f"{self.student} - {self.date}"
