@@ -20,7 +20,7 @@ class CourseModulesAPIView(CustomResponseMixin, APIView):
 
     def get(self, request, course_id, format=None):
         course = get_object_or_404(Course, id=course_id)
-        modules = Module.objects.filter(course=course)
+        modules = Module.objects.filter(course=course).order_by('-created_at')
         serializer = ModuleSerializer(modules, many=True)
         return self.custom_response(status.HTTP_200_OK, 'Modules retrieved successfully', serializer.data)
 
@@ -30,7 +30,7 @@ class CourseListCreateAPIView(CustomResponseMixin, APIView):
 
 
     def get(self, request, format=None):
-        courses = Course.objects.all()
+        courses = Course.objects.all().order_by('name')
         serializer = CourseSerializer(courses, many=True)
         logger.info("Retrieved all courses")
         return self.custom_response(status.HTTP_200_OK, 'Courses retrieved successfully', serializer.data)
@@ -88,7 +88,7 @@ class ModuleListCreateAPIView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
     parser_classes = (MultiPartParser, FormParser)
     def get(self, request, format=None):
-        modules = Module.objects.all()
+        modules = Module.objects.all().order_by('-created_at')
         serializer = ModuleSerializer(modules, many=True)
         return self.custom_response(status.HTTP_200_OK, 'Modules retrieved successfully', serializer.data)
 
