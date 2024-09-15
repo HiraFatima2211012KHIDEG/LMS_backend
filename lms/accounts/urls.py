@@ -192,11 +192,12 @@ urlpatterns = [
         UserAttendanceListView.as_view(),
         name="user-attendance-list",
     ),
-    # path(
-    #     "api/filter-attendance/",
-    #     AttendanceFilterViewSet.as_view({"get": "list"}),
-    #     name="filter-attendance",
-    # ),
+    path(
+        "filter-attendance/",
+        AttendanceFilterViewSet.as_view({"get": "list"}),
+        name="filter-attendance",
+    ),
+
     path(
         "create-batch-location-session/",
         CreateBatchLocationSessionView.as_view(),
