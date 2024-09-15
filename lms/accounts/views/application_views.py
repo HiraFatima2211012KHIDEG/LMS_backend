@@ -197,6 +197,12 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
                     selected_location = Location.objects.get(
                         id=selected_user.selected_location.id
                     )
+                    try:
+                        user = User.objects.get(email=application.get('email'))
+                        application['account_status'] = 'verified'
+                    except User.DoesNotExist:
+                        application['account_status'] = 'unverified'
+
                     application["program"] = [ProgramSerializer(selected_program).data]
                     application["location"] = [
                         LocationSerializer(selected_location).data
@@ -240,6 +246,13 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
                     application["location"] = LocationSerializer(
                         selected_locations, many=True
                     ).data
+
+                    try:
+                        user = User.objects.get(email=application.get('email'))
+                        application['account_status'] = 'verified'
+                    except User.DoesNotExist:
+                        application['account_status'] = 'unverified'
+
                 except InstructorApplicationSelection.DoesNotExist:
                     application["skill"] = []  # or handle the case appropriately
                     application["location"] = []

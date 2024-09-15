@@ -15,12 +15,10 @@ class Attendance(models.Model):
     )
     date = models.DateField(auto_now_add=True)
     course = models.ForeignKey(Course, on_delete=models.CASCADE, null=True)
-    attendance = models.CharField(
-        max_length=10,
-        choices=[("Present", "Present"), ("Absent", "Absent"), ("Leave", "Leave")],
-        default="Present",
-    )
-    status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=1)
+    status = models.PositiveSmallIntegerField(
+            choices=[(0, "Present"), (1, "Absent"), (2, "Leave")],
+            default=0,
+        )
     marked_by = models.CharField(max_length=50, null=True)
 
     class Meta:

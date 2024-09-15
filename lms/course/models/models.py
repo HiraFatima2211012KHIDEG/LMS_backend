@@ -117,8 +117,6 @@ class AssignmentSubmission(models.Model):
                 allowed_extensions=['pdf', "doc", "docx", "ppt", "pptx", "txt",'zip']
             )
         ],
-
-
         null=True, blank=True
     )
     status = models.PositiveSmallIntegerField(choices=ASSESMENT_STATUS_CHOICES, default=0)
@@ -196,7 +194,7 @@ class QuizSubmission(models.Model):
             FileExtensionValidator(
                 allowed_extensions=["pdf", "doc", "docx", "ppt", "pptx", "txt",'zip']
             )
-        ],
+        ],null=True, blank=True
     )
     status = models.PositiveSmallIntegerField(choices=ASSESMENT_STATUS_CHOICES, default=0)
     quiz_submitted_at = models.DateTimeField(auto_now_add=True)
@@ -272,7 +270,7 @@ class ProjectSubmission(models.Model):
             FileExtensionValidator(
                 allowed_extensions=["pdf", "doc", "docx", "ppt", "pptx", "txt",'zip']
             )
-        ],
+        ],null=True, blank=True
     )
     status = models.PositiveSmallIntegerField(choices=ASSESMENT_STATUS_CHOICES, default=0)
     project_submitted_at = models.DateTimeField(auto_now_add=True)
@@ -345,7 +343,7 @@ class ExamSubmission(models.Model):
             FileExtensionValidator(
                 allowed_extensions=["pdf", "doc", "docx", "ppt", "pptx", "txt", "zip"]
             )
-        ],
+        ],null=True, blank=True
     )
     status = models.PositiveSmallIntegerField(choices=ASSESMENT_STATUS_CHOICES, default=0)
     exam_submitted_at = models.DateTimeField(auto_now_add=True)

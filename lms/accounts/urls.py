@@ -161,7 +161,7 @@ urlpatterns = [
         "instructors", user_views.InstructorListView.as_view(), name="all-instructors"
     ),
     path(
-        "instructors/<str:instructor_id>/assign-courses/",
+        "instructors/<int:instructor_id>/assign-courses/",
         user_views.AssignCoursesView.as_view(),
         name="assign-courses",
     ),
