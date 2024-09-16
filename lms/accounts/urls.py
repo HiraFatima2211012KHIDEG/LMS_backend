@@ -117,7 +117,7 @@ urlpatterns = [
         ),
         name="session-detail",
     ),
-    path('sessions/calendar/', SessionCalendarAPIView.as_view(), name='session-list-calendar'),
+    path('sessions/calendar/<int:user_id>/', SessionCalendarAPIView.as_view(), name='session-list-calendar'),
     path(
         "filter-batches-by-city/",
         FilterBatchByCityView.as_view(),
@@ -191,11 +191,11 @@ urlpatterns = [
         UserAttendanceListView.as_view(),
         name="user-attendance-list",
     ),
-    path(
-        "api/filter-attendance/",
-        AttendanceFilterViewSet.as_view({"get": "list"}),
-        name="filter-attendance",
-    ),
+    # path(
+    #     "api/filter-attendance/",
+    #     AttendanceFilterViewSet.as_view({"get": "list"}),
+    #     name="filter-attendance",
+    # ),
     path(
         "create-batch-location-session/",
         CreateBatchLocationSessionView.as_view(),

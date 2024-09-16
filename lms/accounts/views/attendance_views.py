@@ -7,20 +7,14 @@ from .location_views import BaseLocationViewSet
 from django_filters.rest_framework import DjangoFilterBackend
 from utils.custom import CustomResponseMixin
 
+
 # class AttendanceListCreateView(BaseLocationViewSet):
 #     queryset = Attendance.objects.all()
 #     serializer_class = AttendanceSerializer
-#     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+#     filter_backends = [DjangoFilterBackend]
 
 #     # Specify the fields that can be used for filtering
 #     filterset_fields = ["student", "date", "course", "marked_by"]
-
-#     # Specify the fields that can be searched
-#     search_fields = [
-#         "student__user__first_name",
-#         "student__user__last_name",
-#         "course__name",
-#     ]
 
 #     def create(self, request, *args, **kwargs):
 #         user = request.user
@@ -79,12 +73,13 @@ class AttendanceListCreateView(BaseLocationViewSet):
         return self.custom_response(
             status.HTTP_201_CREATED,
             "created successfully",
-            serializer.data
+            serializer.data,
+            headers=headers
         )
 
 
 
-
+        
 class AttendanceDetailView(BaseLocationViewSet):
     queryset = Attendance.objects.all()
     serializer_class = AttendanceSerializer

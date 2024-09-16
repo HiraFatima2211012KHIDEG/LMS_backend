@@ -215,11 +215,12 @@ class StudentSession(models.Model):
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=1)
     created_at = models.DateTimeField(auto_now=True, null=True, blank=True)
     updated_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
-    # start_date = models.DateField()         
+    # start_date = models.DateField()
     # end_date = models.DateField()
     class Meta:
         unique_together = ("session", "student")
-
+    def __str__(self):
+        return f"{self.student} - {self.session}"
 
 class Instructor(models.Model):
     """Extra details of Instructors in the System."""
@@ -251,8 +252,10 @@ class InstructorSession(models.Model):
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=1)
     created_at = models.DateTimeField(auto_now=True, null=True, blank=True)
     updated_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
-    # start_date = models.DateField()         
+    # start_date = models.DateField()
     # end_date = models.DateField()
 
     class Meta:
         unique_together = ("session", "instructor")
+    def __str__(self):
+        return f"{self.instructor} - {self.session}"

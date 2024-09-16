@@ -346,6 +346,7 @@ class AssignmentsByCourseIDAPIView(CustomResponseMixin, APIView):
                 "id": assignment.id,
                 "question": assignment.question,
                 "description": assignment.description,
+                "content":assignment.content,
                 "status":assignment.status,
                 "due_date": assignment.due_date,
                 "created_at": assignment.created_at,
@@ -416,6 +417,11 @@ class AssignmentStudentListView(CustomResponseMixin, APIView):
                 'student_name': f"{user.first_name} {user.last_name}",
                 'registration_id': student.registration_id,
                 'submission_id': submission.id if submission else None,
+                'submitted_file': (
+                    submission.submitted_file.url
+                    if submission and submission.submitted_file
+                    else None
+                ),
                 'submitted_at': submission.submitted_at if submission else None,
                 'status': submission_status,
                 'grade': None,

@@ -6,6 +6,10 @@ from ..models.attendance_models import Attendance
 #     class Meta:
 #         model = Attendance
 #         fields = ["id", "session", "student","course", "date", "status", "marked_by"]
+class BulkAttendanceSerializer(serializers.ListSerializer):
+    def create(self, validated_data):
+        attendances = [Attendance(**item) for item in validated_data]
+        return Attendance.objects.bulk_create(attendances)
 
 class BulkAttendanceSerializer(serializers.ListSerializer):
     def create(self, validated_data):
@@ -26,8 +30,6 @@ class AttendanceSerializer(serializers.ModelSerializer):
 
     def get_student_name(self, obj):
         return f"{obj.student.user.first_name} {obj.student.user.last_name}"
-
-
 
 # class AttendanceSerializer(serializers.ModelSerializer):
 #     day = serializers.SerializerMethodField()

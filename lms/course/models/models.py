@@ -3,6 +3,7 @@ from django.conf import settings
 from django.core.validators import FileExtensionValidator
 # from django.core.exceptions import ValidationError
 # from accounts.models.user_models import Instructor
+from django.utils import timezone
 
 import re
 
@@ -35,7 +36,7 @@ class Course(models.Model):
     picture = models.ImageField(
         upload_to="material/course_pictures/", blank=True, null=True
     )
-    # start_date = models.DateField()         
+    # start_date = models.DateField()
     # end_date = models.DateField()
     def __str__(self):
         return self.name
@@ -90,7 +91,9 @@ class Assignment(models.Model):
     no_of_resubmissions_allowed = models.IntegerField(default=0)
     due_date = models.DateTimeField()
 
-
+    def get_due_date_in_user_timezone(self, user_timezone):
+        # Convert due_date to the user's time zone
+        return timezone.localtime(self.due_date, timezone.pytz.timezone(user_timezone))
     def __str__(self):
         return self.question
 

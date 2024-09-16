@@ -29,6 +29,10 @@ class BaseLocationViewSet(
 ):
     # permission_classes = [permissions.IsAuthenticated]
 
+    def get_queryset(self):
+        # Filter the queryset to only return records with status 0 or 1
+        return super().get_queryset().filter(status__in=[0, 1])
+
     def create(self, request, *args, **kwargs):
         response = super().create(request, *args, **kwargs)
         return self.custom_response(

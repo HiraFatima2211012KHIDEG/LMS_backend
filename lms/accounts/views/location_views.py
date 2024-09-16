@@ -6,7 +6,7 @@ from ..models.location_models import (
     Location,
     Sessions,
 )
-from ..models.user_models import Instructor, User, Student
+from ..models.user_models import Instructor, User, Student, StudentSession,InstructorSession
 from utils.custom import BaseLocationViewSet
 from ..serializers.location_serializers import (
     CitySerializer,
@@ -17,10 +17,13 @@ from ..serializers.location_serializers import (
     SessionsCalendarSerializer
 )
 from utils.custom import CustomResponseMixin, custom_extend_schema
+from drf_spectacular.utils import extend_schema, OpenApiParameter
 from rest_framework import views
 from drf_spectacular.utils import extend_schema, inline_serializer
 from django.db.models import Sum
 from rest_framework.views import APIView
+from django.shortcuts import get_object_or_404
+from django.core.exceptions import ValidationError
 
 
 class CityViewSet(BaseLocationViewSet):
@@ -38,9 +41,78 @@ class LocationViewSet(BaseLocationViewSet):
     serializer_class = LocationSerializer
 
 
-class SessionsViewSet(BaseLocationViewSet):
+# class SessionsViewSet(BaseLocationViewSet):
+#     queryset = Sessions.objects.all()
+#     serializer_class = SessionsSerializer
+
+
+
+class SessionsViewSet(viewsets.ModelViewSet):
     queryset = Sessions.objects.all()
     serializer_class = SessionsSerializer
+
+    def perform_create(self, serializer):
+        self.validate_session(serializer)
+        serializer.save()
+
+    def perform_update(self, serializer):
+        self.validate_session(serializer)
+        serializer.save()
+
+    def validate_session(self, serializer):
+        # Query to check if a session with the same location, course, start_time, and end_time exists
+        existing_sessions = Sessions.objects.filter(
+            location=serializer.validated_data.get("location"),
+            course=serializer.validated_data.get("course"),
+            start_time=serializer.validated_data.get("start_time"),
+            end_time=serializer.validated_data.get("end_time")
+        )
+
+        # If this is an update (i.e., serializer.instance exists), exclude the current session from the query
+        if serializer.instance:
+            existing_sessions = existing_sessions.exclude(id=serializer.instance.id)
+
+        if existing_sessions.exists():
+            raise serializer.ValidationError(
+                "A session with the same location, course, start time, and end time already exists."
+            )
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        try:
+            serializer.is_valid(raise_exception=True)
+            self.perform_create(serializer)
+        except ValidationError as e:
+            return Response(
+                {"status_code": status.HTTP_400_BAD_REQUEST, "message": str(e), "data": None},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        headers = self.get_success_headers(serializer.data)
+        return Response(
+            {"status_code": status.HTTP_201_CREATED, "message": "Session created successfully.", "data": serializer.data},
+            status=status.HTTP_201_CREATED,
+            headers=headers
+        )
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        try:
+            serializer.is_valid(raise_exception=True)
+            self.perform_update(serializer)
+        except ValidationError as e:
+            return Response(
+                {"status_code": status.HTTP_400_BAD_REQUEST, "message": str(e), "data": None},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        headers = self.get_success_headers(serializer.data)
+        return Response(
+            {"status_code": status.HTTP_200_OK, "message": "Session updated successfully.", "data": serializer.data},
+            status=status.HTTP_200_OK,
+            headers=headers
+        )
+
 
 
 class CreateBatchLocationSessionView(views.APIView):
@@ -125,6 +197,13 @@ class FilterBatchByCityView(views.APIView):
     """
     API view to filter Batches by city.
     """
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(name='city', description='Filter by batches', required=False, type=str)
+        ],
+        responses={200: 'application/json'}
+    )
+
     def get(self, request):
         city_name = request.query_params.get('city', None)
 
@@ -228,7 +307,7 @@ class FilterLocationByCityView(views.APIView):
 #                 f"An error occurred: {str(e)}",
 #                 None
 #             )
-        
+
 
 # class CityCapacityView(views.APIView, CustomResponseMixin):
 #     """
@@ -286,7 +365,7 @@ class CityStatsView(views.APIView, CustomResponseMixin):
                 student_count = User.objects.filter(city=city, groups__name='student').count()
                 # Count of instructor users in the city
                 instructor_count = User.objects.filter(city=city, groups__name='instructor').count()
-                
+
                 # Calculate total capacity for each city
                 total_capacity = Location.objects.filter(city=city).aggregate(
                     total_capacity=Sum("capacity")
@@ -316,34 +395,60 @@ class CityStatsView(views.APIView, CustomResponseMixin):
 
 
 
-class SessionCalendarAPIView(APIView):
-    def get(self, request, *args, **kwargs):
-        # Fetch all sessions
-        sessions = Sessions.objects.all()
-        # Prepare the response data
-        data = {}
+class SessionCalendarAPIView(APIView,CustomResponseMixin):
+    def get(self, request, user_id, *args, **kwargs):
+        user = get_object_or_404(User, id=user_id)
+        sessions = []
+
+        try:
+            student = Student.objects.get(user=user)
+            student_sessions = StudentSession.objects.filter(student=student)
+            sessions.extend([ss.session for ss in student_sessions])
+        except Student.DoesNotExist:
+            try:
+                instructor = Instructor.objects.get(id=user)
+                instructor_sessions = InstructorSession.objects.filter(instructor=instructor)
+                sessions.extend([is_.session for is_ in instructor_sessions])
+            except Instructor.DoesNotExist:
+                return Response({"detail": "User is neither a student nor an instructor."}, status=status.HTTP_404_NOT_FOUND)
+
+        if not sessions:
+            return Response({"detail": "No sessions found for this user."}, status=status.HTTP_404_NOT_FOUND)
+
+        calendar_data = {}
+        
+        # Iterate over sessions and process each one
         for session in sessions:
             session_data = SessionsCalendarSerializer(session).data
-            days_of_week = session_data['days_of_week']
-            day_names = session_data['day_names']
-            # Populate the response dictionary
-            for i, day in enumerate(days_of_week):
-                if day not in data:
-                    data[day] = {
-                        "start_time": session_data['start_time'],
-                        "end_time": session_data['end_time'],
-                        "day_names": [day_names[i]],
-                        "course_id": session_data['course_id'],
-                        "course_name": session_data['course_name']
-                    }
-                else:
-                    # If day already exists, append the new day name
-                    data[day]["day_names"].append(day_names[i])
+            for date in session_data['days_of_week']:
+                if date not in calendar_data:
+                    calendar_data[date] = []
+
+                # Add the session data to the list for the given date
+                calendar_data[date].append({
+                    "start_time": session_data['start_time'],
+                    "end_time": session_data['end_time'],
+                    "course_id": session_data['course_id'],
+                    "course_name": session_data['course_name'],
+                    "location": session_data['location_name'],
+                    "batch": session_data['batch']
+                })
+            print("Calender",calendar_data)
         # Format the data into the required structure
-        formatted_data = []
-        for day, details in data.items():
-            formatted_data.append({
-                "days_of_week": day,
-                **details
-            })
-        return Response(formatted_data)
+        formatted_data = [
+            {
+                "date": date,
+                "sessions": session_list  # Ensure all sessions for the date are included
+            }
+            for date, session_list in calendar_data.items()
+        ]
+
+        # Sort the formatted data by date
+        formatted_data.sort(key=lambda x: x['date'])
+
+        # return Response(formatted_data)
+        return self.custom_response(
+                status.HTTP_200_OK,
+                "Calender data fetched successfully.",
+                formatted_data
+            )

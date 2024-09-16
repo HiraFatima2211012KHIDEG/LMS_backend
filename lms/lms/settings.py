@@ -81,8 +81,8 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = "lms.wsgi.application"
-
-
+USE_TZ = True
+TIME_ZONE = 'Asia/Karachi'
 # Database
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
 
@@ -94,7 +94,7 @@ DATABASES = {
         'USER': os.getenv('DB_USER'),
         'PASSWORD': os.getenv('DB_PASSWORD'),
         # "HOST": "localhost",
-        # "NAME": "testlms",
+        # "NAME": "newdb",
         # "USER": "postgres",
         # "PASSWORD": "password",
     }

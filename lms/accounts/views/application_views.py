@@ -2,27 +2,20 @@
 Views for the Accounts Applications API.
 """
 
+from rest_framework import viewsets
 from rest_framework import generics
-from ..serializers.application_serializers import ApplicationSerializer, TechSkillSerializer
+from ..serializers.application_serializers import (
+    ApplicationSerializer,
+    TechSkillSerializer,
+)
 from ..serializers.location_serializers import *
 from rest_framework import views, status, generics, permissions
-from rest_framework.response import Response
 from ..serializers.user_serializers import *
-from django.contrib.auth import authenticate
-from rest_framework_simplejwt.tokens import RefreshToken
 from accounts.models import *
-from django.contrib.auth.models import Group
-from drf_spectacular.utils import extend_schema
-from ..serializers.user_serializers import (
-    UserSerializer,
-)
-from ..models.user_models import AccessControl, TechSkill
-import constants
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
+from ..models.user_models import TechSkill
 from django.db import transaction
 from accounts.utils import send_email
-from datetime import timedelta
-from rest_framework_simplejwt.tokens import AccessToken
-from rest_framework_simplejwt.exceptions import TokenError
 from django.core.signing import TimestampSigner
 import base64
 from django.core.signing import TimestampSigner, SignatureExpired, BadSignature
@@ -71,6 +64,23 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
 
     # permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="group_name",
+                description="Filter by group_name of user.",
+                required=False,
+                type=str,
+            ),
+            OpenApiParameter(
+                name="status",
+                description="Filter by status of application.",
+                required=False,
+                type=str,
+            ),
+        ],
+        responses={200: "application/json"},
+    )
     def get(self, request, filteration_id=None):
         if filteration_id is None:
             return self.custom_response(
@@ -185,12 +195,19 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
                         id=selected_user.selected_program.id
                     )
                     selected_location = Location.objects.get(
-                        id = selected_user.selected_location.id
+                        id=selected_user.selected_location.id
                     )
+                    try:
+                        user = User.objects.get(email=application.get('email'))
+                        application['account_status'] = 'verified'
+                    except User.DoesNotExist:
+                        application['account_status'] = 'unverified'
                     application["program"] = [ProgramSerializer(selected_program).data]
-                    application["location"] = [LocationSerializer(selected_location).data]
+                    application["location"] = [
+                        LocationSerializer(selected_location).data
+                    ]
                 except StudentApplicationSelection.DoesNotExist:
-                    application["program"] = None  # or handle the case appropriately    
+                    application["program"] = None  # or handle the case appropriately
                     application["location"] = None
             else:
                 complete_related_programs = Program.objects.filter(id__in=programs)
@@ -203,11 +220,11 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
                 complete_related_locations = Location.objects.filter(id__in=locations)
                 # application["location"] = application.get("location", None)
                 application["location"] = [
-                        {"id": location["id"], "name": location["name"]}
-                        for location in LocationSerializer(
-                            complete_related_locations, many=True
-                        ).data
-                    ]            
+                    {"id": location["id"], "name": location["name"]}
+                    for location in LocationSerializer(
+                        complete_related_locations, many=True
+                    ).data
+                ]
 
     def handle_instructor_applications(self, serialized_data, application_status):
         """Handle processing of instructor applications based on their status."""
@@ -228,18 +245,25 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
                     application["location"] = LocationSerializer(
                         selected_locations, many=True
                     ).data
+                    try:
+                        user = User.objects.get(email=application.get('email'))
+                        application['account_status'] = 'verified'
+                    except User.DoesNotExist:
+                        application['account_status'] = 'unverified'
                 except InstructorApplicationSelection.DoesNotExist:
                     application["skill"] = []  # or handle the case appropriately
                     application["location"] = []
             else:
                 # Check if related_skills is a list of integers or dictionaries
-                if (related_skills and isinstance(related_skills[0], dict)) and (related_locations and isinstance(related_locations[0], dict)):
+                if (related_skills and isinstance(related_skills[0], dict)) and (
+                    related_locations and isinstance(related_locations[0], dict)
+                ):
                     # related_skills is a list of dictionaries
                     related_skills_objects = TechSkill.objects.filter(
                         id__in=[skill["id"] for skill in related_skills]
                     )
                     related_locations_objects = Location.objects.filter(
-                        id__in = [location["id"] for location in related_locations]
+                        id__in=[location["id"] for location in related_locations]
                     )
                 else:
                     # related_skills is a list of integers
@@ -247,7 +271,7 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
                         id__in=related_skills
                     )
                     related_locations_objects = Location.objects.filter(
-                        id__in = related_locations
+                        id__in=related_locations
                     )
 
                 application["skill"] = TechSkillSerializer(
@@ -255,7 +279,7 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
                 ).data
                 application["location"] = LocationSerializer(
                     related_locations_objects, many=True
-                ).data            
+                ).data
 
         # # Handle location similarly to skills
         # if related_locations and isinstance(related_locations[0], dict):
@@ -273,6 +297,17 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
         #     related_locations_objects, many=True
         # ).data
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="application_id",
+                description="Filter by group_name of user.",
+                required=False,
+                type=str,
+            )
+        ],
+        responses={200: "application/json"},
+    )
     @custom_extend_schema(ApplicationSerializer)
     def patch(self, request, filteration_id=None):
         data = request.data
@@ -470,6 +505,33 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
 class VerifyEmailandSetPasswordView(views.APIView, CustomResponseMixin):
     permission_classes = [permissions.AllowAny]
 
+    @extend_schema(
+        request={
+            "application/json": {
+                "type": "object",
+                "properties": {
+                    "token": {
+                        "type": "string",
+                        "description": "Verification token received via email",
+                    },
+                    "password": {
+                        "type": "string",
+                        "description": "New password to set for the user",
+                    },
+                    "password2": {
+                        "type": "string",
+                        "description": "Confirm new password to set for the user",
+                    },
+                },
+                "required": ["token", "password", "password2"],
+            }
+        },
+        responses={
+            200: OpenApiTypes.OBJECT,
+            400: OpenApiTypes.OBJECT,
+        },
+        description="Verifies the user's email and sets a password.",
+    )
     def post(self, request):
         token = request.data.get("token")
         password = request.data.get("password")
@@ -522,10 +584,16 @@ class VerifyEmailandSetPasswordView(views.APIView, CustomResponseMixin):
                 # Create StudentInstructor record based on group_name
                 if application.group_name == "student":
                     try:
-                        selected_student_program = StudentApplicationSelection.objects.get(application=application).selected_program
+                        selected_student_program = (
+                            StudentApplicationSelection.objects.get(
+                                application=application
+                            ).selected_program
+                        )
                     except StudentApplicationSelection.DoesNotExist:
                         return self.custom_response(
-                            status.HTTP_400_BAD_REQUEST, "Program selection not found for the application.", None
+                            status.HTTP_400_BAD_REQUEST,
+                            "Program selection not found for the application.",
+                            None,
                         )
                     program_name = selected_student_program.program_abb
                     city_abb = application.city_abb
@@ -533,17 +601,17 @@ class VerifyEmailandSetPasswordView(views.APIView, CustomResponseMixin):
                     month = application.created_at.month
                     category = None
                     if month in [9, 10, 11]:
-                        category = 'Fall'
+                        category = "Fall"
                     elif month in [12, 1, 2]:
-                        category = 'Winter'
+                        category = "Winter"
                     elif month in [3, 4, 5]:
-                        category = 'Spring'
+                        category = "Spring"
                     elif month in [6, 7, 8]:
-                        category = 'Summer'
+                        category = "Summer"
                     else:
-                        category = 'Annual' 
+                        category = "Annual"
 
-                    batch = f"{city_abb}-{year}-{category[:3]}-{program_name}"
+                    batch = f"{city_abb.upper()}-{year}-{category[:3]}-{program_name}"
                     Student.objects.create(
                         user=user, registration_id=f"{batch}-{user.id}"
                     )
@@ -594,7 +662,7 @@ class VerifyEmailandSetPasswordView(views.APIView, CustomResponseMixin):
 
 class ResendVerificationEmail(views.APIView, CustomResponseMixin):
 
-    # permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
+    permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
 
     def post(self, request):
         email = request.data.get("email")
@@ -613,7 +681,9 @@ class ResendVerificationEmail(views.APIView, CustomResponseMixin):
                 )
 
             token = self.create_signed_token(applicant.id, applicant.email)
-            verification_link = f"http://localhost:3000/auth/account-verify/{str(token)}\n\nThis link will expire in 3 days."
+            verification_link = (
+                f"http://localhost:3000/auth/account-verify/{str(token)}"
+            )
             print(token)
             body = (
                 f"Congratulations {applicant.first_name} {applicant.last_name}!\n"
@@ -648,8 +718,6 @@ class ResendVerificationEmail(views.APIView, CustomResponseMixin):
         # Sign the encoded data
         signed_token = signer.sign(encoded_data)
         return signed_token
-
-
 
 
 # from rest_framework import status
@@ -736,18 +804,32 @@ class ResendVerificationEmail(views.APIView, CustomResponseMixin):
 
 # views.py
 
-from rest_framework import viewsets
-
 
 class TechSkillViewSet(viewsets.ModelViewSet):
     queryset = TechSkill.objects.all()
     serializer_class = TechSkillSerializer
 
 
-
 class ApplicationStatusCount(views.APIView, CustomResponseMixin):
-    # permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
+    permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="group_name",
+                description="Filter by group_name of user.",
+                required=False,
+                type=str,
+            ),
+            OpenApiParameter(
+                name="status",
+                description="Filter by status of application.",
+                required=False,
+                type=str,
+            ),
+        ],
+        responses={200: "application/json"},
+    )
     def get(self, request, filteration_id=None):
         if filteration_id is None:
             return self.custom_response(
@@ -781,8 +863,8 @@ class ApplicationStatusCount(views.APIView, CustomResponseMixin):
         try:
             # Base query filtering on filteration_id and group_name
             base_query = Applications.objects.filter(
-                Q(program__id=filteration_id, group_name=group_name) |
-                Q(required_skills__id=filteration_id, group_name=group_name)
+                Q(program__id=filteration_id, group_name=group_name)
+                | Q(required_skills__id=filteration_id, group_name=group_name)
             ).distinct()
 
             # Filter the base query by the application status if provided
@@ -797,20 +879,22 @@ class ApplicationStatusCount(views.APIView, CustomResponseMixin):
             # If no specific status is provided, get counts for all statuses
             counts = {
                 "approved": base_query.filter(application_status="approved").count(),
-                "short_listed": base_query.filter(application_status="short_listed").count(),
+                "short_listed": base_query.filter(
+                    application_status="short_listed"
+                ).count(),
                 "pending": base_query.filter(application_status="pending").count(),
             }
 
             # Count of verified accounts: emails exist in both Applications and User and have status 'approved'
             verified_count = base_query.filter(
-                email__in=User.objects.values_list('email', flat=True),
-                application_status='approved'
+                email__in=User.objects.values_list("email", flat=True),
+                application_status="approved",
             ).count()
 
             # Count of unverified accounts: emails do not exist in User but have status 'approved'
             unverified_count = base_query.filter(
-                ~Q(email__in=User.objects.values_list('email', flat=True)),
-                application_status='approved'
+                ~Q(email__in=User.objects.values_list("email", flat=True)),
+                application_status="approved",
             ).count()
 
             # Add verified and unverified counts to the response data
@@ -831,6 +915,7 @@ class ApplicationStatusCount(views.APIView, CustomResponseMixin):
                 None,
             )
 
+
 # class VerifiedUnverifiedAccountsCountView(views.APIView, CustomResponseMixin):
 
 #     permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
@@ -840,13 +925,13 @@ class ApplicationStatusCount(views.APIView, CustomResponseMixin):
 #             return self.custom_response(
 #                 status.HTTP_400_BAD_REQUEST, "filteration_id is not provided.", None
 #             )
-        
+
 #         status = request.query_params.get('status')
 #         if status != "approved":
 #             return self.custom_response(
 #                 status.HTTP_400_BAD_REQUEST,
 #                 "Invalid status",
 #                 None,
-#             )    
-        
+#             )
+
 #         else:
