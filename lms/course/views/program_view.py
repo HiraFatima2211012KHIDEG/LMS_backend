@@ -19,7 +19,7 @@ class ProgramListCreateAPIView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request, format=None):
-        programs = Program.objects.all()
+        programs = Program.objects.all().order_by('name')
         serializer = ProgramSerializer(programs, many=True)
         logger.info("Retrieved all programs")
         return self.custom_response(status.HTTP_200_OK, 'Programs retrieved successfully', serializer.data)
@@ -91,7 +91,8 @@ class ProgramCoursesAPIView(CustomResponseMixin, APIView):
 
     def get(self, request, program_id, format=None):
         program = get_object_or_404(Program, id=program_id)
-        courses = program.courses.all()
+        courses = program.courses.filter(status=1).order_by('name')
+        # courses = program.courses.all().order_by('name')
         serializer = CourseSerializer(courses, many=True)
         return self.custom_response(status.HTTP_200_OK, 'Courses retrieved successfully', serializer.data)
 

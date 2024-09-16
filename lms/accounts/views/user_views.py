@@ -1410,15 +1410,169 @@ class UserSessionsView(views.APIView, CustomResponseMixin):
         )
 
 
+# class InstructorSessionsView(views.APIView, CustomResponseMixin):
+#     """
+#     View to assign sessions to an instructor.
+#     """
+
+#     def post(self, request):
+#         user_id = request.data.get("user_id")
+#         session_ids = request.data.get("session_ids", [])
+
+#         # Validate if user_id and session_ids are provided
+#         if not user_id or not session_ids:
+#             return self.custom_response(
+#                 status.HTTP_400_BAD_REQUEST,
+#                 "user_id and session_ids are required.",
+#                 None,
+#             )
+
+#         try:
+#             # Get the Instructor object based on the provided user_id
+#             instructor = Instructor.objects.get(id__id=user_id)  # Assuming Instructor has a user field for user_id
+#         except Instructor.DoesNotExist:
+#             return self.custom_response(
+#                 status.HTTP_404_NOT_FOUND,
+#                 "Instructor does not exist for the provided user_id.",
+#                 None,
+#             )
+
+#         # Fetch sessions based on provided session_ids
+#         sessions = Sessions.objects.filter(id__in=session_ids)
+
+#         if not sessions.exists():
+#             return self.custom_response(
+#                 status.HTTP_404_NOT_FOUND,
+#                 "No valid sessions found for the provided session_ids.",
+#                 None,
+#             )
+
+#         created_sessions = []
+#         session_details = []  # To collect details for email content
+#         date_time_slots = {}
+#         for session in sessions:
+#             course = session.course
+#             # if InstructorSession.objects.filter(
+#             #     instructor=instructor,
+            
+#             # ).exclude(session__location=session.location):
+#             #     return self.custom_response(
+#             #         status.HTTP_400_BAD_REQUEST,
+#             #         f"Location must be the same to this instructor",
+#             #         None,
+#             #     )
+#             # if InstructorSession.objects.filter(
+#             #     instructor=instructor,
+#             #     session__course=session.course,
+#             #     session__start_time=session.start_time,
+#             #     session__end_time=session.end_time
+#             # ).exists():
+#             #     return self.custom_response(
+#             #         status.HTTP_400_BAD_REQUEST,
+#             #         f"Session with course {session.course.name} and timings {session.start_time} - {session.end_time} is already assigned to this instructor.",
+#             #         None,
+#             #     )
+#             if InstructorSession.objects.filter(
+#                 instructor=instructor,
+#                 session__start_time=session.start_time,
+#                 session__end_time=session.end_time
+#             ).exists():
+#                 return self.custom_response(
+#                     status.HTTP_400_BAD_REQUEST,
+#                     f"Session with course {session.course.name} same timings {session.start_time} - {session.end_time} is already assigned to this instructor.",
+#                     None,
+#                 )
+
+#             # Check for overlapping session timings for the student
+#             overlapping_sessions = InstructorSession.objects.filter(
+#                 instructor=instructor,
+#                 session__location=session.location,
+#                 session__start_time__lt=session.end_time,
+#                 session__end_time__gt=session.start_time
+#             )
+
+#             if overlapping_sessions.exists():
+#                 return self.custom_response(
+#                     status.HTTP_400_BAD_REQUEST,
+#                     f"Session timings overlap with existing sessions for this instructor.",
+#                     None,
+#                 )
+#             # Collect start and end times for each date
+#             for date_str in session.days_of_week:
+#                 try:
+#                     date = datetime.strptime(date_str, "%Y-%m-%d").date()
+#                 except ValueError:
+#                     return self.custom_response(
+#                         status.HTTP_400_BAD_REQUEST,
+#                         f"Invalid date format in days_of_week: {date_str}",
+#                         None,
+#                     )
+
+#                 if date not in date_time_slots:
+#                     date_time_slots[date] = []
+
+#                 date_time_slots[date].append((session.start_time, session.end_time))
+
+#             # Create or update InstructorSession entries for each session
+#             instructor_session, created = InstructorSession.objects.get_or_create(
+#                 instructor=instructor,
+#                 session=session,
+#                 defaults={
+#                     'status': 1,  # Default status or modify based on your needs
+#                 }
+#             )
+#             created_sessions.append(instructor_session)
+
+#             # Collect session details for email
+#             session_details.append(
+#                 f"Course: {course.name}\n"
+#                 f"Location: {session.location.name} Center\n"
+#                 f"Timings: {session.start_time} - {session.end_time}\n"  # Adjust field names as per your model
+#             )
+
+#         # Serialize created or updated InstructorSession objects with detailed session data
+#         response_data = [{
+#             "instructor_email": sess.instructor.id.email,  # Instructor's email
+#             "session": {
+#                 "session_id": sess.session.id,
+#                 "course_name": sess.session.course.name,  # Accessing course details
+#                 "status": sess.status,
+#             }
+#         } for sess in created_sessions]
+
+#         # Compose the email content
+#         email_subject = "Session Assignment Notification"
+#         email_body = (
+#             f"Dear {instructor.id.first_name} {instructor.id.last_name},\n\n"
+#             f"You have been assigned to the following sessions:\n\n"
+#             + "\n\n".join(session_details) +
+#             "\n\nPlease review your schedule and be prepared for your upcoming sessions.\n"
+#             f"Login to the portal from the link below to view details and manage your sessions.\n"
+#             f"https://lms-phi-two.vercel.app/auth/login"
+#         )
+
+#         # Email configuration
+#         email_data = {
+#             "email_subject": email_subject,
+#             "body": email_body,
+#             "to_email": instructor.id.email,  # Assuming the Instructor model has access to user.email
+#         }
+
+#         # Send email (using the existing send_email function or Django's default send_mail)
+#         send_email(email_data)
+
+#         return self.custom_response(
+#             status.HTTP_200_OK,
+#             "Sessions assigned successfully and email sent.",
+#             response_data
+#         )
 class InstructorSessionsView(views.APIView, CustomResponseMixin):
     """
     View to assign sessions to an instructor.
     """
-
     def post(self, request):
         user_id = request.data.get("user_id")
         session_ids = request.data.get("session_ids", [])
-
         # Validate if user_id and session_ids are provided
         if not user_id or not session_ids:
             return self.custom_response(
@@ -1426,7 +1580,6 @@ class InstructorSessionsView(views.APIView, CustomResponseMixin):
                 "user_id and session_ids are required.",
                 None,
             )
-
         try:
             # Get the Instructor object based on the provided user_id
             instructor = Instructor.objects.get(id__id=user_id)  # Assuming Instructor has a user field for user_id
@@ -1436,17 +1589,14 @@ class InstructorSessionsView(views.APIView, CustomResponseMixin):
                 "Instructor does not exist for the provided user_id.",
                 None,
             )
-
         # Fetch sessions based on provided session_ids
         sessions = Sessions.objects.filter(id__in=session_ids)
-
         if not sessions.exists():
             return self.custom_response(
                 status.HTTP_404_NOT_FOUND,
                 "No valid sessions found for the provided session_ids.",
                 None,
             )
-
         created_sessions = []
         session_details = []  # To collect details for email content
         date_time_slots = {}
@@ -1454,7 +1604,6 @@ class InstructorSessionsView(views.APIView, CustomResponseMixin):
             course = session.course
             # if InstructorSession.objects.filter(
             #     instructor=instructor,
-            
             # ).exclude(session__location=session.location):
             #     return self.custom_response(
             #         status.HTTP_400_BAD_REQUEST,
@@ -1482,7 +1631,6 @@ class InstructorSessionsView(views.APIView, CustomResponseMixin):
                     f"Session with course {session.course.name} same timings {session.start_time} - {session.end_time} is already assigned to this instructor.",
                     None,
                 )
-
             # Check for overlapping session timings for the student
             overlapping_sessions = InstructorSession.objects.filter(
                 instructor=instructor,
@@ -1490,7 +1638,6 @@ class InstructorSessionsView(views.APIView, CustomResponseMixin):
                 session__start_time__lt=session.end_time,
                 session__end_time__gt=session.start_time
             )
-
             if overlapping_sessions.exists():
                 return self.custom_response(
                     status.HTTP_400_BAD_REQUEST,
@@ -1507,12 +1654,9 @@ class InstructorSessionsView(views.APIView, CustomResponseMixin):
                         f"Invalid date format in days_of_week: {date_str}",
                         None,
                     )
-
                 if date not in date_time_slots:
                     date_time_slots[date] = []
-
                 date_time_slots[date].append((session.start_time, session.end_time))
-
             # Create or update InstructorSession entries for each session
             instructor_session, created = InstructorSession.objects.get_or_create(
                 instructor=instructor,
@@ -1522,14 +1666,14 @@ class InstructorSessionsView(views.APIView, CustomResponseMixin):
                 }
             )
             created_sessions.append(instructor_session)
-
+            if session.course:
+                session.course.instructors.add(instructor)
             # Collect session details for email
             session_details.append(
                 f"Course: {course.name}\n"
                 f"Location: {session.location.name} Center\n"
                 f"Timings: {session.start_time} - {session.end_time}\n"  # Adjust field names as per your model
             )
-
         # Serialize created or updated InstructorSession objects with detailed session data
         response_data = [{
             "instructor_email": sess.instructor.id.email,  # Instructor's email
@@ -1539,7 +1683,6 @@ class InstructorSessionsView(views.APIView, CustomResponseMixin):
                 "status": sess.status,
             }
         } for sess in created_sessions]
-
         # Compose the email content
         email_subject = "Session Assignment Notification"
         email_body = (
@@ -1550,23 +1693,19 @@ class InstructorSessionsView(views.APIView, CustomResponseMixin):
             f"Login to the portal from the link below to view details and manage your sessions.\n"
             f"https://lms-phi-two.vercel.app/auth/login"
         )
-
         # Email configuration
         email_data = {
             "email_subject": email_subject,
             "body": email_body,
             "to_email": instructor.id.email,  # Assuming the Instructor model has access to user.email
         }
-
         # Send email (using the existing send_email function or Django's default send_mail)
         send_email(email_data)
-
         return self.custom_response(
             status.HTTP_200_OK,
             "Sessions assigned successfully and email sent.",
             response_data
         )
-
 
 class ApplicationUserView(views.APIView, CustomResponseMixin):
     """View to fetch applications and user details based on group (student or instructor)."""

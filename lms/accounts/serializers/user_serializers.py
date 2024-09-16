@@ -451,15 +451,12 @@ class StudentDetailSerializer(serializers.ModelSerializer):
 
 
 class InstructorSerializer(serializers.ModelSerializer):
-    # session_details = serializers.SerializerMethodField()
-
+    email = serializers.EmailField(source="id.email")
+    first_name = serializers.CharField(source="id.first_name", allow_null=True)
+    last_name = serializers.CharField(source="id.last_name", allow_null=True)
     class Meta:
         model = Instructor
-        fields = "__all__"
-
-    # def get_session_details(self, obj):
-    #     return obj.get_session_details()
-
+        fields = ["id", "email", "first_name", "last_name"]
 
 class InstructorCoursesSerializer(serializers.ModelSerializer):
     courses = serializers.SerializerMethodField()

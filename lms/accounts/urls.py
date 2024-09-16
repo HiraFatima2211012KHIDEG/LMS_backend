@@ -160,7 +160,7 @@ urlpatterns = [
         "instructors", user_views.InstructorListView.as_view(), name="all-instructors"
     ),
     path(
-        "instructors/<str:instructor_id>/assign-courses/",
+        "instructors/<int:instructor_id>/assign-courses/",
         user_views.AssignCoursesView.as_view(),
         name="assign-courses",
     ),
@@ -191,11 +191,12 @@ urlpatterns = [
         UserAttendanceListView.as_view(),
         name="user-attendance-list",
     ),
-    # path(
-    #     "api/filter-attendance/",
-    #     AttendanceFilterViewSet.as_view({"get": "list"}),
-    #     name="filter-attendance",
-    # ),
+    path(
+        "filter-attendance/",
+        AttendanceFilterViewSet.as_view({"get": "list"}),
+        name="filter-attendance",
+    ),
+
     path(
         "create-batch-location-session/",
         CreateBatchLocationSessionView.as_view(),

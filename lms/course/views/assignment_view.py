@@ -23,7 +23,7 @@ class AssignmentListCreateAPIView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request, format=None):
-        assignments = Assignment.objects.all()
+        assignments = Assignment.objects.all().order_by('-created_at')
         serializer = AssignmentSerializer(assignments, many=True)
         return self.custom_response(
             status.HTTP_200_OK, "Assignment retrieved successfully", serializer.data
@@ -315,7 +315,7 @@ class AssignmentsByCourseIDAPIView(CustomResponseMixin, APIView):
 
     def get(self, request, course_id, format=None):
         user = request.user
-        assignments = Assignment.objects.filter(course_id=course_id)
+        assignments = Assignment.objects.filter(course_id=course_id).order_by('-created_at')
 
         if not assignments.exists():
             return self.custom_response(status.HTTP_200_OK, "No assignments found", {})
