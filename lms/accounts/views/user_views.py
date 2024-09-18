@@ -109,8 +109,17 @@ class UserLoginView(views.APIView):
                     try:
                         student_sessions = StudentSession.objects.filter(student=student)
                         for student_session in student_sessions:
-                            session_data.append(SessionsSerializer(student_session.session).data)
-
+                            session_info=SessionsSerializer(student_session.session).data
+                            try:
+                                instructor_session = InstructorSession.objects.get(session=student_session.session)
+                                instructor_data = {
+                                    "instructor_id": instructor_session.instructor.id.id,  # This will give you the user ID
+                                    "instructor_name": f"{instructor_session.instructor.id.first_name} {instructor_session.instructor.id.last_name}",
+                                }
+                                session_info["instructor"] = instructor_data
+                            except InstructorSession.DoesNotExist:
+                                session_info["instructor"] = None
+                            session_data.append(session_info)
                     except StudentSession.DoesNotExist:
                         session_data = []
                 elif user_group.name == "instructor":
@@ -1083,6 +1092,9 @@ class PreferredSessionView(views.APIView, CustomResponseMixin):
         try:
             # Get the Student object based on the provided user_id
             student = Student.objects.get(user_id=user_id)
+            
+            # Use the student.user.email to fetch the application
+            application = Applications.objects.get(email=student.user.email)
         except Student.DoesNotExist:
             return self.custom_response(
                 status.HTTP_404_NOT_FOUND,
@@ -1099,19 +1111,17 @@ class PreferredSessionView(views.APIView, CustomResponseMixin):
                 "No valid sessions found for the provided session_ids.",
                 None,
             )
-
+        student_application = StudentApplicationSelection.objects.get(application=application)
+        selected_location = student_application.selected_location
         created_sessions = []
 
         session_details = []  # To collect details for email content
         date_time_slots = {}
         for session in sessions:
-            if StudentSession.objects.filter(
-                student=student,
-                
-            ).exclude(session__location=session.location):
+            if session.location != selected_location:
                 return self.custom_response(
                     status.HTTP_400_BAD_REQUEST,
-                    f"Location must be the same to this student",
+                    f"Selected location does not match session location for session {session.id}.",
                     None,
                 )
             if StudentSession.objects.filter(
@@ -1809,3 +1819,55 @@ class UserDetailsView(views.APIView, CustomResponseMixin):
                 f"An unexpected error occurred: {str(e)}",
                 None,
             )
+
+
+# class ListStudentsByCourseAndInstructor(views.APIView):
+#     def get(self, request, course_id, instructor_id):
+#         # Retrieve the course
+#         course = get_object_or_404(Course, id=course_id)
+#         # Retrieve the instructor separately
+#         instructor = get_object_or_404(Instructor, id=instructor_id)
+#         # Check if the instructor is associated with the course
+#         if not course.instructors.filter(id=instructor_id).exists():
+#             return Response(
+#                 {"detail": "Instructor is not associated with the given course."},
+#                 status=status.HTTP_400_BAD_REQUEST,
+#             )
+#         # Get the session(s) assigned to the instructor
+#         instructor_sessions = InstructorSession.objects.filter(
+#             instructor=instructor
+#         ).values_list("session", flat=True)
+#         if not instructor_sessions:
+#             return Response(
+#                 {"message": "No sessions found for this instructor."},
+#                 status=status.HTTP_404_NOT_FOUND,
+#             )
+#         # Retrieve the program(s) associated with the course
+#         programs_with_course = Program.objects.filter(courses=course)
+#         # Filter students who are associated with the program and match the instructor's session(s)
+#         matching_students = Student.objects.filter(
+#             program__in=programs_with_course,
+#             studentsession__session__in=instructor_sessions,
+#         ).distinct()
+#         if not matching_students.exists():
+#             return Response(
+#                 {"message": "No students found for this course and session."},
+#                 status=status.HTTP_404_NOT_FOUND,
+#             )
+#         # Prepare response data
+#         student_data = [
+#             {
+#                 "student_id": student.registration_id,
+#                 "student_name": f"{student.user.first_name} {student.user.last_name}",
+#                 # "session_id": student.studentsession.session.id,
+#             }
+#             for student in matching_students
+#         ]
+#         return Response(
+#             {
+#                 "course": course.name,
+#                 "instructor": f"{instructor.id.first_name} {instructor.id.last_name}",
+#                 "matching_students": student_data,
+#             },
+#             status=status.HTTP_200_OK,
+#         )

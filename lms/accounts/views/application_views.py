@@ -469,6 +469,7 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
                         token = self.create_signed_token(
                             application_id, application_obj.email
                         )
+                        print("Token",token)
                         verification_link = (
                             f"http://localhost:3000/auth/account-verify/{str(token)}"
                         )
@@ -685,6 +686,7 @@ class ResendVerificationEmail(views.APIView, CustomResponseMixin):
                 )
 
             token = self.create_signed_token(applicant.id, applicant.email)
+            print("Resend",token)
             verification_link = (
                 f"http://localhost:3000/auth/account-verify/{str(token)}"
             )
@@ -813,7 +815,6 @@ class TechSkillViewSet(viewsets.ModelViewSet):
     queryset = TechSkill.objects.all()
     serializer_class = TechSkillSerializer
 
-
 class ApplicationStatusCount(views.APIView, CustomResponseMixin):
     permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
 
@@ -871,9 +872,14 @@ class ApplicationStatusCount(views.APIView, CustomResponseMixin):
                 | Q(required_skills__id=filteration_id, group_name=group_name)
             ).distinct()
 
+            # Print the queryset before filtering further
+            print("Base Query Objects: ", list(base_query))  # Log the base query objects
+
             # Filter the base query by the application status if provided
             if application_status:
-                count = base_query.filter(application_status=application_status).count()
+                filtered_query = base_query.filter(application_status=application_status)
+                print(f"Filtered Query Objects for status '{application_status}': ", list(filtered_query))  # Log the filtered objects
+                count = filtered_query.count()
                 return self.custom_response(
                     status.HTTP_200_OK,
                     f"Count for status '{application_status}' fetched successfully.",
@@ -889,6 +895,9 @@ class ApplicationStatusCount(views.APIView, CustomResponseMixin):
                 "pending": base_query.filter(application_status="pending").count(),
             }
 
+            # Print counts for all statuses
+            print("Counts for all statuses: ", counts)
+
             # Count of verified accounts: emails exist in both Applications and User and have status 'approved'
             verified_count = base_query.filter(
                 email__in=User.objects.values_list("email", flat=True),
@@ -900,6 +909,10 @@ class ApplicationStatusCount(views.APIView, CustomResponseMixin):
                 ~Q(email__in=User.objects.values_list("email", flat=True)),
                 application_status="approved",
             ).count()
+
+            # Print verified and unverified counts
+            print("Verified count: ", verified_count)
+            print("Unverified count: ", unverified_count)
 
             # Add verified and unverified counts to the response data
             counts["verified"] = verified_count
@@ -918,7 +931,6 @@ class ApplicationStatusCount(views.APIView, CustomResponseMixin):
                 f"An error occurred: {str(e)}",
                 None,
             )
-
 
 # class VerifiedUnverifiedAccountsCountView(views.APIView, CustomResponseMixin):
 

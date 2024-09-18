@@ -18,7 +18,9 @@ from course.models.models import Course
 
 class TechSkill(models.Model):
     name = models.CharField(max_length=100)
-
+    def __str__(self):
+        return f"{self.name}"
+    
 class Applications(models.Model):
     """Users of Registration Request"""
     email = models.EmailField(unique=True)

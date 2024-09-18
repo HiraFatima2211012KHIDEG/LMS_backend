@@ -241,5 +241,9 @@ urlpatterns = [
     path('instructor-sessions/', user_views.InstructorSessionsView.as_view(), name='instructor-sessions'),
     path('user-process/<int:filteration_id>/', user_views.ApplicationUserView.as_view(), name='application-user'),
     path('user-details/<int:user_id>/', user_views.UserDetailsView.as_view(), name='user-details'),
+    # path(
+    #     "student/<int:course_id>/<int:instructor_id>/",
+    #     user_views.ListStudentsByCourseAndInstructor.as_view(),
+    #     name="list_students_by_course_and_instructor"),
 
 ]
