@@ -18,7 +18,7 @@ class ProjectListCreateAPIView(CustomResponseMixin,APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, format=None):
-        projects = Project.objects.all()
+        projects = Project.objects.all().order_by('-created_at')
         serializer = ProjectSerializer(projects, many=True)
         return self.custom_response(status.HTTP_200_OK, 'Projects retrieved successfully', serializer.data)
 
@@ -246,7 +246,7 @@ class ProjectsByCourseIDAPIView(CustomResponseMixin, APIView):
 
     def get(self, request, course_id, format=None):
         user = request.user
-        projects = Project.objects.filter(course_id=course_id)
+        projects = Project.objects.filter(course_id=course_id).order_by('-created_at')
 
         if not projects.exists():
             return self.custom_response(status.HTTP_200_OK, 'No projects found', {})
@@ -269,6 +269,8 @@ class ProjectsByCourseIDAPIView(CustomResponseMixin, APIView):
 
             project_data = {
                 'id': project.id,
+                'total_grade':project.total_grade,
+                'content': project.content.url if project.content else None, 
                 'question': project.title,
                 'description': project.description,
                 'status':project.status,
@@ -308,7 +310,7 @@ class ProjectDetailView(APIView):
                 submission_status = 'Not Submitted' if timezone.now() > project.due_date else 'Pending'
 
             marks_obtain = grading.grade if grading else Decimal('0.0')
-            total_marks = grading.total_grade if grading else Decimal('0.0')
+            total_marks = project.total_grade if project.total_grade is not None else Decimal('0.0')
             remarks = grading.feedback if grading else None
 
             total_marks_obtained += marks_obtain
@@ -340,25 +342,17 @@ class ProjectStudentListView(CustomResponseMixin, APIView):
         except Project.DoesNotExist:
             return Response({"detail": "Project not found for the course."}, status=status.HTTP_404_NOT_FOUND)
 
-        # Retrieve the session associated with the course
-        # try:
-        #     session = Sessions.objects.get(course__id=course_id)
-        # except Sessions.DoesNotExist:
-        #     return Response(
-        #         {"detail": "Session not found for the course."}, 
-        #         status=status.HTTP_404_NOT_FOUND
-        #     )
         sessions = Sessions.objects.filter(course__id=course_id)
    
    
-        session = sessions.first()
+        session = sessions.first()        
         # Filter students who are enrolled in this session
         enrolled_students = Student.objects.filter(
             studentsession__session=session
         )
 
         student_list = []
-        total_grade = None  # To track the total grade
+        total_grade = project.total_grade 
 
         for student in enrolled_students:
             user = student.user
@@ -379,13 +373,14 @@ class ProjectStudentListView(CustomResponseMixin, APIView):
                     submission_status = "Pending"  
 
             student_data = {
+                'project':project.id,
                 'student_name': f"{user.first_name} {user.last_name}",
                 'registration_id': student.registration_id,
                 'submission_id': submission.id if submission else None,
                 'submitted_file': submission.project_submitted_file.url if submission and submission.project_submitted_file else None,
                 'submitted_at': submission.project_submitted_at if submission else None,
                 'status': submission_status,
-                'grade': None,
+                'grade': 0,
                 'remarks': None
             }
 
@@ -394,9 +389,9 @@ class ProjectStudentListView(CustomResponseMixin, APIView):
                 if grading:
                     student_data['grade'] = grading.grade
                     student_data['remarks'] = grading.feedback
-                    total_grade = grading.total_grade  
+                      
                 else:
-                    student_data['grade'] = None
+                    student_data['grade'] = 0
                     student_data['remarks'] = None
 
             student_list.append(student_data)

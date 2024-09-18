@@ -17,7 +17,7 @@ class QuizListCreateAPIView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request, format=None):
-        quizzes = Quizzes.objects.all()
+        quizzes = Quizzes.objects.all().order_by('-created_at')
         serializer = QuizzesSerializer(quizzes, many=True)
         return self.custom_response(status.HTTP_200_OK, 'Quizzes retrieved successfully', serializer.data)
 
@@ -239,7 +239,7 @@ class QuizzesByCourseIDAPIView(CustomResponseMixin, APIView):
 
     def get(self, request, course_id, format=None):
         user = request.user
-        quizzes = Quizzes.objects.filter(course_id=course_id)
+        quizzes = Quizzes.objects.filter(course_id=course_id).order_by('-created_at')
 
         if not quizzes.exists():
             return self.custom_response(status.HTTP_200_OK, 'No quizzes found', {})
@@ -262,6 +262,8 @@ class QuizzesByCourseIDAPIView(CustomResponseMixin, APIView):
 
             quiz_data = {
                 'id': quiz.id,
+                'total_grade':quiz.total_grade,
+                'content_url': quiz.content.url if quiz.content else None, 
                 'question': quiz.question,
                 'description': quiz.description,
                 'status':quiz.status,
@@ -298,7 +300,7 @@ class QuizDetailView(APIView):
                 submission_status = 'Not Submitted' if timezone.now() > quiz.due_date else 'Pending'
 
             marks_obtain = grading.grade if grading else Decimal('0.0')
-            total_marks = grading.total_grade if grading else Decimal('0.0')
+            total_marks = quiz.total_grade if quiz.total_grade is not None else Decimal('0.0')
             remarks = grading.feedback if grading else None
 
             total_marks_obtained += marks_obtain
@@ -321,6 +323,8 @@ class QuizDetailView(APIView):
             'sum_of_total_marks': float(sum_of_total_marks)
         })
 
+
+
 class QuizStudentListView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
@@ -339,14 +343,14 @@ class QuizStudentListView(CustomResponseMixin, APIView):
    
    
         session = sessions.first()
-        
+                
         # Filter students who are enrolled in this session
         enrolled_students = Student.objects.filter(
             studentsession__session=session
         )
 
         student_list = []
-        total_grade = None  # To track the total grade
+        total_grade = quiz.total_grade 
 
         # Process each student's quiz submission
         for student in enrolled_students:
@@ -365,13 +369,14 @@ class QuizStudentListView(CustomResponseMixin, APIView):
 
             # Collect student data
             student_data = {
+                'quiz':quiz.id,
                 'student_name': f"{user.first_name} {user.last_name}",
                 'registration_id': student.registration_id,
                 'submission_id': submission.id if submission else None,
                 'submitted_file': submission.quiz_submitted_file.url if submission and submission.quiz_submitted_file else None,
                 'submitted_at': submission.quiz_submitted_at if submission else None,
                 'status': submission_status,
-                'grade': None,
+                'grade': 0,
                 'remarks': None
             }
 
@@ -380,7 +385,7 @@ class QuizStudentListView(CustomResponseMixin, APIView):
                 if grading:
                     student_data['grade'] = grading.grade
                     student_data['remarks'] = grading.feedback
-                    total_grade = grading.total_grade
+                   
 
             student_list.append(student_data)
 

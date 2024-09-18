@@ -75,6 +75,7 @@ class Assignment(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    total_grade = models.DecimalField(max_digits=10, decimal_places=2, null=True)
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=1)
     question = models.TextField(null=True, blank=True)
     description = models.TextField(null=True, blank=True)
@@ -143,10 +144,22 @@ class AssignmentSubmission(models.Model):
             return True
         return False
 
+# class Grading(models.Model):
+#     submission=models.ForeignKey(AssignmentSubmission, on_delete=models.CASCADE)
+#     grade=models.DecimalField(max_digits=10, decimal_places=2, null=True)
+#     total_grade=models.DecimalField(max_digits=10, decimal_places=2, null=True)
+#     feedback = models.TextField(null=True, blank=True)
+#     graded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+#     graded_at = models.DateTimeField(auto_now_add=True)
+#     updated_at = models.DateTimeField(auto_now=True)
+
+#     def __str__(self):
+#         return f"{self.submission} - {self.grade}"
+
 class Grading(models.Model):
-    submission=models.ForeignKey(AssignmentSubmission, on_delete=models.CASCADE)
-    grade=models.DecimalField(max_digits=10, decimal_places=2, null=True)
-    total_grade=models.DecimalField(max_digits=10, decimal_places=2, null=True)
+    submission = models.ForeignKey(AssignmentSubmission, on_delete=models.CASCADE, null=True, blank=True)
+    grade = models.DecimalField(max_digits=10, decimal_places=2, null=True,default=0)
+    # total_grade = models.DecimalField(max_digits=10, decimal_places=2, null=True)
     feedback = models.TextField(null=True, blank=True)
     graded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     graded_at = models.DateTimeField(auto_now_add=True)
@@ -156,13 +169,14 @@ class Grading(models.Model):
         return f"{self.submission} - {self.grade}"
 
 
-
 class Quizzes(models.Model):
     # module = models.ForeignKey(Module, on_delete=models.CASCADE)
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    total_grade = models.DecimalField(max_digits=10, decimal_places=2, null=True)
+
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=1)
     question = models.TextField(null=True, blank=True)
     description = models.TextField(null=True, blank=True)
@@ -222,8 +236,7 @@ class QuizSubmission(models.Model):
 
 class QuizGrading(models.Model):
     quiz_submissions=models.ForeignKey(QuizSubmission, on_delete=models.CASCADE)
-    grade=models.DecimalField(max_digits=10, decimal_places=2, null=True)
-    total_grade=models.DecimalField(max_digits=10, decimal_places=2, null=True)
+    grade=models.DecimalField(max_digits=10, decimal_places=2, null=True,default=0)
     feedback = models.TextField(null=True, blank=True)
     graded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     graded_at = models.DateTimeField(auto_now_add=True)
@@ -248,6 +261,8 @@ class Project(models.Model):
         null=True, blank=True
     )
     due_date = models.DateTimeField()
+    total_grade = models.DecimalField(max_digits=10, decimal_places=2, null=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=1)
@@ -298,8 +313,8 @@ class ProjectSubmission(models.Model):
 
 class ProjectGrading(models.Model):
     project_submissions=models.ForeignKey(ProjectSubmission, on_delete=models.CASCADE)
-    grade=models.DecimalField(max_digits=10, decimal_places=2, null=True)
-    total_grade=models.DecimalField(max_digits=10, decimal_places=2, null=True)
+    grade=models.DecimalField(max_digits=10, decimal_places=2, null=True,default=0)
+
     feedback = models.TextField(null=True, blank=True)
     graded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     graded_at = models.DateTimeField(auto_now_add=True)
@@ -323,6 +338,8 @@ class Exam(models.Model):
         null=True, blank=True
     )
     due_date = models.DateTimeField()
+    total_grade = models.DecimalField(max_digits=10, decimal_places=2, null=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     start_time = models.TimeField(null=True, blank=True)
@@ -358,8 +375,7 @@ class ExamSubmission(models.Model):
 
 class ExamGrading(models.Model):
     exam_submission = models.ForeignKey(ExamSubmission, on_delete=models.CASCADE)
-    grade = models.DecimalField(max_digits=10, decimal_places=2, null=True)
-    total_grade = models.DecimalField(max_digits=10, decimal_places=2, null=True)
+    grade = models.DecimalField(max_digits=10, decimal_places=2, null=True,default=0)
     feedback = models.TextField(null=True, blank=True)
     graded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     graded_at = models.DateTimeField(auto_now_add=True)

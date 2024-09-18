@@ -3,10 +3,14 @@ from .models.models import *
 from .models.program_model import *
 
 
+
+
+
 class CourseSerializer(serializers.ModelSerializer):
     skills = serializers.PrimaryKeyRelatedField(
         many=True, queryset=Skill.objects.all()
     )
+
 
     class Meta:
         model = Course
@@ -103,6 +107,7 @@ class AssignmentSerializer(serializers.ModelSerializer):
             "course",
             "created_at",
             "created_by",
+            "total_grade",
             "question",
             "description",
             "content",
@@ -198,20 +203,32 @@ class AssignmentSubmissionSerializer(serializers.ModelSerializer):
 #         status_choices = dict(ASSESMENT_STATUS_CHOICES)
 #         return status_choices.get(obj.status, "Unknown Status")
 
-class GradingSerializer(serializers.ModelSerializer):
+# class GradingSerializer(serializers.ModelSerializer):
 
+#     class Meta:
+#         model = Grading
+#         fields = [
+#             "id",
+#             "submission",
+#             "grade",
+#             "total_grade",
+#             "feedback",
+#             "graded_by",
+#             "graded_at",
+#         ]
+class GradingSerializer(serializers.ModelSerializer):
     class Meta:
         model = Grading
         fields = [
             "id",
             "submission",
             "grade",
-            "total_grade",
+           
             "feedback",
             "graded_by",
             "graded_at",
         ]
-
+   
 
 class QuizzesSerializer(serializers.ModelSerializer):
     class Meta:
@@ -249,11 +266,6 @@ class QuizSubmissionSerializer(serializers.ModelSerializer):
         return quiz_submission
 
 class QuizGradingSerializer(serializers.ModelSerializer):
-    # quiz_submissions = serializers.PrimaryKeyRelatedField(
-    #     queryset=QuizSubmission.objects.all(), write_only=True
-    # )
-    # submission_detail = QuizSubmissionSerializer(source="quiz_submissions", read_only=True)
-
     class Meta:
         model = QuizGrading
         fields = [
@@ -302,11 +314,6 @@ class ProjectSubmissionSerializer(serializers.ModelSerializer):
         return project_submission
 
 class ProjectGradingSerializer(serializers.ModelSerializer):
-    # project_submissions = serializers.PrimaryKeyRelatedField(
-    #     queryset=ProjectSubmission.objects.all(), write_only=True
-    # )
-    # submission_detail = ProjectSubmissionSerializer(source="project_submissions", read_only=True)
-
     class Meta:
         model = ProjectGrading
         fields = [

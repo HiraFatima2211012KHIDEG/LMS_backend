@@ -17,7 +17,7 @@ class ExamListCreateAPIView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request, format=None):
-        exams = Exam.objects.all()
+        exams = Exam.objects.all().order_by('-created_at')
         serializer = ExamSerializer(exams, many=True)
         return self.custom_response(status.HTTP_200_OK, 'Exams retrieved successfully', serializer.data)
 
@@ -214,7 +214,7 @@ class ExamsByCourseIDAPIView(CustomResponseMixin, APIView):
 
     def get(self, request, course_id, format=None):
         user = request.user
-        exams = Exam.objects.filter(course_id=course_id)
+        exams = Exam.objects.filter(course_id=course_id).order_by('-created_at')
 
         if not exams.exists():
             return self.custom_response(status.HTTP_200_OK, 'No exams found', {})
@@ -237,6 +237,10 @@ class ExamsByCourseIDAPIView(CustomResponseMixin, APIView):
 
             exam_data = {
                 'id': exam.id,
+                'total_grade':exam.total_grade,
+                'start_time':exam.start_time,
+                'end_time':exam.end_time,
+                'content': exam.content.url if exam.content else None, 
                 'question': exam.title,
                 'description': exam.description,
                 'status':exam.status,
@@ -258,25 +262,18 @@ class ExamStudentListView(CustomResponseMixin, APIView):
             exam = Exam.objects.get(id=exam_id, course__id=course_id)
         except Exam.DoesNotExist:
             return Response({"detail": "Exam not found for the course."}, status=status.HTTP_404_NOT_FOUND)
-        # Retrieve the session associated with the course
-        # try:
-        #     session = Sessions.objects.get(course__id=course_id)
-        # except Sessions.DoesNotExist:
-        #     return Response(
-        #         {"detail": "Session not found for the course."}, 
-        #         status=status.HTTP_404_NOT_FOUND
-        #     )
+
         sessions = Sessions.objects.filter(course__id=course_id)
    
    
-        session = sessions.first()
+        session = sessions.first()        
         # Filter students who are enrolled in this session
         enrolled_students = Student.objects.filter(
             studentsession__session=session
         )
 
         student_list = []
-        total_grade = None  # To track the total grade
+        total_grade = exam.total_grade 
         for student in enrolled_students:
             user = student.user
             try:
@@ -296,13 +293,14 @@ class ExamStudentListView(CustomResponseMixin, APIView):
                     submission_status = "Pending"  
 
             student_data = {
+                'exam':exam.id,
                 'student_name': f"{user.first_name} {user.last_name}",
                 'registration_id': student.registration_id,
                 'submission_id': submission.id if submission else None,
                 'submitted_file': submission.exam_submitted_file.url if submission and submission.exam_submitted_file else None,
                 'submitted_at': submission.exam_submitted_at if submission else None,
                 'status': submission_status,
-                'grade': None,
+                'grade': 0,
                 'remarks': None
             }
 
@@ -311,9 +309,9 @@ class ExamStudentListView(CustomResponseMixin, APIView):
                 if grading:
                     student_data['grade'] = grading.grade
                     student_data['remarks'] = grading.feedback
-                    total_grade = grading.total_grade  
+                     
                 else:
-                    student_data['grade'] = None
+                    student_data['grade'] = 0
                     student_data['remarks'] = None
 
             student_list.append(student_data)
@@ -353,7 +351,7 @@ class ExamDetailView(APIView):
                 submission_status = 'Not Submitted' if timezone.now() > exam.due_date else 'Pending'
 
             marks_obtain = grading.grade if grading else Decimal('0.0')
-            total_marks = grading.total_grade if grading else Decimal('0.0')
+            total_marks = exam.total_grade if exam.total_grade is not None else Decimal('0.0')
             remarks = grading.feedback if grading else None
 
             total_marks_obtained += marks_obtain

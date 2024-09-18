@@ -81,8 +81,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = "lms.wsgi.application"
-USE_TZ = True
-TIME_ZONE = 'Asia/Karachi'
+
 # Database
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
 
@@ -143,13 +142,14 @@ CORS_ALLOWED_ORIGINS = [
 
 LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = "UTC"
+# TIME_ZONE = "UTC"
 
 USE_I18N = True
 
 USE_L10N = True
 
 USE_TZ = True
+TIME_ZONE = 'Asia/Karachi'
 
 AUTH_USER_MODEL = "accounts.User"
 
@@ -159,6 +159,7 @@ REST_FRAMEWORK = {
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    #  'DATETIME_FORMAT': '%Y-%m-%d %H:%M:%S%z',
 }
 
 SPECTACULAR_SETTINGS = {

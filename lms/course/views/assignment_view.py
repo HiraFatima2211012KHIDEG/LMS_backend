@@ -241,10 +241,27 @@ class AssignmentGradingListCreateAPIView(CustomResponseMixin, APIView):
             serializer.data,
         )
 
+    # @custom_extend_schema(GradingSerializer)
+    # def post(self, request, format=None):
+    #     data = {key: value for key, value in request.data.items()}
+    #     data["graded_by"] = request.user.id
+
+    #     serializer = GradingSerializer(data=data)
+    #     if serializer.is_valid():
+    #         serializer.save()
+    #         return self.custom_response(
+    #             status.HTTP_201_CREATED, "Grading created successfully", serializer.data
+    #         )
+
+    #     return self.custom_response(
+    #         status.HTTP_400_BAD_REQUEST, "Error creating grading", serializer.errors
+    #     )
+
     @custom_extend_schema(GradingSerializer)
     def post(self, request, format=None):
         data = {key: value for key, value in request.data.items()}
         data["graded_by"] = request.user.id
+
 
         serializer = GradingSerializer(data=data)
         if serializer.is_valid():
@@ -257,7 +274,6 @@ class AssignmentGradingListCreateAPIView(CustomResponseMixin, APIView):
             status.HTTP_400_BAD_REQUEST, "Error creating grading", serializer.errors
         )
 
-
 class AssignmentGradingDetailAPIView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
@@ -269,6 +285,28 @@ class AssignmentGradingDetailAPIView(CustomResponseMixin, APIView):
             "Assignment grading retrieved successfully",
             serializer.data,
         )
+
+    # @custom_extend_schema(GradingSerializer)
+    # def put(self, request, pk, format=None):
+    #     data = {key: value for key, value in request.data.items()}
+    #     data["graded_by"] = request.user.id
+
+    #     grading = get_object_or_404(Grading, pk=pk)
+    #     serializer = GradingSerializer(grading, data=data, partial=True)
+    #     if serializer.is_valid():
+    #         serializer.save(graded_by=request.user)
+    #         return self.custom_response(
+    #             status.HTTP_200_OK,
+    #             "Assignment grading updated successfully",
+    #             serializer.data,
+    #         )
+
+    #     return self.custom_response(
+    #         status.HTTP_400_BAD_REQUEST,
+    #         "Error updating assignment grading",
+    #         serializer.errors,
+    #     )
+
 
     @custom_extend_schema(GradingSerializer)
     def put(self, request, pk, format=None):
@@ -290,6 +328,7 @@ class AssignmentGradingDetailAPIView(CustomResponseMixin, APIView):
             "Error updating assignment grading",
             serializer.errors,
         )
+
 
     def delete(self, request, pk, format=None):
         grading = get_object_or_404(Grading, pk=pk)
@@ -344,9 +383,10 @@ class AssignmentsByCourseIDAPIView(CustomResponseMixin, APIView):
 
             assignment_data = {
                 "id": assignment.id,
+                "total_grade":assignment.total_grade,
+                "content": assignment.content.url if assignment.content else None, 
                 "question": assignment.question,
                 "description": assignment.description,
-                "content":assignment.content,
                 "status":assignment.status,
                 "due_date": assignment.due_date,
                 "created_at": assignment.created_at,
@@ -391,11 +431,11 @@ class AssignmentStudentListView(CustomResponseMixin, APIView):
             studentsession__session=session
         )
         student_list = []
-        total_grade = None  # To track the total grade
+        total_grade = assignment.total_grade 
 
         for student in enrolled_students:
             user = student.user
-
+         
             # Check if the student has submitted the assignment
             try:
                 submission = AssignmentSubmission.objects.get(assignment=assignment, user=user)
@@ -414,6 +454,7 @@ class AssignmentStudentListView(CustomResponseMixin, APIView):
                     submission_status = "Pending"  
 
             student_data = {
+                'assignment':assignment.id,
                 'student_name': f"{user.first_name} {user.last_name}",
                 'registration_id': student.registration_id,
                 'submission_id': submission.id if submission else None,
@@ -424,19 +465,17 @@ class AssignmentStudentListView(CustomResponseMixin, APIView):
                 ),
                 'submitted_at': submission.submitted_at if submission else None,
                 'status': submission_status,
-                'grade': None,
+                'grade': 0,
                 'remarks': None
             }
-
-            # Add grade and remarks if submission exists
             if submission:
                 grading = Grading.objects.filter(submission=submission).first()
                 if grading:
                     student_data['grade'] = grading.grade
                     student_data['remarks'] = grading.feedback
-                    total_grade = grading.total_grade  # Get total_grade from the first grading instance
+                   
                 else:
-                    student_data['grade'] = None
+                    student_data['grade'] = 0
                     student_data['remarks'] = None
 
             student_list.append(student_data)
@@ -450,8 +489,7 @@ class AssignmentStudentListView(CustomResponseMixin, APIView):
 
         return self.custom_response(
             status.HTTP_200_OK, "Students retrieved successfully", response_data
-        )
-    
+        )        
     
 class StudentsWhoSubmittedAssignmentAPIView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
@@ -482,6 +520,8 @@ class StudentsListSubmittedAssignmentAPIView(CustomResponseMixin, APIView):
         )
 
 
+
+
 class StudentScoresSummaryAPIView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
@@ -489,34 +529,7 @@ class StudentScoresSummaryAPIView(APIView):
         # Fetch weightage values
         weightage = Weightage.objects.get(course_id=course_id)
 
-        # assignments = Assignment.objects.filter(course_id=course_id)
-        # assignment_submissions = AssignmentSubmission.objects.filter(
-        #     assignment__in=assignments,
-        #     registration_id=registration_id
-        # )
-        # assignments_aggregate = Grading.objects.filter(
-        #     submission__in=assignment_submissions
-        # ).aggregate(
-        #     sum_grade=Sum('grade'),
-        #     total_sum_grade=Sum('total_grade')
-        # )
-        # assignments_sum = assignments_aggregate['sum_grade'] or Decimal('0')
-        # assignments_total_grades = assignments_aggregate['total_sum_grade'] or Decimal('0')
-
-        quizzes = Quizzes.objects.filter(course_id=course_id)
-        quiz_submissions = QuizSubmission.objects.filter(
-            quiz__in=quizzes, registration_id=registration_id
-        )
-
-        quizzes_aggregate = QuizGrading.objects.filter(
-            quiz_submissions__in=quiz_submissions,
-            quiz_submissions__registration_id=registration_id,
-        ).aggregate(sum_grade=Sum("grade"), total_sum_grade=Sum("total_grade"))
-        quizzes_sum = quizzes_aggregate["sum_grade"] or Decimal("0")
-        quizzes_total_grades = quizzes_aggregate["total_sum_grade"] or Decimal("0")
-
-        ##########################
-
+        # Fetch assignments and their total grades directly from Assignment model
         assignments = Assignment.objects.filter(course_id=course_id)
         assignment_submissions = AssignmentSubmission.objects.filter(
             assignment__in=assignments, registration_id=registration_id
@@ -525,13 +538,32 @@ class StudentScoresSummaryAPIView(APIView):
         assignments_aggregate = Grading.objects.filter(
             submission__in=assignment_submissions,
             submission__registration_id=registration_id,
-        ).aggregate(sum_grade=Sum("grade"), total_sum_grade=Sum("total_grade"))
+        ).aggregate(sum_grade=Sum("grade"))
         assignments_sum = assignments_aggregate["sum_grade"] or Decimal("0")
-        assignments_total_grades = assignments_aggregate["total_sum_grade"] or Decimal(
-            "0"
+
+        # Fetch total grades from Assignment model directly
+        assignments_total_grades = assignments.aggregate(
+            total_sum_grade=Sum("total_grade")
+        )["total_sum_grade"] or Decimal("0")
+        print(assignments_total_grades)
+        # Fetch quizzes and their total grades directly from Quiz model
+        quizzes = Quizzes.objects.filter(course_id=course_id)
+        quiz_submissions = QuizSubmission.objects.filter(
+            quiz__in=quizzes, registration_id=registration_id
         )
 
-        ###########################
+        quizzes_aggregate = QuizGrading.objects.filter(
+            quiz_submissions__in=quiz_submissions,
+            quiz_submissions__registration_id=registration_id,
+        ).aggregate(sum_grade=Sum("grade"))
+        quizzes_sum = quizzes_aggregate["sum_grade"] or Decimal("0")
+
+        # Fetch total grades from Quizzes model directly
+        quizzes_total_grades = quizzes.aggregate(
+            total_sum_grade=Sum("total_grade")
+        )["total_sum_grade"] or Decimal("0")
+
+        # Fetch projects and their total grades directly from Project model
         projects = Project.objects.filter(course_id=course_id)
         project_submissions = ProjectSubmission.objects.filter(
             project__in=projects, registration_id=registration_id
@@ -540,11 +572,15 @@ class StudentScoresSummaryAPIView(APIView):
         projects_aggregate = ProjectGrading.objects.filter(
             project_submissions__in=project_submissions,
             project_submissions__registration_id=registration_id,
-        ).aggregate(sum_grade=Sum("grade"), total_sum_grade=Sum("total_grade"))
+        ).aggregate(sum_grade=Sum("grade"))
         projects_sum = projects_aggregate["sum_grade"] or Decimal("0")
-        projects_total_grades = projects_aggregate["total_sum_grade"] or Decimal("0")
 
-        ###########################
+        # Fetch total grades from Project model directly
+        projects_total_grades = projects.aggregate(
+            total_sum_grade=Sum("total_grade")
+        )["total_sum_grade"] or Decimal("0")
+
+        # Fetch exams and their total grades directly from Exam model
         exams = Exam.objects.filter(course_id=course_id)
         exam_submissions = ExamSubmission.objects.filter(
             exam__in=exams, registration_id=registration_id
@@ -553,9 +589,13 @@ class StudentScoresSummaryAPIView(APIView):
         exams_aggregate = ExamGrading.objects.filter(
             exam_submission__in=exam_submissions,
             exam_submission__registration_id=registration_id,
-        ).aggregate(sum_grade=Sum("grade"), total_sum_grade=Sum("total_grade"))
+        ).aggregate(sum_grade=Sum("grade"))
         exams_sum = exams_aggregate["sum_grade"] or Decimal("0")
-        exams_total_grades = exams_aggregate["total_sum_grade"] or Decimal("0")
+
+        # Fetch total grades from Exam model directly
+        exams_total_grades = exams.aggregate(
+            total_sum_grade=Sum("total_grade")
+        )["total_sum_grade"] or Decimal("0")
 
         # Weightage calculation
         def calculate_percentage(grade_sum, total_grades_sum, weight):
@@ -721,9 +761,12 @@ class CourseProgressAPIView(CustomResponseMixin, APIView):
             return self.custom_response(
                 status.HTTP_400_BAD_REQUEST, "Student not found for user", {}
             )
+
         total_modules = Module.objects.filter(course=course).count()
+
+        
         attendance_records = Attendance.objects.filter(
-            course=course, student=registration_id, status="Present"
+            course=course, student=registration_id, status=0  
         )
         total_attendance = attendance_records.count()
 
@@ -747,7 +790,6 @@ class CourseProgressAPIView(CustomResponseMixin, APIView):
             "Course progress retrieved successfully",
             serializer.data,
         )
-
 
 def get_pending_assignments_for_student(program_id, registration_id):
     courses = Course.objects.filter(program__id=program_id)
@@ -850,6 +892,8 @@ class UnifiedPendingItemsView(CustomResponseMixin, APIView):
         )
 
 
+
+
 class AssignmentDetailView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
@@ -880,9 +924,9 @@ class AssignmentDetailView(APIView):
                 )
 
             marks_obtain = grading.grade if grading else Decimal("0.0")
-            total_marks = grading.total_grade if grading else Decimal("0.0")
+            total_marks = assignment.total_grade if assignment.total_grade is not None else Decimal("0.0")
             remarks = grading.feedback if grading else None
-
+            print(total_marks)
             total_marks_obtained += marks_obtain
             sum_of_total_marks += total_marks
 
