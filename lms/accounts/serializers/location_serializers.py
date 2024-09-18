@@ -37,6 +37,29 @@ class LocationSerializer(serializers.ModelSerializer):
         fields = ["id", "name", "shortname", "capacity", "city", "status"]
 
 
+# class SessionsSerializer(serializers.ModelSerializer):
+#     location_name = serializers.CharField(source="location.name", read_only=True)
+#     course = CourseSerializer(read_only=True)
+#     course_id = serializers.PrimaryKeyRelatedField(
+#         queryset=Course.objects.all(), source="course", write_only=True
+#     )
+
+#     class Meta:
+#         model = Sessions
+
+#         fields = [
+#             "id",
+#             "location",
+#             "location_name",
+#             "no_of_students",
+#             "batch",
+#             "start_time",
+#             "end_time",
+#             "status",
+#             "course",
+#             "course_id",
+#         ]
+
 class SessionsSerializer(serializers.ModelSerializer):
     location_name = serializers.CharField(source="location.name", read_only=True)
     course = CourseSerializer(read_only=True)
@@ -46,7 +69,6 @@ class SessionsSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Sessions
-
         fields = [
             "id",
             "location",

@@ -811,7 +811,7 @@ class TechSkillViewSet(viewsets.ModelViewSet):
 
 
 class ApplicationStatusCount(views.APIView, CustomResponseMixin):
-    permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
+    # permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
 
     @extend_schema(
         parameters=[
@@ -867,9 +867,14 @@ class ApplicationStatusCount(views.APIView, CustomResponseMixin):
                 | Q(required_skills__id=filteration_id, group_name=group_name)
             ).distinct()
 
+            # Print the base query for debugging purposes
+            print(f"Base query fetched: {base_query.query}")
+
             # Filter the base query by the application status if provided
             if application_status:
                 count = base_query.filter(application_status=application_status).count()
+                # Print the filtered query
+                print(f"Filtered query for status '{application_status}': {base_query.filter(application_status=application_status).query}")
                 return self.custom_response(
                     status.HTTP_200_OK,
                     f"Count for status '{application_status}' fetched successfully.",
@@ -885,6 +890,9 @@ class ApplicationStatusCount(views.APIView, CustomResponseMixin):
                 "pending": base_query.filter(application_status="pending").count(),
             }
 
+            # Print the counts query
+            print(f"Counts fetched: {counts}")
+
             # Count of verified accounts: emails exist in both Applications and User and have status 'approved'
             verified_count = base_query.filter(
                 email__in=User.objects.values_list("email", flat=True),
@@ -896,6 +904,10 @@ class ApplicationStatusCount(views.APIView, CustomResponseMixin):
                 ~Q(email__in=User.objects.values_list("email", flat=True)),
                 application_status="approved",
             ).count()
+
+            # Print the verified and unverified counts
+            print(f"Verified count: {verified_count}")
+            print(f"Unverified count: {unverified_count}")
 
             # Add verified and unverified counts to the response data
             counts["verified"] = verified_count
@@ -909,6 +921,7 @@ class ApplicationStatusCount(views.APIView, CustomResponseMixin):
 
         except Exception as e:
             # Catch any unexpected exceptions and log them if necessary
+            print(f"An error occurred: {str(e)}")  # Print the error for debugging
             return self.custom_response(
                 status.HTTP_500_INTERNAL_SERVER_ERROR,
                 f"An error occurred: {str(e)}",
