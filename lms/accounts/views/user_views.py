@@ -1151,21 +1151,21 @@ class PreferredSessionView(views.APIView, CustomResponseMixin):
                     f"Session timings overlap with existing sessions for this student.",
                     None,
                 )
-            # Collect start and end times for each date
-            for date_str in session.days_of_week:
-                try:
-                    date = datetime.strptime(date_str, "%Y-%m-%d").date()
-                except ValueError:
+            # Collect start and end times for each day of the week (using `days_of_week` integer mapping)
+            for day_int in session.days_of_week:
+                if day_int not in WEEKDAYS:
                     return self.custom_response(
                         status.HTTP_400_BAD_REQUEST,
-                        f"Invalid date format in days_of_week: {date_str}",
+                        f"Invalid day of week: {day_int}.",
                         None,
                     )
 
-                if date not in date_time_slots:
-                    date_time_slots[date] = []
+                day_name = WEEKDAYS[day_int][0]  # Get full weekday name
+                if day_name not in date_time_slots:
+                    date_time_slots[day_name] = []
 
-                date_time_slots[date].append((session.start_time, session.end_time))
+                date_time_slots[day_name].append((session.start_time, session.end_time))
+
 
             # Create or update StudentSession entries for each session
             student_session, created = StudentSession.objects.get_or_create(
@@ -1502,6 +1502,13 @@ class InstructorSessionsView(views.APIView, CustomResponseMixin):
             #         f"Session with course {session.course.name} and timings {session.start_time} - {session.end_time} is already assigned to this instructor.",
             #         None,
             #     )
+            # Check if the session already has an instructor assigned
+            if InstructorSession.objects.filter(session=session).exists():
+                return self.custom_response(
+                    status.HTTP_400_BAD_REQUEST,
+                    f"Session with course {session.course.name} is already assigned to another instructor.",
+                    None,
+                )
             if InstructorSession.objects.filter(
                 instructor=instructor,
                 session__start_time=session.start_time,
@@ -1525,19 +1532,21 @@ class InstructorSessionsView(views.APIView, CustomResponseMixin):
                     f"Session timings overlap with existing sessions for this instructor.",
                     None,
                 )
-            # Collect start and end times for each date
-            for date_str in session.days_of_week:
-                try:
-                    date = datetime.strptime(date_str, "%Y-%m-%d").date()
-                except ValueError:
+
+            # Collect start and end times for each day of the week using the day integers
+            for day_int in session.days_of_week:
+                if day_int not in WEEKDAYS:
                     return self.custom_response(
                         status.HTTP_400_BAD_REQUEST,
-                        f"Invalid date format in days_of_week: {date_str}",
+                        f"Invalid day of week: {day_int}.",
                         None,
                     )
-                if date not in date_time_slots:
-                    date_time_slots[date] = []
-                date_time_slots[date].append((session.start_time, session.end_time))
+
+                day_name = WEEKDAYS[day_int][0]  # Full weekday name
+                if day_name not in date_time_slots:
+                    date_time_slots[day_name] = []
+                date_time_slots[day_name].append((session.start_time, session.end_time))
+
             # Create or update InstructorSession entries for each session
             instructor_session, created = InstructorSession.objects.get_or_create(
                 instructor=instructor,

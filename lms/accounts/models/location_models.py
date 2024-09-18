@@ -102,7 +102,6 @@ WEEKDAYS = {
 
 class Sessions(models.Model):
     """Location-based sessions."""
-
     location = models.ForeignKey(Location, on_delete=models.CASCADE)
     no_of_students = models.IntegerField()
     batch = models.ForeignKey(Batch, on_delete=models.CASCADE)
@@ -115,23 +114,7 @@ class Sessions(models.Model):
     updated_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
 
     class Meta:
-        # unique_together = ("location", "batch", "course", "start_time", "end_time")
         unique_together = ("location", "course", "start_time", "end_time")
-
-    def save(self, *args, **kwargs):
-        # Populate the list_of_days field based on batch dates and selected weekdays
-        self.days_of_week = self.generate_session_dates()
-        super(Sessions, self).save(*args, **kwargs)
-
-    def generate_session_dates(self):
-        """Generate a list of dates that fall on the selected weekdays between batch start and end dates."""
-        days = []
-        current_date = self.batch.start_date
-        while current_date <= self.batch.end_date:
-            if current_date.weekday() in self.days_of_week:  # Match selected weekdays
-                days.append(current_date.strftime("%Y-%m-%d"))
-            current_date += timedelta(days=1)
-        return days
 
     def __str__(self):
         return f"{self.batch}-{self.location}-{self.no_of_students}-{self.course}-{self.start_time}-{self.end_time}"

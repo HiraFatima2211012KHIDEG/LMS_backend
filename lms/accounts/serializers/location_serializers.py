@@ -43,22 +43,34 @@ class SessionsSerializer(serializers.ModelSerializer):
     course_id = serializers.PrimaryKeyRelatedField(
         queryset=Course.objects.all(), source="course", write_only=True
     )
+    remaining_spots = serializers.SerializerMethodField()
 
     class Meta:
         model = Sessions
-
         fields = [
             "id",
             "location",
             "location_name",
             "no_of_students",
+            "remaining_spots",  
             "batch",
             "start_time",
             "end_time",
+            "days_of_week",
             "status",
             "course",
             "course_id",
         ]
+
+    def get_remaining_spots(self, obj):
+        assigned_students = StudentSession.objects.filter(session=obj).count()
+        return obj.no_of_students - assigned_students
+
+    def update(self, instance, validated_data):
+        assigned_students = StudentSession.objects.filter(session=instance).count()
+        instance.no_of_students = instance.no_of_students - assigned_students
+        instance.save()
+        return instance
 
 
 class StudentSessionsSerializer(serializers.ModelSerializer):
