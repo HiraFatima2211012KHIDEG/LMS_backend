@@ -28,6 +28,7 @@ class BatchSerializer(serializers.ModelSerializer):
             "end_date",
             "status",
             "term",
+            "created_at"
         ]
 
 class LocationSerializer(serializers.ModelSerializer):
@@ -35,7 +36,7 @@ class LocationSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Location
-        fields = ["id", "name", "shortname", "capacity", "city", "status", "remaining_spots_for_location"]
+        fields = ["id", "name", "shortname", "capacity", "city", "status", "remaining_spots_for_location","created_at"]
 
     def get_remaining_spots_for_location(self, obj):
         # Assuming there is a relationship between Location and Sessions or StudentSession
@@ -44,16 +45,25 @@ class LocationSerializer(serializers.ModelSerializer):
         return max(remaining_spots, 0)  # Ensure it never goes negative
 
     def validate(self, data):
-        # Check if the remaining spots are available before assigning
-        location = self.instance  # Get the current Location instance
-        total_students_assigned = StudentSession.objects.filter(session__location=location).count()
-        remaining_spots = location.capacity - total_students_assigned
+        # Check if this is an update (self.instance is not None) or create (self.instance is None)
+        location = self.instance
+
+        # If this is an update, proceed with remaining spots validation
+        if location:
+            total_students_assigned = StudentSession.objects.filter(session__location=location).count()
+            remaining_spots = location.capacity - total_students_assigned
+
+            if remaining_spots <= 0:
+                raise serializers.ValidationError(f"No remaining spots in location {location.name}. Cannot assign more students.")
         
-        if remaining_spots <= 0:
-            raise serializers.ValidationError(f"No remaining spots in location {location.name}. Cannot assign more students.")
+        # For create requests, ensure the capacity is provided
+        elif 'capacity' in data:
+            # Perform any additional validation during creation if needed
+            capacity = data['capacity']
+            if capacity <= 0:
+                raise serializers.ValidationError("Capacity must be greater than 0.")
         
         return data
-
 
 class SessionsSerializer(serializers.ModelSerializer):
     location_name = serializers.CharField(source="location.name", read_only=True)
@@ -62,6 +72,7 @@ class SessionsSerializer(serializers.ModelSerializer):
         queryset=Course.objects.all(), source="course", write_only=True
     )
     remaining_spots = serializers.SerializerMethodField()
+    session_name = serializers.SerializerMethodField()
 
     class Meta:
         model = Sessions
@@ -71,15 +82,20 @@ class SessionsSerializer(serializers.ModelSerializer):
             "location_name",
             "no_of_students",
             "remaining_spots",
-            "batch",
             "start_time",
             "end_time",
             "days_of_week",
             "status",
             "course",
             "course_id",
+            "session_name", 
+            "created_at"
         ]
 
+    def get_session_name(self, obj):
+        # Build the custom session name
+        return f"{obj.location}-{obj.course}-{obj.no_of_students}-({obj.start_time}-{obj.end_time})"
+        
     def get_remaining_spots(self, obj):
         assigned_students = StudentSession.objects.filter(session=obj).count()
         remaining_spots = obj.no_of_students - assigned_students
@@ -91,16 +107,12 @@ class SessionsSerializer(serializers.ModelSerializer):
         return remaining_spots
 
     def validate(self, data):
-        """
-        Ensure that no new students can be assigned if the session is full.
-        """
         session = self.instance
 
         if session:
             assigned_students = StudentSession.objects.filter(session=session).count()
             remaining_spots = session.no_of_students - assigned_students
 
-            # If the remaining spots are zero, throw an error
             if remaining_spots <= 0:
                 raise serializers.ValidationError(
                     "The session is already full. No more students can be assigned."
@@ -109,18 +121,12 @@ class SessionsSerializer(serializers.ModelSerializer):
         return data
 
     def update(self, instance, validated_data):
-        """
-        Update the session and ensure that no_of_students field is properly managed.
-        """
-        # Count currently assigned students
+
         assigned_students = StudentSession.objects.filter(session=instance).count()
-
-        # Update remaining spots by deducting the assigned students
         instance.no_of_students = instance.no_of_students - assigned_students
-
-        # Save the updated instance
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
         instance.save()
-
         return instance
 
 

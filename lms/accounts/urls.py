@@ -9,7 +9,7 @@ from .views.location_views import (
     CityViewSet,
     BatchViewSet,
     LocationViewSet,
-    SessionsViewSet,
+    SessionsAPIView,
     CreateBatchLocationSessionView,
     AssignSessionsView,
     FilterBatchByCityView,
@@ -20,7 +20,7 @@ from .views.location_views import (
     SessionCalendarAPIView
 
 )
-from .views.attendance_views import AttendanceDetailView,AttendanceFilterViewSet,AttendanceListCreateView,UserAttendanceListView
+from .views.attendance_views import *
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 
@@ -106,18 +106,9 @@ urlpatterns = [
         ),
         name="location-detail",
     ),
-    path(
-        "session/",
-        SessionsViewSet.as_view({"get": "list", "post": "create"}),
-        name="session-list-create",
-    ),
-    path(
-        "session/<int:pk>/",
-        SessionsViewSet.as_view(
-            {"get": "retrieve", "put": "update", "delete": "destroy"}
-        ),
-        name="session-detail",
-    ),
+    path('session/', SessionsAPIView.as_view(), name='sessions_list_create'),
+    path('session/<int:pk>/', SessionsAPIView.as_view(), name='session_detail_update'),
+    
     path('sessions/calendar/<int:user_id>/', SessionCalendarAPIView.as_view(), name='session-list-calendar'),
     path(
         "filter-batches-by-city/",
@@ -241,9 +232,8 @@ urlpatterns = [
     path('instructor-sessions/', user_views.InstructorSessionsView.as_view(), name='instructor-sessions'),
     path('user-process/<int:filteration_id>/', user_views.ApplicationUserView.as_view(), name='application-user'),
     path('user-details/<int:user_id>/', user_views.UserDetailsView.as_view(), name='user-details'),
-    # path(
-    #     "student/<int:course_id>/<int:instructor_id>/",
-    #     user_views.ListStudentsByCourseAndInstructor.as_view(),
-    #     name="list_students_by_course_and_instructor"),
-
+    path("student/<int:course_id>/<int:instructor_id>/<int:session_id>/",
+        user_views.ListStudentsByCourseAndInstructor.as_view(),
+        name="list_students_by_course_and_instructor"),
+    path('sessions/<int:session_id>/students/', SessionsAPIViewAttendance.as_view(), name='session-students'),
 ]

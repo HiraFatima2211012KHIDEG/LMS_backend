@@ -104,7 +104,7 @@ class Sessions(models.Model):
     """Location-based sessions."""
     location = models.ForeignKey(Location, on_delete=models.CASCADE)
     no_of_students = models.IntegerField()
-    batch = models.ForeignKey(Batch, on_delete=models.CASCADE)
+    # batch = models.ForeignKey(Batch, on_delete=models.CASCADE)
     course = models.ForeignKey("course.Course", on_delete=models.CASCADE, null=True)
     start_time = models.TimeField(null=True, blank=True)
     end_time = models.TimeField(null=True, blank=True)
@@ -114,10 +114,10 @@ class Sessions(models.Model):
     updated_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
 
     class Meta:
-        unique_together = ("location", "course", "start_time", "end_time")
+        unique_together = ("location", "start_time", "end_time", "course")
 
     def __str__(self):
-        return f"{self.batch}-{self.location}-{self.no_of_students}-{self.course}-{self.start_time}-{self.end_time}"
+        return f"{self.location}-{self.course}-{self.no_of_students}-{self.start_time}-{self.end_time}"
 
 
 # class Batch(models.Model):

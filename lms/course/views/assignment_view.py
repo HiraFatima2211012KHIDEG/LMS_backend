@@ -406,26 +406,22 @@ class AssignmentsByCourseIDAPIView(CustomResponseMixin, APIView):
             status.HTTP_200_OK, "Assignments retrieved successfully", assignments_data
         )
 
-
 class AssignmentStudentListView(CustomResponseMixin, APIView):
-    def get(self, request, assignment_id, course_id, *args, **kwargs):
+    def get(self, request, assignment_id, course_id, session_id, *args, **kwargs):
         try:
             assignment = Assignment.objects.get(id=assignment_id, course__id=course_id)
         except Assignment.DoesNotExist:
             return Response({"detail": "Assignment not found for the course."}, status=status.HTTP_404_NOT_FOUND)
 
-     
-        # Retrieve the session associated with the course
-        sessions = Sessions.objects.filter(course__id=course_id)
-        if not sessions:
+        # Retrieve the specific session associated with the course and session_id
+        try:
+            session = Sessions.objects.get(id=session_id, course__id=course_id)
+        except Sessions.DoesNotExist:
             return Response(
-                {"detail": "Session not found for the course."}, 
+                {"detail": "Session not found for the course."},
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        # Assuming you want to work with the first session in the list
-        session = sessions.first()
-        
         # Filter students who are enrolled in this session
         enrolled_students = Student.objects.filter(
             studentsession__session=session
@@ -435,7 +431,6 @@ class AssignmentStudentListView(CustomResponseMixin, APIView):
 
         for student in enrolled_students:
             user = student.user
-         
             # Check if the student has submitted the assignment
             try:
                 submission = AssignmentSubmission.objects.get(assignment=assignment, user=user)
@@ -443,26 +438,16 @@ class AssignmentStudentListView(CustomResponseMixin, APIView):
                 submission = None
 
             if submission:
-                if submission.status == 1:  # Submitted
-                    submission_status = "Submitted"
-                else:
-                    submission_status = "Pending" 
+                submission_status = "Submitted" if submission.status == 1 else "Pending"
             else:
-                if timezone.now() > assignment.due_date:
-                    submission_status = "Not Submitted" 
-                else:
-                    submission_status = "Pending"  
+                submission_status = "Not Submitted" if timezone.now() > assignment.due_date else "Pending"
 
             student_data = {
-                'assignment':assignment.id,
+                'assignment': assignment.id,
                 'student_name': f"{user.first_name} {user.last_name}",
                 'registration_id': student.registration_id,
                 'submission_id': submission.id if submission else None,
-                'submitted_file': (
-                    submission.submitted_file.url
-                    if submission and submission.submitted_file
-                    else None
-                ),
+                'submitted_file': submission.submitted_file.url if submission and submission.submitted_file else None,
                 'submitted_at': submission.submitted_at if submission else None,
                 'status': submission_status,
                 'grade': 0,
@@ -473,10 +458,6 @@ class AssignmentStudentListView(CustomResponseMixin, APIView):
                 if grading:
                     student_data['grade'] = grading.grade
                     student_data['remarks'] = grading.feedback
-                   
-                else:
-                    student_data['grade'] = 0
-                    student_data['remarks'] = None
 
             student_list.append(student_data)
 
@@ -489,7 +470,91 @@ class AssignmentStudentListView(CustomResponseMixin, APIView):
 
         return self.custom_response(
             status.HTTP_200_OK, "Students retrieved successfully", response_data
-        )        
+        )
+
+# class AssignmentStudentListView(CustomResponseMixin, APIView):
+#     def get(self, request, assignment_id, course_id, *args, **kwargs):
+#         try:
+#             assignment = Assignment.objects.get(id=assignment_id, course__id=course_id)
+#         except Assignment.DoesNotExist:
+#             return Response({"detail": "Assignment not found for the course."}, status=status.HTTP_404_NOT_FOUND)
+
+     
+#         # Retrieve the session associated with the course
+#         sessions = Sessions.objects.filter(course__id=course_id)
+#         if not sessions:
+#             return Response(
+#                 {"detail": "Session not found for the course."}, 
+#                 status=status.HTTP_404_NOT_FOUND
+#             )
+
+#         # Assuming you want to work with the first session in the list
+#         session = sessions.first()
+#         print(session)
+#         # Filter students who are enrolled in this session
+#         enrolled_students = Student.objects.filter(
+#             studentsession__session=session
+#         )
+#         student_list = []
+#         total_grade = assignment.total_grade 
+
+#         for student in enrolled_students:
+#             user = student.user
+#             print(user)
+#             # Check if the student has submitted the assignment
+#             try:
+#                 submission = AssignmentSubmission.objects.get(assignment=assignment, user=user)
+#             except AssignmentSubmission.DoesNotExist:
+#                 submission = None
+
+#             if submission:
+#                 if submission.status == 1:  # Submitted
+#                     submission_status = "Submitted"
+#                 else:
+#                     submission_status = "Pending" 
+#             else:
+#                 if timezone.now() > assignment.due_date:
+#                     submission_status = "Not Submitted" 
+#                 else:
+#                     submission_status = "Pending"  
+
+#             student_data = {
+#                 'assignment':assignment.id,
+#                 'student_name': f"{user.first_name} {user.last_name}",
+#                 'registration_id': student.registration_id,
+#                 'submission_id': submission.id if submission else None,
+#                 'submitted_file': (
+#                     submission.submitted_file.url
+#                     if submission and submission.submitted_file
+#                     else None
+#                 ),
+#                 'submitted_at': submission.submitted_at if submission else None,
+#                 'status': submission_status,
+#                 'grade': 0,
+#                 'remarks': None
+#             }
+#             if submission:
+#                 grading = Grading.objects.filter(submission=submission).first()
+#                 if grading:
+#                     student_data['grade'] = grading.grade
+#                     student_data['remarks'] = grading.feedback
+                   
+#                 else:
+#                     student_data['grade'] = 0
+#                     student_data['remarks'] = None
+
+#             student_list.append(student_data)
+
+#         # Prepare the response data including the due date and total_grade
+#         response_data = {
+#             'due_date': assignment.due_date,
+#             'total_grade': total_grade,
+#             'students': student_list
+#         }
+
+#         return self.custom_response(
+#             status.HTTP_200_OK, "Students retrieved successfully", response_data
+#         )        
     
 class StudentsWhoSubmittedAssignmentAPIView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)

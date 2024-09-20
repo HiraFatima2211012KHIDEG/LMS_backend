@@ -223,7 +223,6 @@ class GradingSerializer(serializers.ModelSerializer):
             "id",
             "submission",
             "grade",
-           
             "feedback",
             "graded_by",
             "graded_at",

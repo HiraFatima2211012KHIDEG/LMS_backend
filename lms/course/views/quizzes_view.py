@@ -340,15 +340,15 @@ class QuizStudentListView(CustomResponseMixin, APIView):
 
         # Retrieve the session associated with the course
         sessions = Sessions.objects.filter(course__id=course_id)
-   
+        print(sessions)
    
         session = sessions.first()
-                
+        print(session)  
         # Filter students who are enrolled in this session
         enrolled_students = Student.objects.filter(
             studentsession__session=session
         )
-
+        print(enrolled_students)  
         student_list = []
         total_grade = quiz.total_grade 
 

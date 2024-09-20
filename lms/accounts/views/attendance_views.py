@@ -2,11 +2,17 @@ from rest_framework import generics, filters, viewsets
 from rest_framework.response import Response
 from rest_framework import status
 from ..models.attendance_models import Attendance
-from ..serializers.attendance_serializers import AttendanceSerializer
+
 from .location_views import BaseLocationViewSet
 from django_filters.rest_framework import DjangoFilterBackend
 from utils.custom import CustomResponseMixin
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
+from ..models.location_models import Sessions
+from ..models.user_models import StudentSession
+from rest_framework.views import APIView
+from ..serializers.attendance_serializers import AttendanceSerializer,StudentDetailAttendanceSerializer
+
+
 
 class AttendanceListCreateView(BaseLocationViewSet):
     queryset = Attendance.objects.all()
@@ -144,3 +150,24 @@ class AttendanceFilterViewSet(CustomResponseMixin, viewsets.ModelViewSet):
         return self.custom_response(
             status.HTTP_200_OK, "Filtered attendance records fetched successfully", response.data
         )
+    
+class SessionsAPIViewAttendance(APIView):
+    def get(self, request, session_id):
+        try:
+            # Fetch the session to ensure it exists
+            session = Sessions.objects.get(id=session_id)
+            # Get all students linked to this session via StudentSession
+            student_sessions = StudentSession.objects.filter(session=session)
+            # Serialize the student session data
+            serializer = StudentDetailAttendanceSerializer(student_sessions, many=True)
+            return Response({
+                "status_code": status.HTTP_200_OK,
+                "message": "Students fetched successfully.",
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+        except Sessions.DoesNotExist:
+            return Response({
+                "status_code": status.HTTP_404_NOT_FOUND,
+                "message": f"Session with ID {session_id} not found.",
+                "data": None
+            }, status=status.HTTP_404_NOT_FOUND)

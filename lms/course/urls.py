@@ -33,10 +33,16 @@ urlpatterns = [
     path('assignments_grading/', AssignmentGradingListCreateAPIView.as_view(), name='grade-assignment'),
     path('assignments_grading/<int:pk>/', AssignmentGradingDetailAPIView.as_view(), name='grading-detail'),
     path('assignments/course/<int:course_id>/', AssignmentsByCourseIDAPIView.as_view(), name='assignments-by-course-id'),
-    path('courses/<int:course_id>/assignments/<int:assignment_id>/students/', AssignmentStudentListView.as_view(), name='assignment-student-list'),
+    # path('courses/<int:course_id>/assignments/<int:assignment_id>/students/', AssignmentStudentListView.as_view(), name='assignment-student-list'),
+    path(
+        'assignments/<int:assignment_id>/courses/<int:course_id>/sessions/<int:session_id>/students/',
+        AssignmentStudentListView.as_view(),
+        name='assignment-student-list'
+    ),
 
-    path('assignments/<int:course_id>/course/<str:registration_id>/total_score/', StudentScoresSummaryAPIView.as_view(), name='users-score-assignment'),
-    path('programs/<int:program_id>/students/<str:registration_id>/pending-assignments/', UnifiedPendingItemsView.as_view(), name='pending-assignments'),
+
+    # path('assignments/<int:course_id>/course/<str:registration_id>/total_score/', StudentScoresSummaryAPIView.as_view(), name='users-score-assignment'),
+    # path('programs/<int:program_id>/students/<str:registration_id>/pending-assignments/', UnifiedPendingItemsView.as_view(), name='pending-assignments'),
     path('assignments/<int:course_id>/student/<str:registration_id>/', AssignmentDetailView.as_view(), name='assignment-detail'),
 
     # path('assignments/<str:registration_id>/submissions/', StudentsWhoSubmittedAssignmentAPIView.as_view(), name='users-who-submitted-assignment'),

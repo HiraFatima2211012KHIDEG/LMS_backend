@@ -642,10 +642,16 @@ class VerifyEmailandSetPasswordView(views.APIView, CustomResponseMixin):
                         serializer.errors,
                     )
 
+                # Include the email in the response
+                response_data = serializer.data
+                response_data['email'] = user.email
+
                 return self.custom_response(
                     status.HTTP_200_OK,
                     "Email verified and user created successfully.",
-                    serializer.data,
+                    # serializer.data,
+                    response_data
+                    
                 )
 
         except SignatureExpired:

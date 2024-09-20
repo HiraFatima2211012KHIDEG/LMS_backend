@@ -1,4 +1,4 @@
-from rest_framework import viewsets, mixins, status, generics, permissions
+from rest_framework import viewsets, mixins, status, generics, permissions, serializers
 from rest_framework.response import Response
 from ..models.location_models import (
     City,
@@ -24,6 +24,7 @@ from django.db.models import Sum
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
 from django.core.exceptions import ValidationError
+from rest_framework.views import APIView
 
 class CityViewSet(BaseLocationViewSet):
     queryset = City.objects.all()
@@ -46,93 +47,179 @@ class LocationViewSet(BaseLocationViewSet):
 
 
 
-class SessionsViewSet(viewsets.ModelViewSet):
-    queryset = Sessions.objects.all()
-    serializer_class = SessionsSerializer
+# class SessionsViewSet(viewsets.ModelViewSet):
+#     queryset = Sessions.objects.all()
+#     serializer_class = SessionsSerializer
 
-    def perform_create(self, serializer):
-        # Check if this is a bulk creation
-        if isinstance(serializer.validated_data, list):
-            for session_data in serializer.validated_data:
-                self.validate_session(session_data)
-            serializer.save()  # Save all sessions
+#     def perform_create(self, serializer):
+#         # Check if this is a bulk creation
+#         if isinstance(serializer.validated_data, list):
+#             for session_data in serializer.validated_data:
+#                 self.validate_session(session_data)
+#             serializer.save()  # Save all sessions
+#         else:
+#             self.validate_session(serializer.validated_data)
+#             serializer.save()  # Save single session
+
+#     def perform_update(self, serializer):
+#         validated_data = serializer.validated_data
+#         print("Validated Data: ", validated_data)  # Debugging: Check the data being updated
+
+#         self.validate_session(serializer.validated_data)
+#         serializer.save()
+
+#     def validate_session(self, validated_data):
+#         # Query to check if a session with the same location, course, start_time, and end_time exists
+#         existing_sessions = Sessions.objects.filter(
+#             location=validated_data.get("location"),
+#             course=validated_data.get("course"),
+#             start_time=validated_data.get("start_time"),
+#             end_time=validated_data.get("end_time")
+#         )
+
+#         # If this is an update, exclude the current session from the query
+#         if 'id' in validated_data:
+#             existing_sessions = existing_sessions.exclude(id=validated_data.get('id'))
+
+#         if existing_sessions.exists():
+#             raise serializers.ValidationError(
+#                 "A session with the same location, course, start time, and end time already exists."
+#             )
+
+#     def create(self, request, *args, **kwargs):
+#         data = request.data
+
+#         # Check if the request contains a list
+#         if isinstance(data, list):
+#             # Handle bulk creation of sessions
+#             serializer = self.get_serializer(data=data, many=True)
+#             serializer.is_valid(raise_exception=True)
+#             self.perform_create(serializer)
+#             headers = self.get_success_headers(serializer.data)
+#             return Response(
+#                 {"status_code": status.HTTP_201_CREATED, "message": "Sessions created successfully.", "data": serializer.data},
+#                 status=status.HTTP_201_CREATED,
+#                 headers=headers
+#             )
+#         else:
+#             # Handle a single session creation
+#             serializer = self.get_serializer(data=data)
+#             try:
+#                 serializer.is_valid(raise_exception=True)
+#                 self.perform_create(serializer)
+#             except serializers.ValidationError as e:
+#                 return Response(
+#                     {"status_code": status.HTTP_400_BAD_REQUEST, "message": str(e), "data": None},
+#                     status=status.HTTP_400_BAD_REQUEST
+#                 )
+#             headers = self.get_success_headers(serializer.data)
+#             return Response(
+#                 {"status_code": status.HTTP_201_CREATED, "message": "Session created successfully.", "data": serializer.data},
+#                 status=status.HTTP_201_CREATED,
+#                 headers=headers
+#             )
+
+#     def update(self, request, *args, **kwargs):
+#         partial = kwargs.pop('partial', False)
+#         instance = self.get_object()
+#         print("Request Data: ", request.data)  # Log request data for debugging
+#         serializer = self.get_serializer(instance, data=request.data, partial=partial)
+#         try:
+#             serializer.is_valid(raise_exception=True)
+#             print("Validated Data: ", serializer.validated_data)  # Log validated data for debugging
+#             self.perform_update(serializer)
+#         except serializers.ValidationError as e:
+#             print("Validation Error: ", e)  # Log validation errors
+#             return Response(
+#                 {"status_code": status.HTTP_400_BAD_REQUEST, "message": str(e), "data": None},
+#                 status=status.HTTP_400_BAD_REQUEST
+#             )
+#         headers = self.get_success_headers(serializer.data)
+#         return Response(
+#             {"status_code": status.HTTP_200_OK, "message": "Session updated successfully.", "data": serializer.data},
+#             status=status.HTTP_200_OK,
+#             headers=headers
+#         )
+
+
+class SessionsAPIView(APIView):
+    ermission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
+
+    def get(self, request, *args, **kwargs):
+        # Check if we're fetching a single session by id or all sessions
+        session_id = kwargs.get('pk', None)
+
+        if session_id:
+            # Fetch a single session by id
+            session = get_object_or_404(Sessions, id=session_id)
+            serializer = SessionsSerializer(session)
+            return Response(
+                {"status_code": status.HTTP_200_OK, "message": "Session fetched successfully.", "data": serializer.data},
+                status=status.HTTP_200_OK
+            )
         else:
-            self.validate_session(serializer.validated_data)
-            serializer.save()  # Save single session
-
-    def perform_update(self, serializer):
-        self.validate_session(serializer.validated_data)
-        serializer.save()
-
-    def validate_session(self, validated_data):
-        # Query to check if a session with the same location, course, start_time, and end_time exists
-        existing_sessions = Sessions.objects.filter(
-            location=validated_data.get("location"),
-            course=validated_data.get("course"),
-            start_time=validated_data.get("start_time"),
-            end_time=validated_data.get("end_time")
-        )
-
-        # If this is an update, exclude the current session from the query
-        if 'id' in validated_data:
-            existing_sessions = existing_sessions.exclude(id=validated_data.get('id'))
-
-        if existing_sessions.exists():
-            raise serializers.ValidationError(
-                "A session with the same location, course, start time, and end time already exists."
+            # Fetch all sessions
+            queryset = Sessions.objects.all()
+            serializer = SessionsSerializer(queryset, many=True)
+            return Response(
+                {"status_code": status.HTTP_200_OK, "message": "Sessions fetched successfully.", "data": serializer.data},
+                status=status.HTTP_200_OK
             )
 
-    def create(self, request, *args, **kwargs):
+    def post(self, request, *args, **kwargs):
         data = request.data
 
-        # Check if the request contains a list
         if isinstance(data, list):
-            # Handle bulk creation of sessions
-            serializer = self.get_serializer(data=data, many=True)
+            # Handle bulk session creation
+            serializer = SessionsSerializer(data=data, many=True)
             serializer.is_valid(raise_exception=True)
             self.perform_create(serializer)
-            headers = self.get_success_headers(serializer.data)
             return Response(
                 {"status_code": status.HTTP_201_CREATED, "message": "Sessions created successfully.", "data": serializer.data},
-                status=status.HTTP_201_CREATED,
-                headers=headers
+                status=status.HTTP_201_CREATED
             )
         else:
-            # Handle a single session creation
-            serializer = self.get_serializer(data=data)
+            # Handle single session creation
+            serializer = SessionsSerializer(data=data)
             try:
                 serializer.is_valid(raise_exception=True)
                 self.perform_create(serializer)
-            except serializers.ValidationError as e:
+            except ValidationError as e:
                 return Response(
                     {"status_code": status.HTTP_400_BAD_REQUEST, "message": str(e), "data": None},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            headers = self.get_success_headers(serializer.data)
             return Response(
                 {"status_code": status.HTTP_201_CREATED, "message": "Session created successfully.", "data": serializer.data},
-                status=status.HTTP_201_CREATED,
-                headers=headers
+                status=status.HTTP_201_CREATED
             )
 
-    def update(self, request, *args, **kwargs):
-        partial = kwargs.pop('partial', False)
-        instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+    def put(self, request, *args, **kwargs):
+        session_id = kwargs.get('pk', None)
+        instance = get_object_or_404(Sessions, id=session_id)
+        serializer = SessionsSerializer(instance, data=request.data, partial=True)
+
         try:
             serializer.is_valid(raise_exception=True)
             self.perform_update(serializer)
-        except serializers.ValidationError as e:
+
+        except ValidationError as e:
             return Response(
                 {"status_code": status.HTTP_400_BAD_REQUEST, "message": str(e), "data": None},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        headers = self.get_success_headers(serializer.data)
+
         return Response(
             {"status_code": status.HTTP_200_OK, "message": "Session updated successfully.", "data": serializer.data},
-            status=status.HTTP_200_OK,
-            headers=headers
+            status=status.HTTP_200_OK
         )
+
+
+    def perform_create(self, serializer):
+        serializer.save()
+
+    def perform_update(self, serializer):
+        serializer.save()
 
 
 class CreateBatchLocationSessionView(views.APIView):

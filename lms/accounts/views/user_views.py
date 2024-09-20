@@ -14,6 +14,7 @@ from ..serializers.user_serializers import (
 
 )
 from ..models.user_models import Student
+# from ..models.location_models import Ses
 from django_filters.rest_framework import DjangoFilterBackend
 import constants
 from utils.custom import CustomResponseMixin, custom_extend_schema
@@ -1169,7 +1170,6 @@ class PreferredSessionView(views.APIView, CustomResponseMixin):
                         f"Invalid day of week: {day_int}.",
                         None,
                     )
-
                 day_name = WEEKDAYS[day_int][0]  # Get full weekday name
                 if day_name not in date_time_slots:
                     date_time_slots[day_name] = []
@@ -1266,13 +1266,6 @@ class UserSessionsView(views.APIView, CustomResponseMixin):
             # Fetch all sessions assigned to this instructor
             user_sessions = InstructorSession.objects.filter(instructor=instructor)
 
-        else:
-            return self.custom_response(
-                status.HTTP_400_BAD_REQUEST,
-                "Invalid group_name provided. Use 'student' or 'instructor'.",
-                None,
-            )
-
         if not user_sessions.exists():
             return self.custom_response(
                 status.HTTP_404_NOT_FOUND,
@@ -1282,15 +1275,18 @@ class UserSessionsView(views.APIView, CustomResponseMixin):
 
         # Serialize the session data with all relevant fields
         session_data = []
-        for session in user_sessions:
-            session_details = session.session  # Access the related session object
+        for user_session in user_sessions:
+            session = user_session.session  # Access the related session object
             session_info = {
-                "session_id": session_details.id,
-                "status": session.status,
-                # "start_date": session.start_date,
-                # "end_date": session.end_date,
-                # "batch": session.session.batch.name if session.session.batch else None,
-                "course": session.session.course.name if session.session.course else None
+                "session_id": session.id,
+                "status": user_session.status,  # Session-specific status
+                "start_time": session.start_time.strftime("%H:%M:%S") if session.start_time else None,
+                "end_time": session.end_time.strftime("%H:%M:%S") if session.end_time else None,
+                "no_of_student":session.no_of_students,
+                # "session_name":session.session_name,
+                "course": session.course.name if session.course else None,
+                "location": session.location.name if session.location else None,
+                "days_of_week": session.days_of_week,
             }
             session_data.append(session_info)
 
@@ -1821,53 +1817,56 @@ class UserDetailsView(views.APIView, CustomResponseMixin):
             )
 
 
-# class ListStudentsByCourseAndInstructor(views.APIView):
-#     def get(self, request, course_id, instructor_id):
-#         # Retrieve the course
-#         course = get_object_or_404(Course, id=course_id)
-#         # Retrieve the instructor separately
-#         instructor = get_object_or_404(Instructor, id=instructor_id)
-#         # Check if the instructor is associated with the course
-#         if not course.instructors.filter(id=instructor_id).exists():
-#             return Response(
-#                 {"detail": "Instructor is not associated with the given course."},
-#                 status=status.HTTP_400_BAD_REQUEST,
-#             )
-#         # Get the session(s) assigned to the instructor
-#         instructor_sessions = InstructorSession.objects.filter(
-#             instructor=instructor
-#         ).values_list("session", flat=True)
-#         if not instructor_sessions:
-#             return Response(
-#                 {"message": "No sessions found for this instructor."},
-#                 status=status.HTTP_404_NOT_FOUND,
-#             )
-#         # Retrieve the program(s) associated with the course
-#         programs_with_course = Program.objects.filter(courses=course)
-#         # Filter students who are associated with the program and match the instructor's session(s)
-#         matching_students = Student.objects.filter(
-#             program__in=programs_with_course,
-#             studentsession__session__in=instructor_sessions,
-#         ).distinct()
-#         if not matching_students.exists():
-#             return Response(
-#                 {"message": "No students found for this course and session."},
-#                 status=status.HTTP_404_NOT_FOUND,
-#             )
-#         # Prepare response data
-#         student_data = [
-#             {
-#                 "student_id": student.registration_id,
-#                 "student_name": f"{student.user.first_name} {student.user.last_name}",
-#                 # "session_id": student.studentsession.session.id,
-#             }
-#             for student in matching_students
-#         ]
-#         return Response(
-#             {
-#                 "course": course.name,
-#                 "instructor": f"{instructor.id.first_name} {instructor.id.last_name}",
-#                 "matching_students": student_data,
-#             },
-#             status=status.HTTP_200_OK,
-#         )
+class ListStudentsByCourseAndInstructor(views.APIView):
+    def get(self, request, course_id, instructor_id, session_id):
+        # Retrieve the course
+        course = get_object_or_404(Course, id=course_id)
+        # Retrieve the instructor separately
+        instructor = get_object_or_404(Instructor, id=instructor_id)
+        # Check if the instructor is associated with the course
+        if not course.instructors.filter(id=instructor_id).exists():
+            return Response(
+                {"detail": "Instructor is not associated with the given course."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        # Retrieve the session from the URL parameter
+        session = get_object_or_404(Sessions, id=session_id)
+        # Ensure the session is associated with the instructor for the given course
+        instructor_session = InstructorSession.objects.filter(
+            instructor=instructor, course=course, session=session
+        ).first()
+        if not instructor_session:
+            return Response(
+                {"message": "Instructor is not associated with the given session and course."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        # Retrieve the program(s) associated with the course
+        programs_with_course = Program.objects.filter(courses=course)
+        # Filter students who are associated with the program and match the session
+        matching_students = Student.objects.filter(
+            program__in=programs_with_course,
+            studentsession__session=session,  # Match session from request parameter
+        ).distinct()
+        if not matching_students.exists():
+            return Response(
+                {"message": "No students found for this course and session."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        # Prepare response data
+        student_data = [
+            {
+                "student_id": student.registration_id,
+                "student_name": f"{student.user.first_name} {student.user.last_name}",
+                "session_id": session.id,  # Include session_id in response
+            }
+            for student in matching_students
+        ]
+        return Response(
+            {
+                "course": course.name,
+                "instructor": f"{instructor.user.first_name} {instructor.user.last_name}",
+                "session_id": session.id,  # Include session_id in response
+                "matching_students": student_data,
+            },
+            status=status.HTTP_200_OK,
+        )
