@@ -256,24 +256,105 @@ class ExamsByCourseIDAPIView(CustomResponseMixin, APIView):
         return self.custom_response(status.HTTP_200_OK, 'Exams retrieved successfully', exams_data)
 
 
+# class ExamStudentListView(CustomResponseMixin, APIView):
+#     def get(self, request, exam_id,course_id, *args, **kwargs):
+#         try:
+#             exam = Exam.objects.get(id=exam_id, course__id=course_id)
+#         except Exam.DoesNotExist:
+#             return Response({"detail": "Exam not found for the course."}, status=status.HTTP_404_NOT_FOUND)
+
+#         sessions = Sessions.objects.filter(course__id=course_id)
+   
+   
+#         session = sessions.first()        
+#         # Filter students who are enrolled in this session
+#         enrolled_students = Student.objects.filter(
+#             studentsession__session=session
+#         )
+
+#         student_list = []
+#         total_grade = exam.total_grade 
+#         for student in enrolled_students:
+#             user = student.user
+#             try:
+#                 submission = ExamSubmission.objects.get(exam=exam, user=user)
+#             except ExamSubmission.DoesNotExist:
+#                 submission = None
+
+#             if submission:
+#                 if submission.status == 1:  
+#                     submission_status = "Submitted"
+#                 else:
+#                     submission_status = "Pending"  
+#             else:
+#                 if timezone.now() > exam.due_date:
+#                     submission_status = "Not Submitted" 
+#                 else:
+#                     submission_status = "Pending"  
+
+#             student_data = {
+#                 'exam':exam.id,
+#                 'student_name': f"{user.first_name} {user.last_name}",
+#                 'registration_id': student.registration_id,
+#                 'submission_id': submission.id if submission else None,
+#                 'submitted_file': submission.exam_submitted_file.url if submission and submission.exam_submitted_file else None,
+#                 'submitted_at': submission.exam_submitted_at if submission else None,
+#                 'status': submission_status,
+#                 'grade': 0,
+#                 'remarks': None
+#             }
+
+#             if submission:
+#                 grading = ExamGrading.objects.filter(exam_submission=submission).first()
+#                 if grading:
+#                     student_data['grade'] = grading.grade
+#                     student_data['remarks'] = grading.feedback
+                     
+#                 else:
+#                     student_data['grade'] = 0
+#                     student_data['remarks'] = None
+
+#             student_list.append(student_data)
+
+#         response_data = {
+#             'due_date': exam.due_date,
+#             'total_grade': total_grade,
+#             'students': student_list
+#         }
+
+#         return self.custom_response(
+#             status.HTTP_200_OK, "Students retrieved successfully", response_data
+#         )
+
+
 class ExamStudentListView(CustomResponseMixin, APIView):
-    def get(self, request, exam_id,course_id, *args, **kwargs):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request, exam_id, course_id, session_id, *args, **kwargs):
         try:
+            # Retrieve the exam based on exam ID and course ID
             exam = Exam.objects.get(id=exam_id, course__id=course_id)
         except Exam.DoesNotExist:
             return Response({"detail": "Exam not found for the course."}, status=status.HTTP_404_NOT_FOUND)
 
-        sessions = Sessions.objects.filter(course__id=course_id)
-   
-   
-        session = sessions.first()        
+        # Retrieve the specific session using the session_id
+        try:
+            session = Sessions.objects.get(id=session_id, course__id=course_id)
+        except Sessions.DoesNotExist:
+            return Response(
+                {"detail": "Session not found for the course."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
         # Filter students who are enrolled in this session
         enrolled_students = Student.objects.filter(
             studentsession__session=session
         )
 
         student_list = []
-        total_grade = exam.total_grade 
+        total_grade = exam.total_grade
+
+        # Process each student's exam submission
         for student in enrolled_students:
             user = student.user
             try:
@@ -282,18 +363,15 @@ class ExamStudentListView(CustomResponseMixin, APIView):
                 submission = None
 
             if submission:
-                if submission.status == 1:  
-                    submission_status = "Submitted"
-                else:
-                    submission_status = "Pending"  
+                submission_status = "Submitted" if submission.status == 1 else "Pending"
             else:
-                if timezone.now() > exam.due_date:
-                    submission_status = "Not Submitted" 
-                else:
-                    submission_status = "Pending"  
+                submission_status = (
+                    "Not Submitted" if timezone.now() > exam.due_date else "Pending"
+                )
 
+            # Collect student data
             student_data = {
-                'exam':exam.id,
+                'exam': exam.id,
                 'student_name': f"{user.first_name} {user.last_name}",
                 'registration_id': student.registration_id,
                 'submission_id': submission.id if submission else None,
@@ -309,13 +387,10 @@ class ExamStudentListView(CustomResponseMixin, APIView):
                 if grading:
                     student_data['grade'] = grading.grade
                     student_data['remarks'] = grading.feedback
-                     
-                else:
-                    student_data['grade'] = 0
-                    student_data['remarks'] = None
 
             student_list.append(student_data)
 
+        # Prepare response data
         response_data = {
             'due_date': exam.due_date,
             'total_grade': total_grade,
@@ -325,8 +400,6 @@ class ExamStudentListView(CustomResponseMixin, APIView):
         return self.custom_response(
             status.HTTP_200_OK, "Students retrieved successfully", response_data
         )
-
-
 
 
 class ExamDetailView(APIView):

@@ -143,10 +143,10 @@ class LocationViewSet(BaseLocationViewSet):
 
 
 class SessionsAPIView(APIView):
-    ermission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
+    permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
 
     def get(self, request, *args, **kwargs):
-        # Check if we're fetching a single session by id or all sessions
+        # Check if we're fetching a single session by id or filtered sessions
         session_id = kwargs.get('pk', None)
 
         if session_id:
@@ -158,12 +158,49 @@ class SessionsAPIView(APIView):
                 status=status.HTTP_200_OK
             )
         else:
-            # Fetch all sessions
+            # Filter sessions based on query parameters
             queryset = Sessions.objects.all()
+
+            # Filtering by 'course' if provided in the query parameters
+            course_id = request.query_params.get('course')
+            if course_id:
+                queryset = queryset.filter(course__id=course_id)
+
+            # Add other filters if necessary
+            # e.g., filter by date, location, etc.
+
             serializer = SessionsSerializer(queryset, many=True)
             return Response(
                 {"status_code": status.HTTP_200_OK, "message": "Sessions fetched successfully.", "data": serializer.data},
                 status=status.HTTP_200_OK
+            )
+
+    def post(self, request, *args, **kwargs):
+        data = request.data
+
+        if isinstance(data, list):
+            # Handle bulk session creation
+            serializer = SessionsSerializer(data=data, many=True)
+            serializer.is_valid(raise_exception=True)
+            self.perform_create(serializer)
+            return Response(
+                {"status_code": status.HTTP_201_CREATED, "message": "Sessions created successfully.", "data": serializer.data},
+                status=status.HTTP_201_CREATED
+            )
+        else:
+            # Handle single session creation
+            serializer = SessionsSerializer(data=data)
+            try:
+                serializer.is_valid(raise_exception=True)
+                self.perform_create(serializer)
+            except ValidationError as e:
+                return Response(
+                    {"status_code": status.HTTP_400_BAD_REQUEST, "message": str(e), "data": None},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            return Response(
+                {"status_code": status.HTTP_201_CREATED, "message": "Session created successfully.", "data": serializer.data},
+                status=status.HTTP_201_CREATED
             )
 
     def post(self, request, *args, **kwargs):

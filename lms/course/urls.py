@@ -55,8 +55,12 @@ urlpatterns = [
     path('quiz_grading/<int:pk>/', QuizGradingDetailAPIView.as_view(), name='quiz-grading-detail'),
     path('quizzes/<int:course_id>/student/<str:registration_id>/', QuizDetailView.as_view(), name='quiz-detail'),
     path('quizzes/course/<int:course_id>/', QuizzesByCourseIDAPIView.as_view(), name='quizzes-by-course-id'),
-    path('courses/<int:course_id>/quizzes/<int:quiz_id>/students/', QuizStudentListView.as_view(), name='quiz-student-list'),
-
+    # path('courses/<int:course_id>/quizzes/<int:quiz_id>/students/', QuizStudentListView.as_view(), name='quiz-student-list'),
+    path(
+        'quizzes/<int:quiz_id>/courses/<int:course_id>/sessions/<int:session_id>/students/',
+        QuizStudentListView.as_view(),
+        name='quiz-student-list'
+    ),
 
     path('projects/', ProjectListCreateAPIView.as_view(), name='project-list-create'),
     path('projects/<int:pk>/', ProjectDetailAPIView.as_view(), name='project-detail'),
@@ -66,7 +70,12 @@ urlpatterns = [
     path('project_gradings/<int:pk>/', ProjectGradingDetailAPIView.as_view(), name='project-grading-detail'),
     path('projects/course/<int:course_id>/', ProjectsByCourseIDAPIView.as_view(), name='projects-by-course-id'),
     path('projects/<int:course_id>/student/<str:registration_id>/', ProjectDetailView.as_view(), name='project-detail'),
-    path('courses/<int:course_id>/projects/<int:project_id>/students/', ProjectStudentListView.as_view(), name='project-student-list'),
+    # path('courses/<int:course_id>/projects/<int:project_id>/students/', ProjectStudentListView.as_view(), name='project-student-list'),
+    path(
+        'projects/<int:project_id>/courses/<int:course_id>/sessions/<int:session_id>/students/',
+        ProjectStudentListView.as_view(),
+        name='project-student-list'
+    ),
 
     path('exams/', ExamListCreateAPIView.as_view(), name='exam-list-create'),
     path('exams/<int:pk>/', ExamDetailAPIView.as_view(), name='exam-detail'),
@@ -76,8 +85,13 @@ urlpatterns = [
     path('exam_gradings/<int:pk>/', ExamGradingDetailAPIView.as_view(), name='exam-grading-detail'),
     path('exams/course/<int:course_id>/', ExamsByCourseIDAPIView.as_view(), name='exams-by-course-id'),
     path('exams/<int:course_id>/student/<str:registration_id>/', ExamDetailView.as_view(), name='exam-detail'),
-    path('courses/<int:course_id>/exams/<int:exam_id>/students/', ExamStudentListView.as_view(), name='exam-student-list'),
-
+    # path('courses/<int:course_id>/exams/<int:exam_id>/students/', ExamStudentListView.as_view(), name='exam-student-list'),
+    path(
+        'exams/<int:exam_id>/courses/<int:course_id>/sessions/<int:session_id>/students/',
+        ExamStudentListView.as_view(),
+        name='exam-student-list'
+    ),
+    
     path('courses/<int:course_id>/assignment-progress/', AssignmentProgressAPIView.as_view(), name='assignment-progress'),
     path('courses/<int:course_id>/quiz-progress/', QuizProgressAPIView.as_view(), name='quiz-progress'),
     path('course/<int:course_id>/course-progress/', CourseProgressAPIView.as_view(), name='course-progress'),

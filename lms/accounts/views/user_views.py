@@ -1636,24 +1636,24 @@ class ApplicationUserView(views.APIView, CustomResponseMixin):
                         None,
                     )
 
-                response_data["count"] = student_selection.count()
-
                 for selection in student_selection:
                     application = selection.application
 
+                    # Ensure both the application and user exist
                     try:
                         user = User.objects.get(email=application.email)
                     except User.DoesNotExist:
-                        return self.custom_response(
-                            status.HTTP_404_NOT_FOUND,
-                            f"User with email {application.email} does not exist.",
-                            None,
-                        )
+                        user = None
 
-                    response_data["data"].append({
-                        "application": ApplicationSerializer(application).data,
-                        "user": UserSerializer(user).data,
-                    })
+                    # Only add the data if both application and user are valid
+                    if user:
+                        response_data["data"].append({
+                            "application": ApplicationSerializer(application).data,
+                            "user": UserSerializer(user).data,
+                        })
+
+                # Update the count based on the filtered data
+                response_data["count"] = len(response_data["data"])
 
             elif group_name == "instructor":
                 instructor_selection = InstructorApplicationSelection.objects.filter(
@@ -1667,24 +1667,24 @@ class ApplicationUserView(views.APIView, CustomResponseMixin):
                         None,
                     )
 
-                response_data["count"] = instructor_selection.count()
-
                 for selection in instructor_selection:
                     application = selection.application
 
+                    # Ensure both the application and user exist
                     try:
                         user = User.objects.get(email=application.email)
                     except User.DoesNotExist:
-                        return self.custom_response(
-                            status.HTTP_404_NOT_FOUND,
-                            f"User with email {application.email} does not exist.",
-                            None,
-                        )
+                        user = None
 
-                    response_data["data"].append({
-                        "application": ApplicationSerializer(application).data,
-                        "user": UserSerializer(user).data,
-                    })
+                    # Only add the data if both application and user are valid
+                    if user:
+                        response_data["data"].append({
+                            "application": ApplicationSerializer(application).data,
+                            "user": UserSerializer(user).data,
+                        })
+
+                # Update the count based on the filtered data
+                response_data["count"] = len(response_data["data"])
 
             return self.custom_response(
                 status.HTTP_200_OK,

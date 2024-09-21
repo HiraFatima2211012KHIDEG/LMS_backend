@@ -21,9 +21,9 @@ class Attendance(models.Model):
         )
     marked_by = models.CharField(max_length=50, null=True)
 
-    class Meta:
-        unique_together = ("student", "date")
+    # class Meta:
+    #     unique_together = ("student", "date")
 
     def __str__(self):
-        return f"{self.student} - {self.date}"
+        return f"{self.student} - {self.course} - {self.date}"
 

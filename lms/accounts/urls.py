@@ -166,28 +166,28 @@ urlpatterns = [
         AssignSessionsView.as_view(),
         name="assign-sessions",
     ),
-    path(
-        "attendance/",
-        AttendanceListCreateView.as_view({"get": "list", "post": "create"}),
-        name="attendance-list-create",
-    ),
-    path(
-        "attendance/<int:pk>/",
-        AttendanceDetailView.as_view(
-            {"get": "retrieve", "put": "update", "delete": "destroy"}
-        ),
-        name="attendance-detail",
-    ),
-    path(
-        "attendance/course/<int:course_id>/user/<str:registration_id>/",
-        UserAttendanceListView.as_view(),
-        name="user-attendance-list",
-    ),
-    path(
-        "filter-attendance/",
-        AttendanceFilterViewSet.as_view({"get": "list"}),
-        name="filter-attendance",
-    ),
+    # path(
+    #     "attendance/",
+    #     AttendanceListCreateView.as_view({"get": "list", "post": "create"}),
+    #     name="attendance-list-create",
+    # ),
+    # path(
+    #     "attendance/<int:pk>/",
+    #     AttendanceDetailView.as_view(
+    #         {"get": "retrieve", "put": "update", "delete": "destroy"}
+    #     ),
+    #     name="attendance-detail",
+    # ),
+    # path(
+    #     "attendance/course/<int:course_id>/user/<str:registration_id>/",
+    #     UserAttendanceListView.as_view(),
+    #     name="user-attendance-list",
+    # ),
+    # path(
+    #     "filter-attendance/",
+    #     AttendanceFilterViewSet.as_view({"get": "list"}),
+    #     name="filter-attendance",
+    # ),
 
     path(
         "create-batch-location-session/",
@@ -236,4 +236,8 @@ urlpatterns = [
         user_views.ListStudentsByCourseAndInstructor.as_view(),
         name="list_students_by_course_and_instructor"),
     path('sessions/<int:session_id>/students/', SessionsAPIViewAttendance.as_view(), name='session-students'),
+    path('attendance/student/', StudentAttendanceListView.as_view(), name='student-attendance'),
+    path('attendance/instructor/<int:session_id>/<int:course_id>/', InstructorAttendanceView.as_view(), name='instructor-attendance'),
+    path('admin/attendance/<int:session_id>/', AdminAttendanceView.as_view(), name='admin-attendance'),
+
 ]

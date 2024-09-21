@@ -12,8 +12,8 @@ class City(models.Model):
     shortname = models.CharField(max_length=3)
     is_active = models.BooleanField(default=True)
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=1)
-    created_at = models.DateTimeField(auto_now=True, null=True, blank=True)
-    updated_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
 
     def __str__(self):
         return f"{self.city}"
@@ -30,8 +30,8 @@ class Batch(models.Model):
     start_date = models.DateField()
     end_date = models.DateField()
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=1)
-    created_at = models.DateTimeField(auto_now=True, null=True, blank=True)
-    updated_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
 
     TERM_CHOICES = [
         ("Fall", "Fall"),
@@ -82,8 +82,8 @@ class Location(models.Model):
     city = models.CharField(max_length=30, null=True)
     capacity = models.IntegerField()
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=1)
-    created_at = models.DateTimeField(auto_now=True, null=True, blank=True)
-    updated_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
 
     def __str__(self):
         return f"{self.name} - {self.shortname} - {self.city}"
@@ -110,8 +110,8 @@ class Sessions(models.Model):
     end_time = models.TimeField(null=True, blank=True)
     days_of_week = models.JSONField(default=list, blank=True)
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=1)
-    created_at = models.DateTimeField(auto_now=True, null=True, blank=True)
-    updated_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
 
     class Meta:
         unique_together = ("location", "start_time", "end_time", "course")
