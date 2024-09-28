@@ -39,6 +39,53 @@ class ProjectListCreateAPIView(CustomResponseMixin,APIView):
             return self.custom_response(status.HTTP_201_CREATED, 'Project created successfully', serializer.data)
         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error creating project', serializer.errors)
 
+
+
+    # @custom_extend_schema(ProjectSerializer)
+    # def post(self, request, format=None):
+    #     data = {key: value for key, value in request.data.items()}
+    #     data['created_by'] = request.user.id
+
+    #     file_content = request.FILES.get('content', None)
+    #     data['content'] = file_content if file_content else None
+
+    #     serializer = ProjectSerializer(data=data)
+    #     if serializer.is_valid():
+    #         project = serializer.save()  # Save project and get the instance
+
+    #         # Retrieve all instructor sessions for the course
+    #         instructor_sessions = InstructorSession.objects.filter(
+    #             instructor=request.user.instructor,
+    #             session__course=project.course
+    #         )
+
+    #         for instructor_session in instructor_sessions:
+    #             instructor_project, created = InstructorProject.objects.get_or_create(
+    #                 course=project.course,
+    #                 session=instructor_session.session,
+    #                 instructor=request.user.instructor
+    #             )
+
+    #             # Add project ID to the list if not already present
+    #             if project.id not in instructor_project.projects:
+    #                 instructor_project.projects.append(project.id)
+    #                 instructor_project.save()
+
+    #         return self.custom_response(
+    #             status.HTTP_201_CREATED,
+    #             "Project created successfully and added to all relevant sessions.",
+    #             serializer.data
+    #         )
+
+    #     return self.custom_response(
+    #         status.HTTP_400_BAD_REQUEST,
+    #         "Error creating project",
+    #         serializer.errors
+    #     )
+
+
+
+
 class ProjectDetailAPIView(CustomResponseMixin, APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -244,9 +291,9 @@ class ProjectGradingDetailAPIView(CustomResponseMixin, APIView):
 class ProjectsByCourseIDAPIView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
-    def get(self, request, course_id, format=None):
+    def get(self, request, course_id,session_id, format=None):
         user = request.user
-        projects = Project.objects.filter(course_id=course_id).order_by('-created_at')
+        projects = Project.objects.filter(course_id=course_id,session_id=session_id).order_by('-created_at')
 
         if not projects.exists():
             return self.custom_response(status.HTTP_200_OK, 'No projects found', {})
@@ -266,13 +313,16 @@ class ProjectsByCourseIDAPIView(CustomResponseMixin, APIView):
                     submission_status = 'Not Submitted'  # Due date has passed without submission
                 else:
                     submission_status = 'Pending'  # Due date has not passed, and not yet submitted
-
+            session_data = {
+                "id": project.session.id,
+            } if project.session else None
             project_data = {
                 'id': project.id,
                 'total_grade':project.total_grade,
                 'content': project.content.url if project.content else None, 
                 'question': project.title,
                 'description': project.description,
+                'session': session_data,
                 'status':project.status,
                 'due_date': project.due_date,
                 'created_at': project.created_at,
@@ -288,12 +338,65 @@ class ProjectsByCourseIDAPIView(CustomResponseMixin, APIView):
         return self.custom_response(status.HTTP_200_OK, 'Projects retrieved successfully', projects_data)
 
 
+# class ProjectsByCourseIDAPIView(CustomResponseMixin, APIView):
+#     permission_classes = (permissions.IsAuthenticated,)
+
+#     def get(self, request, course_id, instructor_id,session_id, format=None):
+#         user = request.user
+
+#         # Get the InstructorProject entry for the given course and instructor
+#         try:
+#             instructor_project = InstructorProject.objects.get(
+#                 course_id=course_id, instructor_id=instructor_id,session_id=session_id
+#             )
+#         except InstructorProject.DoesNotExist:
+#             return self.custom_response(status.HTTP_404_NOT_FOUND, "No projects found for this course and session", {})
+
+#         # Retrieve all projects with IDs in the list
+#         project_ids = instructor_project.projects  # Assuming this is a list of project IDs
+#         projects = Project.objects.filter(id__in=project_ids).order_by('-created_at')
+
+#         if not projects.exists():
+#             return self.custom_response(status.HTTP_200_OK, "No projects found", {})
+
+#         projects_data = []
+#         for project in projects:
+#             submission = ProjectSubmission.objects.filter(project=project, user=user).first()
+
+#             # Determine submission status
+#             if submission:
+#                 submission_status = "Submitted" if submission.status == 1 else "Pending"
+#             else:
+#                 submission_status = "Not Submitted" if timezone.now() > project.due_date else "Pending"
+
+#             project_data = {
+#                 'id': project.id,
+#                 'total_grade': project.total_grade,
+#                 'content': project.content.url if project.content else None, 
+#                 'title': project.title,
+#                 'description': project.description,
+#                 'status': project.status,
+#                 'due_date': project.due_date,
+#                 'created_at': project.created_at,
+#                 'submission_status': submission_status,
+#                 'submitted_at': submission.submitted_at if submission else None,
+#                 'submitted_file': submission.submitted_file.url if submission and submission.submitted_file else None,
+#                 'remaining_resubmissions': submission.remaining_resubmissions if submission else 0,
+#                 "no_of_resubmissions_allowed": project.no_of_resubmissions_allowed,
+#                 'comments': submission.comments if submission else "",
+#             }
+#             projects_data.append(project_data)
+
+#         return self.custom_response(
+#             status.HTTP_200_OK, 'Projects retrieved successfully', projects_data
+#         )
+
 
 class ProjectDetailView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
-    def get(self, request, course_id, registration_id):
-        projects = Project.objects.filter(course_id=course_id)
+    def get(self, request, course_id,session_id, registration_id):
+        projects = Project.objects.filter(course_id=course_id,session_id=session_id)
         submissions = ProjectSubmission.objects.filter(project__in=projects, registration_id=registration_id)
         total_marks_obtained = Decimal('0.0')
         sum_of_total_marks = Decimal('0.0')
@@ -333,6 +436,75 @@ class ProjectDetailView(APIView):
             'sum_of_total_marks': float(sum_of_total_marks)
         })
 
+# class ProjectDetailView(APIView):
+#     permission_classes = (permissions.IsAuthenticated,)
+
+#     def get(self, request, course_id, session_id, registration_id):
+#         # Get the InstructorProject entry for the given course and session
+#         try:
+#             instructor_project = InstructorProject.objects.get(
+#                 course_id=course_id, session_id=session_id
+#             )
+#         except InstructorProject.DoesNotExist:
+#             return Response(
+#                 {
+#                     "status": status.HTTP_404_NOT_FOUND,
+#                     "message": "No projects found for this course and session",
+#                     "data": []
+#                 }
+#             )
+
+#         # Retrieve projects based on the project IDs from the InstructorProject table
+#         project_ids = instructor_project.projects  # Assuming this is a list of project IDs
+#         projects = Project.objects.filter(id__in=project_ids)
+#         submissions = ProjectSubmission.objects.filter(
+#             project__in=projects, registration_id=registration_id
+#         )
+
+#         total_marks_obtained = Decimal('0.0')
+#         sum_of_total_marks = Decimal('0.0')
+
+#         projects_data = []
+
+#         for project in projects:
+#             submission = submissions.filter(project=project).first()
+#             grading = (
+#                 ProjectGrading.objects.filter(project_submissions=submission).first()
+#                 if submission else None
+#             )
+
+#             if submission:
+#                 submission_status = 'Submitted' if submission.status == 1 else 'Pending'
+#             else:
+#                 submission_status = (
+#                     'Not Submitted'
+#                     if timezone.now() > project.due_date
+#                     else 'Pending'
+#                 )
+
+#             marks_obtain = grading.grade if grading else Decimal('0.0')
+#             total_marks = project.total_grade if project.total_grade is not None else Decimal('0.0')
+#             remarks = grading.feedback if grading else None
+
+#             total_marks_obtained += marks_obtain
+#             sum_of_total_marks += total_marks
+
+#             project_data = {
+#                 'project_name': project.title,
+#                 'marks_obtain': float(marks_obtain),
+#                 'total_marks': float(total_marks),
+#                 'remarks': remarks,
+#                 'status': submission_status,
+#             }
+#             projects_data.append(project_data)
+
+#         return Response({
+#             'status': status.HTTP_200_OK,
+#             'message': 'Projects retrieved successfully.',
+#             'data': projects_data,
+#             'total_marks_obtained': float(total_marks_obtained),
+#             'sum_of_total_marks': float(sum_of_total_marks)
+#         })
 
 
 # class ProjectStudentListView(CustomResponseMixin, APIView):
@@ -413,7 +585,7 @@ class ProjectStudentListView(CustomResponseMixin, APIView):
     def get(self, request, project_id, course_id, session_id, *args, **kwargs):
         try:
             # Retrieve the project based on project ID and course ID
-            project = Project.objects.get(id=project_id, course__id=course_id)
+            project = Project.objects.get(id=project_id, course__id=course_id,session_id=session_id)
         except Project.DoesNotExist:
             return Response({"detail": "Project not found for the course."}, status=status.HTTP_404_NOT_FOUND)
 

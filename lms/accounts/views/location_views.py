@@ -25,6 +25,7 @@ from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
 from django.core.exceptions import ValidationError
 from rest_framework.views import APIView
+from datetime import timedelta, datetime
 
 class CityViewSet(BaseLocationViewSet):
     queryset = City.objects.all()
@@ -140,8 +141,6 @@ class LocationViewSet(BaseLocationViewSet):
 #             status=status.HTTP_200_OK,
 #             headers=headers
 #         )
-
-
 class SessionsAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
 
@@ -174,7 +173,6 @@ class SessionsAPIView(APIView):
                 {"status_code": status.HTTP_200_OK, "message": "Sessions fetched successfully.", "data": serializer.data},
                 status=status.HTTP_200_OK
             )
-
     def post(self, request, *args, **kwargs):
         data = request.data
 
@@ -539,7 +537,16 @@ class CityStatsView(views.APIView, CustomResponseMixin):
 
 
 
-class SessionCalendarAPIView(APIView,CustomResponseMixin):
+WEEKDAYS = {
+    0: ("Monday", "Mon"),
+    1: ("Tuesday", "Tue"),
+    2: ("Wednesday", "Wed"),
+    3: ("Thursday", "Thu"),
+    4: ("Friday", "Fri"),
+    5: ("Saturday", "Sat"),
+    6: ("Sunday", "Sun"),
+}
+class SessionCalendarAPIView(APIView, CustomResponseMixin):
     def get(self, request, user_id, *args, **kwargs):
         user = get_object_or_404(User, id=user_id)
         sessions = []
@@ -560,11 +567,20 @@ class SessionCalendarAPIView(APIView,CustomResponseMixin):
             return Response({"detail": "No sessions found for this user."}, status=status.HTTP_404_NOT_FOUND)
 
         calendar_data = {}
-        
+
         # Iterate over sessions and process each one
         for session in sessions:
+            # Directly use session's start and end date
+            start_date = session.start_date
+            end_date = session.end_date
+
+            # Generate the actual dates based on days of the week
+            session_days = session.days_of_week
+            actual_dates = self.get_dates_from_days(start_date, end_date, session_days)
+
             session_data = SessionsCalendarSerializer(session).data
-            for date in session_data['days_of_week']:
+
+            for date in actual_dates:
                 if date not in calendar_data:
                     calendar_data[date] = []
 
@@ -575,14 +591,15 @@ class SessionCalendarAPIView(APIView,CustomResponseMixin):
                     "course_id": session_data['course_id'],
                     "course_name": session_data['course_name'],
                     "location": session_data['location_name'],
-                    "batch": session_data['batch']
+                    # "day_name": day_name  # If needed, you can still add the day name here
                 })
-            print("Calender",calendar_data)
+
         # Format the data into the required structure
         formatted_data = [
             {
                 "date": date,
-                "sessions": session_list  # Ensure all sessions for the date are included
+                "day_name": WEEKDAYS[datetime.strptime(date, "%Y-%m-%d").weekday()][0],  # Get the day name
+                "sessions": session_list
             }
             for date, session_list in calendar_data.items()
         ]
@@ -590,9 +607,21 @@ class SessionCalendarAPIView(APIView,CustomResponseMixin):
         # Sort the formatted data by date
         formatted_data.sort(key=lambda x: x['date'])
 
-        # return Response(formatted_data)
         return self.custom_response(
-                status.HTTP_200_OK,
-                "Calender data fetched successfully.",
-                formatted_data
-            )
+            status.HTTP_200_OK,
+            "Calendar data fetched successfully.",
+            formatted_data
+        )
+
+    def get_dates_from_days(self, start_date, end_date, days_of_week):
+        """Generate a list of dates based on start and end dates and specified days of the week."""
+        current_date = start_date
+        actual_dates = []
+
+        # Iterate through each day in the range
+        while current_date <= end_date:
+            if current_date.weekday() in days_of_week:
+                actual_dates.append(current_date.strftime("%Y-%m-%d"))  # Format as string or datetime as needed
+            current_date += timedelta(days=1)
+
+        return actual_dates

@@ -1230,6 +1230,7 @@ class UserSessionsView(views.APIView, CustomResponseMixin):
     def get(self, request, user_id):
         # Determine whether the user is a student or instructor
         group_name = request.query_params.get("group_name")
+        course_id = request.query_params.get("course_id")  # Get the course filter from query params
 
         if group_name not in ["student", "instructor"]:
             return self.custom_response(
@@ -1263,8 +1264,15 @@ class UserSessionsView(views.APIView, CustomResponseMixin):
                     None,
                 )
 
-            # Fetch all sessions assigned to this instructor
-            user_sessions = InstructorSession.objects.filter(instructor=instructor)
+            # If course_id is provided, filter instructor sessions by course
+            if course_id:
+                user_sessions = InstructorSession.objects.filter(
+                    instructor=instructor,
+                    session__course__id=course_id  # Filter sessions based on course_id
+                )
+            else:
+                # Fetch all sessions assigned to this instructor
+                user_sessions = InstructorSession.objects.filter(instructor=instructor)
 
         if not user_sessions.exists():
             return self.custom_response(
@@ -1282,8 +1290,7 @@ class UserSessionsView(views.APIView, CustomResponseMixin):
                 "status": user_session.status,  # Session-specific status
                 "start_time": session.start_time.strftime("%H:%M:%S") if session.start_time else None,
                 "end_time": session.end_time.strftime("%H:%M:%S") if session.end_time else None,
-                "no_of_student":session.no_of_students,
-                # "session_name":session.session_name,
+                "no_of_student": session.no_of_students,
                 "course": session.course.name if session.course else None,
                 "location": session.location.name if session.location else None,
                 "days_of_week": session.days_of_week,
@@ -1508,7 +1515,21 @@ class InstructorSessionsView(views.APIView, CustomResponseMixin):
             #         f"Session with course {session.course.name} and timings {session.start_time} - {session.end_time} is already assigned to this instructor.",
             #         None,
             #     )
+
+            # Check if the instructor is already assigned to this course
+            # if InstructorSession.objects.filter(instructor=instructor, session__course=course).exists():
+            #     return self.custom_response(
+            #         status.HTTP_400_BAD_REQUEST,
+            #         f"Instructor is already assigned to the course '{course.name}'.",
+            #         None,
+            #     )
             # Check if the session already has an instructor assigned
+            if session.location.city != instructor.id.city:
+                return self.custom_response(
+                    status.HTTP_400_BAD_REQUEST,
+                    f"Instructor from city {instructor.id.city} cannot be assigned to sessions in city {session.location.city}.",
+                    None,
+                )
             if InstructorSession.objects.filter(session=session).exists():
                 return self.custom_response(
                     status.HTTP_400_BAD_REQUEST,

@@ -482,12 +482,15 @@ class AssignCoursesSerializer(serializers.Serializer):
         return value
 
 class InstructorSessionSerializer(serializers.ModelSerializer):
-    instructor_email = serializers.SerializerMethodField()
+    instructor_name = serializers.SerializerMethodField()  # To combine the instructor's first name and last name
+    session_id = serializers.IntegerField(source='session.id')  # To get the session ID
 
     class Meta:
         model = InstructorSession
-        fields = ['session', 'status',  'instructor_email']
+        fields = ['session_id', 'instructor_name']
 
-    def get_instructor_email(self, obj):
-        # Ensure obj.instructor exists and has an email
-        return obj.instructor.id.email if obj.instructor and obj.instructor.id else None
+    def get_instructor_name(self, obj):
+        # Combine the first name and last name
+        first_name = obj.instructor.user.first_name
+        last_name = obj.instructor.user.last_name
+        return f"{first_name} {last_name}".strip()

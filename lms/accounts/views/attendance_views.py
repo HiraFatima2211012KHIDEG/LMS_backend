@@ -8,9 +8,10 @@ from django_filters.rest_framework import DjangoFilterBackend
 from utils.custom import CustomResponseMixin
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
 from ..models.location_models import Sessions
-from ..models.user_models import StudentSession, Student
+from ..models.user_models import StudentSession, Student, InstructorSession
 from rest_framework.views import APIView
-from ..serializers.attendance_serializers import AttendanceSerializer,StudentDetailAttendanceSerializer
+from ..serializers.attendance_serializers import AttendanceSerializer,StudentDetailAttendanceSerializer, InstructorDetailAttendanceSerializer
+from ..serializers.location_serializers import InstructorSessionSerializer
 from django.utils import timezone
 
 
@@ -173,14 +174,59 @@ class SessionsAPIViewAttendance(APIView):
                 "data": None
             }, status=status.HTTP_404_NOT_FOUND)
 
+class InstructorsByCourseAPIView(APIView):
+    def get(self, request, course_id, *args, **kwargs):
+        # Retrieve instructor sessions for the specified course_id
+        instructor_sessions = InstructorSession.objects.filter(session__course_id=course_id)
+
+        if not instructor_sessions.exists():
+            return Response({
+                "status_code": status.HTTP_404_NOT_FOUND,
+                "message": "No instructors found for this course.",
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        # Serialize the instructor session data
+        serializer = InstructorSessionSerializer(instructor_sessions, many=True)
+
+        return Response({
+            "status_code": status.HTTP_200_OK,
+            "message": "Instructors fetched successfully.",
+            "data": serializer.data
+        }, status=status.HTTP_200_OK)
+
+
+# class SessionsAPIViewInstructor(APIView):
+#     def get(self, request, session_id):
+#         try:
+#             # Fetch the session to ensure it exists
+#             session = Sessions.objects.get(id=session_id)
+
+#             # Get all instructors linked to this session via InstructorSession
+#             instructor_sessions = InstructorSession.objects.filter(session=session)
+
+#             # Serialize the instructor session data
+#             serializer = InstructorDetailAttendanceSerializer(instructor_sessions, many=True)
+            
+#             return Response({
+#                 "status_code": status.HTTP_200_OK,
+#                 "message": "Instructors fetched successfully.",
+#                 "data": serializer.data
+#             }, status=status.HTTP_200_OK)
+#         except Sessions.DoesNotExist:
+#             return Response({
+#                 "status_code": status.HTTP_404_NOT_FOUND,
+#                 "message": f"Session with ID {session_id} not found.",
+#                 "data": None
+#             }, status=status.HTTP_404_NOT_FOUND)
+
 
 
 class StudentAttendanceListView(CustomResponseMixin, APIView):
     permission_classes = [permissions.IsAuthenticated]
 
-    def get(self, request, *args, **kwargs):
+    def get(self, request, course_id,*args, **kwargs):
         student = request.user.student
-        attendances = Attendance.objects.filter(student=student)
+        attendances = Attendance.objects.filter(student=student,course_id=course_id)
         
         serialized_attendance = AttendanceSerializer(attendances, many=True)
         
@@ -195,14 +241,14 @@ class StudentAttendanceListView(CustomResponseMixin, APIView):
 class InstructorAttendanceView(CustomResponseMixin, APIView):
     permission_classes = [permissions.IsAuthenticated]
 
-    def get(self, request, session_id, course_id, *args, **kwargs):
+    def get(self, request, session_id, *args, **kwargs):
         date_filter = request.query_params.get('date', None)
         
         # Get students for the session
         students = Student.objects.filter(studentsession__session_id=session_id)
         
         # Filter attendance by course and date if provided 
-        attendances = Attendance.objects.filter(student__in=students, course__id=course_id)
+        attendances = Attendance.objects.filter(student__in=students)
         
         if date_filter:
             attendances = attendances.filter(date=date_filter)
@@ -220,7 +266,7 @@ class InstructorAttendanceView(CustomResponseMixin, APIView):
 
     def post(self, request, session_id, course_id, *args, **kwargs):
         try:
-            session = Sessions.objects.get(id=session_id, course__id=course_id)
+            session = Sessions.objects.get(id=session_id)
         except Sessions.DoesNotExist:
             return self.custom_response(
                 status.HTTP_404_NOT_FOUND, "Session not found", {}

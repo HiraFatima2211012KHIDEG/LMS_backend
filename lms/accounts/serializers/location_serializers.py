@@ -3,7 +3,7 @@ from rest_framework import serializers
 from ..models.user_models import Student, StudentSession, InstructorSession
 from ..models.location_models import City, Batch, Location, Sessions
 from course.serializers import CourseSerializer
-from datetime import datetime
+from datetime import timedelta
 from course.models.models import Course
 
 
@@ -82,6 +82,8 @@ class SessionsSerializer(serializers.ModelSerializer):
             "location_name",
             "no_of_students",
             "remaining_spots",
+            "start_date",
+            "end_date",
             "start_time",
             "end_time",
             "days_of_week",
@@ -147,16 +149,21 @@ class AssignSessionsSerializer(serializers.Serializer):
         return value
 
 
+
 class InstructorSessionSerializer(serializers.ModelSerializer):
+    instructor_name = serializers.SerializerMethodField()
+    instructor_id = serializers.IntegerField(source='instructor.id.id')
+      
+    session = SessionsSerializer()
+
     class Meta:
         model = InstructorSession
-        fields = ["session_id", "instructor_email", "status", "start_date", "end_date"]
+        fields = ['session','instructor_id', 'instructor_name']
 
-    def to_representation(self, instance):
-        representation = super().to_representation(instance)
-        # Ensure to include only serializable fields
-        representation["instructor_email"] = instance.instructor.id  # Email as string
-        return representation
+    def get_instructor_name(self, obj):
+        first_name = obj.instructor.id.first_name
+        last_name = obj.instructor.id.last_name
+        return f"{first_name} {last_name}".strip()
 
 
 WEEKDAYS = {
@@ -169,27 +176,20 @@ WEEKDAYS = {
     6: ("Sunday", "Sun"),
 }
 
-
 class SessionsCalendarSerializer(serializers.ModelSerializer):
-    batch_start_date = serializers.DateField(source="batch.start_date", read_only=True)
-    batch_end_date = serializers.DateField(source="batch.end_date", read_only=True)
+
     location_name = serializers.CharField(source="location.name", read_only=True)
-    # weekdays = serializers.SerializerMethodField()
     day_names = serializers.SerializerMethodField()
-    course_id = serializers.IntegerField(
-        source="course.id", read_only=True
-    )  # Include course ID
-    course_name = serializers.CharField(
-        source="course.name", read_only=True
-    )  # Include course name
+    course_id = serializers.IntegerField(source="course.id", read_only=True)
+    course_name = serializers.CharField(source="course.name", read_only=True)
+    dates_with_days = serializers.SerializerMethodField()
 
     class Meta:
         model = Sessions
         fields = [
             "id",
-            "batch",
-            "batch_start_date",
-            "batch_end_date",
+            "start_date",
+            "end_date",
             "location",
             "location_name",
             "no_of_students",
@@ -199,16 +199,34 @@ class SessionsCalendarSerializer(serializers.ModelSerializer):
             "course_name",
             "days_of_week",
             "day_names",
+            "dates_with_days",  # New field for dates with days
             "status",
         ]
 
-    def get_weekdays(self, obj):
-        # Assuming obj.days_of_week contains integers (0-6)
-        return [WEEKDAYS[day][1] for day in obj.days_of_week]
-
     def get_day_names(self, obj):
-        """Convert the list of dates to a list of day names."""
-        return [
-            WEEKDAYS[datetime.strptime(day, "%Y-%m-%d").weekday()]
-            for day in obj.days_of_week
-        ]
+        """Convert the list of integers to their corresponding day names."""
+        return [WEEKDAYS[day][0] for day in obj.days_of_week if day in WEEKDAYS]
+
+    def get_dates_with_days(self, obj):
+        """Get the dates corresponding to the days of the week within the program's date range."""
+     
+        start_date = obj.start_date
+        end_date = obj.end_date
+        days_of_week = obj.days_of_week
+        
+        # Generate the dates based on the start and end date and days of the week
+        return self.get_dates_from_days(start_date, end_date, days_of_week)
+        
+
+    def get_dates_from_days(self, start_date, end_date, days_of_week):
+        """Generate a list of dates based on start and end dates and specified days of the week."""
+        current_date = start_date
+        actual_dates = []
+
+        # Iterate through each day in the range
+        while current_date <= end_date:
+            if current_date.weekday() in days_of_week:
+                actual_dates.append(current_date.strftime("%Y-%m-%d"))  # Format as string or datetime as needed
+            current_date += timedelta(days=1)
+
+        return actual_dates

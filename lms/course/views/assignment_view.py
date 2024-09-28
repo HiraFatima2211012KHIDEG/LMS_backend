@@ -53,6 +53,14 @@ class AssignmentListCreateAPIView(CustomResponseMixin, APIView):
         )
 
 
+
+
+
+
+
+
+
+
 class AssignmentDetailAPIView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
@@ -338,23 +346,13 @@ class AssignmentGradingDetailAPIView(CustomResponseMixin, APIView):
         )
 
 
-# class AssignmentsByCourseIDAPIView(CustomResponseMixin, APIView):
-#     permission_classes = (permissions.IsAuthenticated,)
 
-#     def get(self, request, course_id, format=None):
-#         assignments = Assignment.objects.filter(course_id=course_id)
-
-
-#         if not assignments.exists():
-#             return self.custom_response(status.HTTP_200_OK, 'No quizzes found', {})
-#         serializer = AssignmentSerializer(assignments, many=True)
-#         return self.custom_response(status.HTTP_200_OK, 'Assignments retrieved successfully', serializer.data)
 class AssignmentsByCourseIDAPIView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
-    def get(self, request, course_id, format=None):
+    def get(self, request, course_id,session_id, format=None):
         user = request.user
-        assignments = Assignment.objects.filter(course_id=course_id).order_by('-created_at')
+        assignments = Assignment.objects.filter(course_id=course_id,session_id=session_id).order_by('-created_at')
 
         if not assignments.exists():
             return self.custom_response(status.HTTP_200_OK, "No assignments found", {})
@@ -380,13 +378,16 @@ class AssignmentsByCourseIDAPIView(CustomResponseMixin, APIView):
                     submission_status = (
                         "Pending"  # Due date has not passed, and not yet submitted
                     )
-
+            session_data = {
+                "id": assignment.session.id,
+            } if assignment.session else None
             assignment_data = {
                 "id": assignment.id,
                 "total_grade":assignment.total_grade,
                 "content": assignment.content.url if assignment.content else None, 
                 "question": assignment.question,
                 "description": assignment.description,
+                "session": session_data,
                 "status":assignment.status,
                 "due_date": assignment.due_date,
                 "created_at": assignment.created_at,
@@ -405,7 +406,77 @@ class AssignmentsByCourseIDAPIView(CustomResponseMixin, APIView):
         return self.custom_response(
             status.HTTP_200_OK, "Assignments retrieved successfully", assignments_data
         )
+    
 
+# class AssignmentsByCourseIDAPIView(CustomResponseMixin, APIView):
+#     permission_classes = (permissions.IsAuthenticated,)
+
+#     def get(self, request, course_id, instructor_id,session_id, format=None):
+#         user = request.user
+
+#         # Get the InstructorAssignment entry for the given course and session
+#         try:
+#             instructor_assignment = InstructorAssignment.objects.get(
+#                 course_id=course_id, instructor_id=instructor_id,session_id=session_id
+#             )
+#         except InstructorAssignment.DoesNotExist:
+#             return self.custom_response(status.HTTP_404_NOT_FOUND, "No assignments found for this course and session", {})
+
+#         # Retrieve all assignments with IDs in the list
+#         assignment_ids = instructor_assignment.assignments  # Assuming this is a list of assignment IDs
+#         assignments = Assignment.objects.filter(id__in=assignment_ids).order_by('-created_at')
+
+#         if not assignments.exists():
+#             return self.custom_response(status.HTTP_200_OK, "No assignments found", {})
+
+#         assignments_data = []
+#         for assignment in assignments:
+#             submission = AssignmentSubmission.objects.filter(
+#                 assignment=assignment, user=user
+#             ).first()
+
+#             # Determine submission status
+#             if submission:
+#                 submission_status = "Submitted" if submission.status == 1 else "Pending"
+#             else:
+#                 submission_status = "Not Submitted" if timezone.now() > assignment.due_date else "Pending"
+#             print(assignment.total_grade)
+#             assignment_data = {
+#                 "id": assignment.id,
+#                 "total_grade": assignment.total_grade,
+#                 "content": assignment.content.url if assignment.content else None, 
+#                 "question": assignment.question,
+#                 "description": assignment.description,
+#                 "status": assignment.status,
+#                 "due_date": assignment.due_date,
+#                 "created_at": assignment.created_at,
+#                 "submission_status": submission_status,
+#                 "submitted_at": submission.submitted_at if submission else None,
+#                 "submitted_file": submission.submitted_file.url if submission and submission.submitted_file else None,
+#                 "no_of_resubmissions_allowed": assignment.no_of_resubmissions_allowed,
+#                 "remaining_resubmissions": submission.remaining_resubmissions if submission else 0,
+#             }
+#             assignments_data.append(assignment_data)
+
+#         return self.custom_response(
+#             status.HTTP_200_OK, "Assignments retrieved successfully", assignments_data
+#         )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
 class AssignmentStudentListView(CustomResponseMixin, APIView):
     def get(self, request, assignment_id, course_id, session_id, *args, **kwargs):
         try:
@@ -471,26 +542,33 @@ class AssignmentStudentListView(CustomResponseMixin, APIView):
         return self.custom_response(
             status.HTTP_200_OK, "Students retrieved successfully", response_data
         )
-
+    
 # class AssignmentStudentListView(CustomResponseMixin, APIView):
-#     def get(self, request, assignment_id, course_id, *args, **kwargs):
+#     def get(self, request, assignment_id, course_id, session_id, *args, **kwargs):
 #         try:
-#             assignment = Assignment.objects.get(id=assignment_id, course__id=course_id)
+#             # Fetch the instructor assignment for the given course and session
+#             instructor_assignment = InstructorAssignment.objects.get(course_id=course_id, session_id=session_id)
+#         except InstructorAssignment.DoesNotExist:
+#             return Response({"detail": "Instructor assignment not found for the given course and session."}, status=status.HTTP_404_NOT_FOUND)
+        
+#         # Only filter the specific assignment_id provided in the request parameters
+#         if assignment_id not in instructor_assignment.assignments:
+#             return Response({"detail": "Assignment not found for the given course, session, and assignment ID."}, status=status.HTTP_404_NOT_FOUND)
+
+#         try:
+#             assignment = Assignment.objects.get(id=assignment_id, course_id=course_id)
 #         except Assignment.DoesNotExist:
 #             return Response({"detail": "Assignment not found for the course."}, status=status.HTTP_404_NOT_FOUND)
 
-     
-#         # Retrieve the session associated with the course
-#         sessions = Sessions.objects.filter(course__id=course_id)
-#         if not sessions:
+#         # Retrieve the specific session associated with the course and session_id
+#         try:
+#             session = Sessions.objects.get(id=session_id, course__id=course_id)
+#         except Sessions.DoesNotExist:
 #             return Response(
-#                 {"detail": "Session not found for the course."}, 
+#                 {"detail": "Session not found for the course."},
 #                 status=status.HTTP_404_NOT_FOUND
 #             )
 
-#         # Assuming you want to work with the first session in the list
-#         session = sessions.first()
-#         print(session)
 #         # Filter students who are enrolled in this session
 #         enrolled_students = Student.objects.filter(
 #             studentsession__session=session
@@ -500,7 +578,6 @@ class AssignmentStudentListView(CustomResponseMixin, APIView):
 
 #         for student in enrolled_students:
 #             user = student.user
-#             print(user)
 #             # Check if the student has submitted the assignment
 #             try:
 #                 submission = AssignmentSubmission.objects.get(assignment=assignment, user=user)
@@ -508,26 +585,16 @@ class AssignmentStudentListView(CustomResponseMixin, APIView):
 #                 submission = None
 
 #             if submission:
-#                 if submission.status == 1:  # Submitted
-#                     submission_status = "Submitted"
-#                 else:
-#                     submission_status = "Pending" 
+#                 submission_status = "Submitted" if submission.status == 1 else "Pending"
 #             else:
-#                 if timezone.now() > assignment.due_date:
-#                     submission_status = "Not Submitted" 
-#                 else:
-#                     submission_status = "Pending"  
+#                 submission_status = "Not Submitted" if timezone.now() > assignment.due_date else "Pending"
 
 #             student_data = {
-#                 'assignment':assignment.id,
+#                 'assignment': assignment.id,
 #                 'student_name': f"{user.first_name} {user.last_name}",
 #                 'registration_id': student.registration_id,
 #                 'submission_id': submission.id if submission else None,
-#                 'submitted_file': (
-#                     submission.submitted_file.url
-#                     if submission and submission.submitted_file
-#                     else None
-#                 ),
+#                 'submitted_file': submission.submitted_file.url if submission and submission.submitted_file else None,
 #                 'submitted_at': submission.submitted_at if submission else None,
 #                 'status': submission_status,
 #                 'grade': 0,
@@ -538,14 +605,10 @@ class AssignmentStudentListView(CustomResponseMixin, APIView):
 #                 if grading:
 #                     student_data['grade'] = grading.grade
 #                     student_data['remarks'] = grading.feedback
-                   
-#                 else:
-#                     student_data['grade'] = 0
-#                     student_data['remarks'] = None
 
 #             student_list.append(student_data)
 
-#         # Prepare the response data including the due date and total_grade
+#         # Prepare the response data including the due date and total_grade for the specific assignment
 #         response_data = {
 #             'due_date': assignment.due_date,
 #             'total_grade': total_grade,
@@ -554,7 +617,8 @@ class AssignmentStudentListView(CustomResponseMixin, APIView):
 
 #         return self.custom_response(
 #             status.HTTP_200_OK, "Students retrieved successfully", response_data
-#         )        
+#         )
+
     
 class StudentsWhoSubmittedAssignmentAPIView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
@@ -962,8 +1026,8 @@ class UnifiedPendingItemsView(CustomResponseMixin, APIView):
 class AssignmentDetailView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
-    def get(self, request, course_id, registration_id):
-        assignments = Assignment.objects.filter(course_id=course_id)
+    def get(self, request, course_id,session_id, registration_id):
+        assignments = Assignment.objects.filter(course_id=course_id,session_id=session_id)
         submissions = AssignmentSubmission.objects.filter(
             assignment__in=assignments, registration_id=registration_id
         )
@@ -1013,3 +1077,77 @@ class AssignmentDetailView(APIView):
                 "sum_of_total_marks": float(sum_of_total_marks),
             }
         )
+
+
+
+# class AssignmentDetailView(APIView):
+#     permission_classes = (permissions.IsAuthenticated,)
+
+#     def get(self, request, course_id, session_id, registration_id):
+#         # Get the InstructorAssignment entry for the given course and session
+#         try:
+#             instructor_assignment = InstructorAssignment.objects.get(
+#                 course_id=course_id, session_id=session_id
+#             )
+#         except InstructorAssignment.DoesNotExist:
+#             return Response(
+#                 {
+#                     "status": status.HTTP_404_NOT_FOUND,
+#                     "message": "No assignments found for this course and session",
+#                     "data": []
+#                 }
+#             )
+
+#         # Retrieve assignments based on the assignment IDs from the InstructorAssignment table
+#         assignment_ids = instructor_assignment.assignments  # Assuming this is a list of assignment IDs
+#         assignments = Assignment.objects.filter(id__in=assignment_ids)
+#         submissions = AssignmentSubmission.objects.filter(
+#             assignment__in=assignments, registration_id=registration_id
+#         )
+        
+#         assignments_data = []
+#         total_marks_obtained = Decimal("0.0")
+#         sum_of_total_marks = Decimal("0.0")
+
+#         for assignment in assignments:
+#             submission = submissions.filter(assignment=assignment).first()
+#             grading = (
+#                 Grading.objects.filter(submission=submission).first()
+#                 if submission
+#                 else None
+#             )
+
+#             if submission:
+#                 submission_status = "Submitted" if submission.status == 1 else "Pending"
+#             else:
+#                 submission_status = (
+#                     "Not Submitted"
+#                     if timezone.now() > assignment.due_date
+#                     else "Pending"
+#                 )
+
+#             marks_obtain = grading.grade if grading else Decimal("0.0")
+#             total_marks = assignment.total_grade if assignment.total_grade is not None else Decimal("0.0")
+#             remarks = grading.feedback if grading else None
+
+#             total_marks_obtained += marks_obtain
+#             sum_of_total_marks += total_marks
+
+#             assignment_data = {
+#                 "assignment_name": assignment.question,
+#                 "marks_obtain": float(marks_obtain),
+#                 "total_marks": float(total_marks),
+#                 "remarks": remarks,
+#                 "status": submission_status,
+#             }
+#             assignments_data.append(assignment_data)
+
+#         return Response(
+#             {
+#                 "status": status.HTTP_200_OK,
+#                 "message": "Assignments retrieved successfully.",
+#                 "data": assignments_data,
+#                 "total_marks_obtain": float(total_marks_obtained),
+#                 "sum_of_total_marks": float(sum_of_total_marks),
+#             }
+#         )

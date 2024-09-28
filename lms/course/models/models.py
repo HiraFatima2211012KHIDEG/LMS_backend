@@ -2,7 +2,7 @@ from django.db import models
 from django.conf import settings
 from django.core.validators import FileExtensionValidator
 # from django.core.exceptions import ValidationError
-# from accounts.models.user_models import Instructor
+from accounts.models.location_models import Sessions
 from django.utils import timezone
 
 import re
@@ -70,10 +70,10 @@ class ContentFile(models.Model):
         return f"{self.module} - {self.file}"
 
 class Assignment(models.Model):
-    # module = models.ForeignKey(Module, on_delete=models.CASCADE)
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    session = models.ForeignKey(Sessions, on_delete=models.CASCADE,null=True, blank=True)
     total_grade = models.DecimalField(max_digits=10, decimal_places=2, null=True)
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=1)
     question = models.TextField(null=True, blank=True)
@@ -91,11 +91,29 @@ class Assignment(models.Model):
     no_of_resubmissions_allowed = models.IntegerField(default=0)
     due_date = models.DateTimeField()
 
+
     def get_due_date_in_user_timezone(self, user_timezone):
         # Convert due_date to the user's time zone
         return timezone.localtime(self.due_date, timezone.pytz.timezone(user_timezone))
     def __str__(self):
         return self.question
+
+
+
+# class InstructorAssignment(models.Model):
+#     course = models.ForeignKey(Course, on_delete=models.CASCADE)
+#     session = models.ForeignKey(Sessions, on_delete=models.CASCADE)
+#     instructor = models.ForeignKey('accounts.Instructor', on_delete=models.CASCADE)
+#     assignments = models.JSONField(default=list)  
+#     created_at = models.DateTimeField(auto_now_add=True)
+#     updated_at = models.DateTimeField(auto_now=True)
+
+#     class Meta:
+#         unique_together = ("course", "session", "instructor")
+
+#     def __str__(self):
+#         return f"{self.instructor} - {self.course} - {self.session}"
+
 
 
 ASSESMENT_STATUS_CHOICES = (
@@ -109,6 +127,7 @@ class AssignmentSubmission(models.Model):
         Assignment, related_name="submissions", on_delete=models.CASCADE
     )
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+
     registration_id = models.CharField(max_length=50, null=True, blank=True)
     submitted_file = models.FileField(
         upload_to="material/submissions/",
@@ -175,7 +194,7 @@ class Quizzes(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     total_grade = models.DecimalField(max_digits=10, decimal_places=2, null=True)
-
+    session = models.ForeignKey(Sessions, on_delete=models.CASCADE,null=True, blank=True)
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=1)
     question = models.TextField(null=True, blank=True)
     description = models.TextField(null=True, blank=True)
@@ -193,6 +212,24 @@ class Quizzes(models.Model):
 
     def __str__(self):
         return self.question
+
+
+
+# class InstructorQuiz(models.Model):
+#     course = models.ForeignKey(Course, on_delete=models.CASCADE)
+#     session = models.ForeignKey(Sessions, on_delete=models.CASCADE)
+#     instructor = models.ForeignKey('accounts.Instructor', on_delete=models.CASCADE)
+#     quizzes = models.JSONField(default=list)  
+#     created_at = models.DateTimeField(auto_now_add=True)
+#     updated_at = models.DateTimeField(auto_now=True)
+
+#     class Meta:
+#         unique_together = ("course", "session", "instructor")
+
+#     def __str__(self):
+#         return f"{self.instructor} - {self.course} - {self.session}"
+
+
 
 
 class QuizSubmission(models.Model):
@@ -265,11 +302,26 @@ class Project(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=1)
+    session = models.ForeignKey(Sessions, on_delete=models.CASCADE,null=True, blank=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     no_of_resubmissions_allowed = models.IntegerField(default=0)
 
     def __str__(self):
         return self.title
+
+# class InstructorProject(models.Model):
+#     course = models.ForeignKey(Course, on_delete=models.CASCADE)
+#     session = models.ForeignKey(Sessions, on_delete=models.CASCADE)
+#     instructor = models.ForeignKey('accounts.Instructor', on_delete=models.CASCADE)
+#     projects = models.JSONField(default=list)  
+#     created_at = models.DateTimeField(auto_now_add=True)
+#     updated_at = models.DateTimeField(auto_now=True)
+
+#     class Meta:
+#         unique_together = ("course", "session", "instructor")
+
+#     def __str__(self):
+#         return f"{self.instructor} - {self.course} - {self.session}"
 
 
 class ProjectSubmission(models.Model):
@@ -338,7 +390,7 @@ class Exam(models.Model):
     )
     due_date = models.DateTimeField()
     total_grade = models.DecimalField(max_digits=10, decimal_places=2, null=True)
-
+    session = models.ForeignKey(Sessions, on_delete=models.CASCADE,null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     start_time = models.TimeField(null=True, blank=True)
@@ -348,6 +400,24 @@ class Exam(models.Model):
 
     def __str__(self):
         return self.title
+
+
+
+# class InstructorExam(models.Model):
+#     course = models.ForeignKey(Course, on_delete=models.CASCADE)
+#     session = models.ForeignKey(Sessions, on_delete=models.CASCADE)
+#     instructor = models.ForeignKey('accounts.Instructor', on_delete=models.CASCADE)
+#     exams = models.JSONField(default=list)  
+#     created_at = models.DateTimeField(auto_now_add=True)
+#     updated_at = models.DateTimeField(auto_now=True)
+
+#     class Meta:
+#         unique_together = ("course", "session", "instructor")
+
+#     def __str__(self):
+#         return f"{self.instructor} - {self.course} - {self.session}"
+
+
 
 class ExamSubmission(models.Model):
     exam = models.ForeignKey(

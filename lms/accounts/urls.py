@@ -236,7 +236,9 @@ urlpatterns = [
         user_views.ListStudentsByCourseAndInstructor.as_view(),
         name="list_students_by_course_and_instructor"),
     path('sessions/<int:session_id>/students/', SessionsAPIViewAttendance.as_view(), name='session-students'),
-    path('attendance/student/', StudentAttendanceListView.as_view(), name='student-attendance'),
+    # path('sessions/<int:session_id>/instructors/', SessionsAPIViewInstructor.as_view(), name='session-instructors'),
+    path('instructors/course/<int:course_id>/', InstructorsByCourseAPIView.as_view(), name='instructors-by-course'),
+    path('attendance/student/<int:course_id>/', StudentAttendanceListView.as_view(), name='student-attendance'),
     path('attendance/instructor/<int:session_id>/<int:course_id>/', InstructorAttendanceView.as_view(), name='instructor-attendance'),
     path('admin/attendance/<int:session_id>/', AdminAttendanceView.as_view(), name='admin-attendance'),
 

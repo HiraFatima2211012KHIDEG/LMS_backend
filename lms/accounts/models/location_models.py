@@ -104,8 +104,9 @@ class Sessions(models.Model):
     """Location-based sessions."""
     location = models.ForeignKey(Location, on_delete=models.CASCADE)
     no_of_students = models.IntegerField()
-    # batch = models.ForeignKey(Batch, on_delete=models.CASCADE)
     course = models.ForeignKey("course.Course", on_delete=models.CASCADE, null=True)
+    start_date = models.DateField(null=True, blank=True)
+    end_date = models.DateField(null=True, blank=True)
     start_time = models.TimeField(null=True, blank=True)
     end_time = models.TimeField(null=True, blank=True)
     days_of_week = models.JSONField(default=list, blank=True)
