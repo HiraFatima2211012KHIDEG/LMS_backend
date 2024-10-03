@@ -19,7 +19,7 @@ urlpatterns = [
     path('programs/<int:program_id>/courses/', ProgramCoursesAPIView.as_view(), name='program-courses'),
     path('courses/', CourseListCreateAPIView.as_view(), name='course-list-create'),
     path('courses/<int:pk>/', CourseDetailAPIView.as_view(), name='course-detail'),
-    path('courses/<int:course_id>/modules/', CourseModulesAPIView.as_view(), name='course-modules'),
+    path('courses/<int:course_id>/modules/session/<int:session_id>/', CourseModulesAPIView.as_view(), name='course-modules'),
     path('modules/', ModuleListCreateAPIView.as_view(), name='module-list-create'),
     path('modules/<int:pk>/', ModuleDetailAPIView.as_view(), name='module-detail'),
     path('content_files/', ContentFileListCreateAPIView.as_view(), name='content-file-list-create'),
@@ -38,7 +38,7 @@ urlpatterns = [
         AssignmentStudentListView.as_view(),
         name='assignment-student-list'
     ),
-    path('assignments/<int:course_id>/course/<str:registration_id>/total_score/', StudentScoresSummaryAPIView.as_view(), name='users-score-assignment'),
+    path('assignments/<int:course_id>/course/session/<int:session_id>/<str:registration_id>/total_score/', StudentScoresSummaryAPIView.as_view(), name='users-score-assignment'),
     # path('programs/<int:program_id>/students/<str:registration_id>/pending-assignments/', UnifiedPendingItemsView.as_view(), name='pending-assignments'),
     path('assignments/<int:course_id>/session/<int:session_id>/student/<str:registration_id>/', AssignmentDetailView.as_view(), name='assignment-detail'),
 
@@ -108,5 +108,5 @@ urlpatterns = [
     path('weightages/<int:pk>/', WeightageDetailAPIView.as_view(), name='weightage-detail'),
     path('skills/', SkillListCreateAPIView.as_view(), name='skill-list-create'),
     path('skills/<int:pk>/', SkillRetrieveUpdateDestroyAPIView.as_view(), name='skill-detail'),
-    path('course_weightages/<int:course_id>/', WeightageListByCourseId.as_view(), name='weightage-list-by-course'),
+    path('course_weightages/<int:course_id>/session/<int:session_id>/', WeightageListByCourseId.as_view(), name='weightage-list-by-course'),
 ]

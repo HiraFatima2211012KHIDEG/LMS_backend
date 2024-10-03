@@ -113,10 +113,33 @@ class ExamDetailAPIView(CustomResponseMixin, APIView):
             return self.custom_response(status.HTTP_200_OK, 'Exam updated successfully', serializer.data)
         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error updating exam', serializer.errors)
 
-    def delete(self, request, pk, format=None):
-        exam = get_object_or_404(Exam, pk=pk)
-        exam.delete()
-        return self.custom_response(status.HTTP_204_NO_CONTENT, 'Exam deleted successfully', {})
+
+    def patch(self, request, pk, format=None):
+        try:
+            exam = Exam.objects.get(pk=pk)
+        except Exam.DoesNotExist:
+            return self.custom_response(
+                status.HTTP_404_NOT_FOUND, "Exam not found.",{}
+            )
+        
+        status_data = request.data.get('status')
+        
+        if status_data is None:
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST, "Status field is required.",{}
+            )
+        
+        serializer = ExamSerializer(exam, data={"status": status_data}, partial=True)
+        
+        if serializer.is_valid():
+            serializer.save()
+            return self.custom_response(
+                status.HTTP_200_OK, "Exam status updated successfully", serializer.data
+            )
+        
+        return self.custom_response(
+            status.HTTP_400_BAD_REQUEST, "Error updating exam status", errors=serializer.errors
+        )
 
 
 
@@ -261,7 +284,7 @@ class ExamsByCourseIDAPIView(CustomResponseMixin, APIView):
 
     def get(self, request, course_id,session_id, format=None):
         user = request.user
-        exams = Exam.objects.filter(course_id=course_id,session_id=session_id).order_by('-created_at')
+        exams = Exam.objects.filter(course_id=course_id,session_id=session_id).exclude(status=2).order_by('-created_at')
 
         if not exams.exists():
             return self.custom_response(status.HTTP_200_OK, 'No exams found', {})
@@ -270,17 +293,23 @@ class ExamsByCourseIDAPIView(CustomResponseMixin, APIView):
         for exam in exams:
             submission = ExamSubmission.objects.filter(exam=exam, user=user).first()
 
-            # Determine submission status
             if submission:
                 if submission.status == 1:  # Submitted
-                    submission_status = 'Submitted'
+                    if submission.exam_submitted_at > exam.due_date:
+                        submission_status = "Late Submission"
+                    else:
+                        submission_status = "Submitted"
                 else:
-                    submission_status = 'Pending'  # Status is pending if not yet graded
+                    submission_status = "Pending"  # Status is pending if not yet graded
             else:
                 if timezone.now() > exam.due_date:
-                    submission_status = 'Not Submitted'  # Due date has passed without submission
+                    submission_status = (
+                        "Not Submitted"  # Due date has passed without submission
+                    )
                 else:
-                    submission_status = 'Pending'  # Due date has not passed, and not yet submitted
+                    submission_status = (
+                        "Pending"  # Due date has not passed, and not yet submitted
+                    )
             session_data = {
                 "id": exam.session.id,
             } if exam.session else None
@@ -469,12 +498,22 @@ class ExamStudentListView(CustomResponseMixin, APIView):
                 submission = None
 
             if submission:
-                submission_status = "Submitted" if submission.status == 1 else "Pending"
+                if submission.status == 1:  # Submitted
+                    if submission.exam_submitted_at > exam.due_date:
+                        submission_status = "Late Submission"
+                    else:
+                        submission_status = "Submitted"
+                else:
+                    submission_status = "Pending"  # Status is pending if not yet graded
             else:
-                submission_status = (
-                    "Not Submitted" if timezone.now() > exam.due_date else "Pending"
-                )
-
+                if timezone.now() > exam.due_date:
+                    submission_status = (
+                        "Not Submitted"  # Due date has passed without submission
+                    )
+                else:
+                    submission_status = (
+                        "Pending"  # Due date has not passed, and not yet submitted
+                    )
             # Collect student data
             student_data = {
                 'exam': exam.id,
@@ -613,9 +652,22 @@ class ExamDetailView(APIView):
             grading = ExamGrading.objects.filter(exam_submission=submission).first() if submission else None
 
             if submission:
-                submission_status = 'Submitted' if submission.status == 1 else 'Pending'
+                if submission.status == 1:  # Submitted
+                    if submission.exam_submitted_at > exam.due_date:
+                        submission_status = "Late Submission"
+                    else:
+                        submission_status = "Submitted"
+                else:
+                    submission_status = "Pending"  # Status is pending if not yet graded
             else:
-                submission_status = 'Not Submitted' if timezone.now() > exam.due_date else 'Pending'
+                if timezone.now() > exam.due_date:
+                    submission_status = (
+                        "Not Submitted"  # Due date has passed without submission
+                    )
+                else:
+                    submission_status = (
+                        "Pending"  # Due date has not passed, and not yet submitted
+                    )
 
             marks_obtain = grading.grade if grading else Decimal('0.0')
             total_marks = exam.total_grade if exam.total_grade is not None else Decimal('0.0')

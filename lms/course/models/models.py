@@ -45,6 +45,7 @@ class Module(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name="modules")
     name = models.CharField(max_length=100)
     description = models.TextField()
+    session = models.ForeignKey(Sessions, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
@@ -73,7 +74,7 @@ class Assignment(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    session = models.ForeignKey(Sessions, on_delete=models.CASCADE,null=True, blank=True)
+    session = models.ForeignKey(Sessions, on_delete=models.CASCADE)
     total_grade = models.DecimalField(max_digits=10, decimal_places=2, null=True)
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=1)
     question = models.TextField(null=True, blank=True)
@@ -456,9 +457,12 @@ class ExamGrading(models.Model):
 
 class Weightage(models.Model):
     course = models.ForeignKey(Course, related_name='weightage', on_delete=models.CASCADE)
+    session = models.ForeignKey(Sessions, on_delete=models.CASCADE,null=True, blank=True)
     assignments_weightage = models.FloatField(default=0,null=True, blank=True)
     quizzes_weightage = models.FloatField(default=0,null=True, blank=True)
     projects_weightage = models.FloatField(default=0,null=True, blank=True)
     exams_weightage = models.FloatField(default=0,null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,null=True, blank=True)
+

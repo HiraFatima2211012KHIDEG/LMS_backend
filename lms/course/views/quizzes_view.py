@@ -109,10 +109,32 @@ class QuizDetailAPIView(CustomResponseMixin, APIView):
             return self.custom_response(status.HTTP_200_OK, 'Quiz updated successfully', serializer.data)
         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error updating quiz', serializer.errors)
 
-    def delete(self, request, pk, format=None):
-        quiz = get_object_or_404(Quizzes, pk=pk)
-        quiz.delete()
-        return self.custom_response(status.HTTP_204_NO_CONTENT, 'Quiz deleted successfully', {})
+    def patch(self, request, pk, format=None):
+        try:
+            quiz = Quizzes.objects.get(pk=pk)
+        except Quizzes.DoesNotExist:
+            return self.custom_response(
+                status.HTTP_404_NOT_FOUND, "Quiz not found.",{}
+            )
+        
+        status_data = request.data.get('status')
+        
+        if status_data is None:
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST, "Status field is required.",{}
+            )
+        
+        serializer = QuizzesSerializer(quiz, data={"status": status_data}, partial=True)
+        
+        if serializer.is_valid():
+            serializer.save()
+            return self.custom_response(
+                status.HTTP_200_OK, "Quiz status updated successfully", serializer.data
+            )
+        
+        return self.custom_response(
+            status.HTTP_400_BAD_REQUEST, "Error updating quiz status", errors=serializer.errors
+        )
 
 class QuizSubmissionCreateAPIView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
@@ -286,7 +308,7 @@ class QuizzesByCourseIDAPIView(CustomResponseMixin, APIView):
 
     def get(self, request, course_id,session_id, format=None):
         user = request.user
-        quizzes = Quizzes.objects.filter(course_id=course_id,session_id=session_id).order_by('-created_at')
+        quizzes = Quizzes.objects.filter(course_id=course_id,session_id=session_id).exclude(status=2).order_by('-created_at')
 
         if not quizzes.exists():
             return self.custom_response(status.HTTP_200_OK, 'No quizzes found', {})
@@ -294,18 +316,34 @@ class QuizzesByCourseIDAPIView(CustomResponseMixin, APIView):
         quizzes_data = []
         for quiz in quizzes:
             submission = QuizSubmission.objects.filter(quiz=quiz, user=user).first()
-
-
             if submission:
-                if submission.status == 1:
-                    submission_status = 'Submitted'
+                if submission.status == 1:  # Submitted
+                    if submission.quiz_submitted_at > quiz.due_date:
+                        submission_status = "Late Submission"
+                    else:
+                        submission_status = "Submitted"
                 else:
-                    submission_status = 'Pending'
+                    submission_status = "Pending"  # Status is pending if not yet graded
             else:
                 if timezone.now() > quiz.due_date:
-                    submission_status = 'Not Submitted'
+                    submission_status = (
+                        "Not Submitted"  # Due date has passed without submission
+                    )
                 else:
-                    submission_status = 'Pending'
+                    submission_status = (
+                        "Pending"  # Due date has not passed, and not yet submitted
+                    )
+
+            # if submission:
+            #     if submission.status == 1:
+            #         submission_status = 'Submitted'
+            #     else:
+            #         submission_status = 'Pending'
+            # else:
+            #     if timezone.now() > quiz.due_date:
+            #         submission_status = 'Not Submitted'
+            #     else:
+            #         submission_status = 'Pending'
             session_data = {
                 "id": quiz.session.id,
             } if quiz.session else None
@@ -402,9 +440,23 @@ class QuizDetailView(APIView):
             grading = QuizGrading.objects.filter(quiz_submissions=submission).first() if submission else None
 
             if submission:
-                submission_status = 'Submitted' if submission.status == 1 else 'Pending'
+                if submission.status == 1:  # Submitted
+                    if submission.quiz_submitted_at > quiz.due_date:
+                        submission_status = "Late Submission"
+                    else:
+                        submission_status = "Submitted"
+                else:
+                    submission_status = "Pending"  # Status is pending if not yet graded
             else:
-                submission_status = 'Not Submitted' if timezone.now() > quiz.due_date else 'Pending'
+                if timezone.now() > quiz.due_date:
+                    submission_status = (
+                        "Not Submitted"  # Due date has passed without submission
+                    )
+                else:
+                    submission_status = (
+                        "Pending"  # Due date has not passed, and not yet submitted
+                    )
+
 
             marks_obtain = grading.grade if grading else Decimal('0.0')
             total_marks = quiz.total_grade if quiz.total_grade is not None else Decimal('0.0')

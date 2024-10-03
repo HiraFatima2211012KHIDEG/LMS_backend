@@ -81,6 +81,7 @@ class ModuleSerializer(serializers.ModelSerializer):
             "id",
             "name",
             "course",
+            "session",
             "description",
             "created_by",
             "created_at",
@@ -94,10 +95,10 @@ class ModuleSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         course = data.get("course")
-        if not Course.objects.filter(id=course.id).exists():
-            raise serializers.ValidationError({"course": "Invalid course ID."})
+        if course is not None:
+            if not Course.objects.filter(id=course.id).exists():
+                raise serializers.ValidationError({"course": "Invalid course ID."})
         return data
-
 
 class AssignmentSerializer(serializers.ModelSerializer):
     class Meta:
@@ -108,7 +109,7 @@ class AssignmentSerializer(serializers.ModelSerializer):
             "created_at",
             "created_by",
             "total_grade",
-            'session',
+            "session",
             "question",
             "description",
             "content",

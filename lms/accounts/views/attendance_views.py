@@ -279,12 +279,13 @@ class InstructorAttendanceView(CustomResponseMixin, APIView):
 
         attendance_data = []
         current_date = timezone.now().date()
+        marked_by_name = f"{request.user.first_name} {request.user.last_name}".strip()
 
         # Iterate through the incoming request data
         for attendance_entry in request.data:
             student_id = attendance_entry.get("student")
             student_status = attendance_entry.get("status", 0)  # Changed from status to student_status
-            marked_by = attendance_entry.get("marked_by", "Instructor")
+            marked_by = attendance_entry.get("marked_by", marked_by_name)
 
             # Ensure the student exists in the session
             try:

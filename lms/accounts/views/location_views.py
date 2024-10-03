@@ -141,6 +141,7 @@ class LocationViewSet(BaseLocationViewSet):
 #             status=status.HTTP_200_OK,
 #             headers=headers
 #         )
+    
 class SessionsAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
 

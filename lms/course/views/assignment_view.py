@@ -92,11 +92,31 @@ class AssignmentDetailAPIView(CustomResponseMixin, APIView):
             status.HTTP_400_BAD_REQUEST, "Error updating assignment", serializer.errors
         )
 
-    def delete(self, request, pk, format=None):
-        assignment = get_object_or_404(Assignment, pk=pk)
-        assignment.delete()
+    def patch(self, request, pk, format=None):
+        try:
+            assignment = Assignment.objects.get(pk=pk)
+        except Assignment.DoesNotExist:
+            return self.custom_response(
+                status.HTTP_404_NOT_FOUND, "Assignment not found.",{}
+            )
+        
+        status_data = request.data.get('status')
+        
+        if status_data is None:
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST, "Status field is required.",{}
+            )
+        
+        serializer = AssignmentSerializer(assignment, data={"status": status_data}, partial=True)
+        
+        if serializer.is_valid():
+            serializer.save()
+            return self.custom_response(
+                status.HTTP_200_OK, "Assignment status updated successfully", serializer.data
+            )
+        
         return self.custom_response(
-            status.HTTP_204_NO_CONTENT, "Assignment deleted successfully", {}
+            status.HTTP_400_BAD_REQUEST, "Error updating assignment status", errors=serializer.errors
         )
 
 
@@ -352,7 +372,7 @@ class AssignmentsByCourseIDAPIView(CustomResponseMixin, APIView):
 
     def get(self, request, course_id,session_id, format=None):
         user = request.user
-        assignments = Assignment.objects.filter(course_id=course_id,session_id=session_id).order_by('-created_at')
+        assignments = Assignment.objects.filter(course_id=course_id,session_id=session_id).exclude(status=2).order_by('-created_at')
 
         if not assignments.exists():
             return self.custom_response(status.HTTP_200_OK, "No assignments found", {})
@@ -363,21 +383,19 @@ class AssignmentsByCourseIDAPIView(CustomResponseMixin, APIView):
                 assignment=assignment, user=user
             ).first()
 
-            # Determine submission status
             if submission:
                 if submission.status == 1:  # Submitted
-                    submission_status = "Submitted"
+                    if submission.submitted_at > assignment.due_date:
+                        submission_status = "Late Submission"  # Submitted but late
+                    else:
+                        submission_status = "Submitted"  # Submitted on time
                 else:
                     submission_status = "Pending"  # Status is pending if not yet graded
             else:
                 if timezone.now() > assignment.due_date:
-                    submission_status = (
-                        "Not Submitted"  # Due date has passed without submission
-                    )
+                    submission_status = "Not Submitted" 
                 else:
-                    submission_status = (
-                        "Pending"  # Due date has not passed, and not yet submitted
-                    )
+                    submission_status = "Pending"
             session_data = {
                 "id": assignment.session.id,
             } if assignment.session else None
@@ -509,9 +527,22 @@ class AssignmentStudentListView(CustomResponseMixin, APIView):
                 submission = None
 
             if submission:
-                submission_status = "Submitted" if submission.status == 1 else "Pending"
+                if submission.status == 1:  # Submitted
+                    if submission.submitted_at > assignment.due_date:
+                        submission_status = "Late Submission"
+                    else:
+                        submission_status = "Submitted"
+                else:
+                    submission_status = "Pending"  # Status is pending if not yet graded
             else:
-                submission_status = "Not Submitted" if timezone.now() > assignment.due_date else "Pending"
+                if timezone.now() > assignment.due_date:
+                    submission_status = (
+                        "Not Submitted"  # Due date has passed without submission
+                    )
+                else:
+                    submission_status = (
+                        "Pending"  # Due date has not passed, and not yet submitted
+                    )
 
             student_data = {
                 'assignment': assignment.id,
@@ -654,12 +685,12 @@ class StudentsListSubmittedAssignmentAPIView(CustomResponseMixin, APIView):
 class StudentScoresSummaryAPIView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
-    def get(self, request, course_id, registration_id):
+    def get(self, request, course_id,session_id, registration_id):
         # Fetch weightage values
         weightage = Weightage.objects.get(course_id=course_id)
 
         # Fetch assignments and their total grades directly from Assignment model
-        assignments = Assignment.objects.filter(course_id=course_id)
+        assignments = Assignment.objects.filter(course_id=course_id,session_id=session_id)
         assignment_submissions = AssignmentSubmission.objects.filter(
             assignment__in=assignments, registration_id=registration_id
         )
@@ -676,7 +707,7 @@ class StudentScoresSummaryAPIView(APIView):
         )["total_sum_grade"] or Decimal("0")
         print(assignments_total_grades)
         # Fetch quizzes and their total grades directly from Quiz model
-        quizzes = Quizzes.objects.filter(course_id=course_id)
+        quizzes = Quizzes.objects.filter(course_id=course_id,session_id=session_id)
         quiz_submissions = QuizSubmission.objects.filter(
             quiz__in=quizzes, registration_id=registration_id
         )
@@ -693,7 +724,7 @@ class StudentScoresSummaryAPIView(APIView):
         )["total_sum_grade"] or Decimal("0")
 
         # Fetch projects and their total grades directly from Project model
-        projects = Project.objects.filter(course_id=course_id)
+        projects = Project.objects.filter(course_id=course_id,session_id=session_id)
         project_submissions = ProjectSubmission.objects.filter(
             project__in=projects, registration_id=registration_id
         )
@@ -710,7 +741,7 @@ class StudentScoresSummaryAPIView(APIView):
         )["total_sum_grade"] or Decimal("0")
 
         # Fetch exams and their total grades directly from Exam model
-        exams = Exam.objects.filter(course_id=course_id)
+        exams = Exam.objects.filter(course_id=course_id,session_id=session_id)
         exam_submissions = ExamSubmission.objects.filter(
             exam__in=exams, registration_id=registration_id
         )

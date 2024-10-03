@@ -112,10 +112,36 @@ class ProjectDetailAPIView(CustomResponseMixin, APIView):
             return self.custom_response(status.HTTP_200_OK, 'Project updated successfully', serializer.data)
         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error updating project', serializer.errors)
 
-    def delete(self, request, pk, format=None):
-        project = get_object_or_404(Project, pk=pk)
-        project.delete()
-        return self.custom_response(status.HTTP_204_NO_CONTENT, 'Project deleted successfully', {})
+
+    def patch(self, request, pk, format=None):
+        try:
+            # Retrieve the project object using the primary key (pk)
+            project = Project.objects.get(pk=pk)
+        except Project.DoesNotExist:
+            return self.custom_response(
+                status.HTTP_404_NOT_FOUND, "Project not found.", {}
+            )
+        
+        # Extract the status from the request data
+        status_data = request.data.get('status')
+        
+        if status_data is None:
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST, "Status field is required.", {}
+            )
+        
+        # Update only the 'status' field using partial=True
+        serializer = ProjectSerializer(project, data={"status": status_data}, partial=True)
+        
+        if serializer.is_valid():
+            serializer.save()
+            return self.custom_response(
+                status.HTTP_200_OK, "Project status updated successfully", serializer.data
+            )
+        
+        return self.custom_response(
+            status.HTTP_400_BAD_REQUEST, "Error updating project status", errors=serializer.errors
+        )
 
 
 
@@ -293,7 +319,7 @@ class ProjectsByCourseIDAPIView(CustomResponseMixin, APIView):
 
     def get(self, request, course_id,session_id, format=None):
         user = request.user
-        projects = Project.objects.filter(course_id=course_id,session_id=session_id).order_by('-created_at')
+        projects = Project.objects.filter(course_id=course_id,session_id=session_id).exclude(status=2).order_by('-created_at')
 
         if not projects.exists():
             return self.custom_response(status.HTTP_200_OK, 'No projects found', {})
@@ -302,17 +328,23 @@ class ProjectsByCourseIDAPIView(CustomResponseMixin, APIView):
         for project in projects:
             submission = ProjectSubmission.objects.filter(project=project, user=user).first()
 
-            # Determine submission status
             if submission:
                 if submission.status == 1:  # Submitted
-                    submission_status = 'Submitted'
+                    if submission.project_submitted_at > project.due_date:
+                        submission_status = "Late Submission"
+                    else:
+                        submission_status = "Submitted"
                 else:
-                    submission_status = 'Pending'  # Status is pending if not yet graded
+                    submission_status = "Pending"  # Status is pending if not yet graded
             else:
                 if timezone.now() > project.due_date:
-                    submission_status = 'Not Submitted'  # Due date has passed without submission
+                    submission_status = (
+                        "Not Submitted"  # Due date has passed without submission
+                    )
                 else:
-                    submission_status = 'Pending'  # Due date has not passed, and not yet submitted
+                    submission_status = (
+                        "Pending"  # Due date has not passed, and not yet submitted
+                    )
             session_data = {
                 "id": project.session.id,
             } if project.session else None
@@ -408,10 +440,22 @@ class ProjectDetailView(APIView):
             grading = ProjectGrading.objects.filter(project_submissions=submission).first() if submission else None
 
             if submission:
-                submission_status = 'Submitted' if submission.status == 1 else 'Pending'
+                if submission.status == 1:  # Submitted
+                    if submission.project_submitted_at > project.due_date:
+                        submission_status = "Late Submission"
+                    else:
+                        submission_status = "Submitted"
+                else:
+                    submission_status = "Pending"  # Status is pending if not yet graded
             else:
-                submission_status = 'Not Submitted' if timezone.now() > project.due_date else 'Pending'
-
+                if timezone.now() > project.due_date:
+                    submission_status = (
+                        "Not Submitted"  # Due date has passed without submission
+                    )
+                else:
+                    submission_status = (
+                        "Pending"  # Due date has not passed, and not yet submitted
+                    )
             marks_obtain = grading.grade if grading else Decimal('0.0')
             total_marks = project.total_grade if project.total_grade is not None else Decimal('0.0')
             remarks = grading.feedback if grading else None
@@ -615,12 +659,22 @@ class ProjectStudentListView(CustomResponseMixin, APIView):
                 submission = None
 
             if submission:
-                submission_status = "Submitted" if submission.status == 1 else "Pending"
+                if submission.status == 1:  # Submitted
+                    if submission.project_submitted_at > project.due_date:
+                        submission_status = "Late Submission"
+                    else:
+                        submission_status = "Submitted"
+                else:
+                    submission_status = "Pending"  # Status is pending if not yet graded
             else:
-                submission_status = (
-                    "Not Submitted" if timezone.now() > project.due_date else "Pending"
-                )
-
+                if timezone.now() > project.due_date:
+                    submission_status = (
+                        "Not Submitted"  # Due date has passed without submission
+                    )
+                else:
+                    submission_status = (
+                        "Pending"  # Due date has not passed, and not yet submitted
+                    )
             # Collect student data
             student_data = {
                 'project': project.id,

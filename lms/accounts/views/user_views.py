@@ -1460,6 +1460,9 @@ class UserSessionsView(views.APIView, CustomResponseMixin):
 #             "Sessions assigned successfully and email sent.",
 #             response_data
 #         )
+    
+
+    
 class InstructorSessionsView(views.APIView, CustomResponseMixin):
     """
     View to assign sessions to an instructor.
@@ -1549,7 +1552,7 @@ class InstructorSessionsView(views.APIView, CustomResponseMixin):
             # Check for overlapping session timings for the student
             overlapping_sessions = InstructorSession.objects.filter(
                 instructor=instructor,
-                session__location=session.location,
+                #session__location=session.location,
                 session__start_time__lt=session.end_time,
                 session__end_time__gt=session.start_time
             )
