@@ -39,7 +39,7 @@ urlpatterns = [
         name='assignment-student-list'
     ),
     path('assignments/<int:course_id>/course/session/<int:session_id>/<str:registration_id>/total_score/', StudentScoresSummaryAPIView.as_view(), name='users-score-assignment'),
-    # path('programs/<int:program_id>/students/<str:registration_id>/pending-assignments/', UnifiedPendingItemsView.as_view(), name='pending-assignments'),
+    path('programs/<int:program_id>/students/<str:registration_id>/pending-assignments/', UnifiedPendingItemsView.as_view(), name='pending-assignments'),
     path('assignments/<int:course_id>/session/<int:session_id>/student/<str:registration_id>/', AssignmentDetailView.as_view(), name='assignment-detail'),
 
     # path('assignments/<str:registration_id>/submissions/', StudentsWhoSubmittedAssignmentAPIView.as_view(), name='users-who-submitted-assignment'),

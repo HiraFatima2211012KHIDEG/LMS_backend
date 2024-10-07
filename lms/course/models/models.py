@@ -1,25 +1,23 @@
 from django.db import models
 from django.conf import settings
 from django.core.validators import FileExtensionValidator
-# from django.core.exceptions import ValidationError
 from accounts.models.location_models import Sessions
 from django.utils import timezone
 
-import re
-
 STATUS_CHOICES = (
-        (0, 'Not Active'),
-        (1, 'Active'),
-        (2, 'Deleted'),
-    )
+    (0, "Not Active"),
+    (1, "Active"),
+    (2, "Deleted"),
+)
 
 
 class Skill(models.Model):
-    skill_name=models.CharField(max_length=100)
+    skill_name = models.CharField(max_length=100)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return self.skill_name
+        return f"{self.skill_name}"
+
 
 class Course(models.Model):
     name = models.CharField(max_length=100)
@@ -31,14 +29,14 @@ class Course(models.Model):
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=1)
     theory_credit_hours = models.IntegerField(blank=True, default=0)
     lab_credit_hours = models.IntegerField(blank=True, default=0)
-    skills = models.ManyToManyField('Skill',  blank=True)
-    instructors = models.ManyToManyField('accounts.Instructor', blank=True)
+    skills = models.ManyToManyField("Skill", blank=True)
+    instructors = models.ManyToManyField("accounts.Instructor", blank=True)
     picture = models.ImageField(
         upload_to="material/course_pictures/", blank=True, null=True
     )
 
     def __str__(self):
-        return self.name
+        return f"{self.name}"
 
 
 class Module(models.Model):
@@ -52,7 +50,8 @@ class Module(models.Model):
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=1)
 
     def __str__(self):
-        return self.name
+        return f"{self.name}"
+
 
 class ContentFile(models.Model):
     module = models.ForeignKey(
@@ -65,10 +64,11 @@ class ContentFile(models.Model):
                 allowed_extensions=["pdf", "docx", "ppt", "xls", "zip"]
             )
         ],
-
     )
+
     def __str__(self):
         return f"{self.module} - {self.file}"
+
 
 class Assignment(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
@@ -79,49 +79,37 @@ class Assignment(models.Model):
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=1)
     question = models.TextField(null=True, blank=True)
     description = models.TextField(null=True, blank=True)
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,null=True, blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True
+    )
     content = models.FileField(
         upload_to="material/assignments/",
         validators=[
             FileExtensionValidator(
-                allowed_extensions=["pdf", "doc", "docx", "ppt", "pptx", "txt",'zip']
+                allowed_extensions=["pdf", "doc", "docx", "ppt", "pptx", "txt", "zip"]
             )
         ],
-        null=True, blank=True
+        null=True,
+        blank=True,
     )
     no_of_resubmissions_allowed = models.IntegerField(default=0)
     due_date = models.DateTimeField()
-
+    late_submission = models.BooleanField(default=False)
 
     def get_due_date_in_user_timezone(self, user_timezone):
         # Convert due_date to the user's time zone
         return timezone.localtime(self.due_date, timezone.pytz.timezone(user_timezone))
+
     def __str__(self):
-        return self.question
-
-
-
-# class InstructorAssignment(models.Model):
-#     course = models.ForeignKey(Course, on_delete=models.CASCADE)
-#     session = models.ForeignKey(Sessions, on_delete=models.CASCADE)
-#     instructor = models.ForeignKey('accounts.Instructor', on_delete=models.CASCADE)
-#     assignments = models.JSONField(default=list)  
-#     created_at = models.DateTimeField(auto_now_add=True)
-#     updated_at = models.DateTimeField(auto_now=True)
-
-#     class Meta:
-#         unique_together = ("course", "session", "instructor")
-
-#     def __str__(self):
-#         return f"{self.instructor} - {self.course} - {self.session}"
-
+        return f"{self.question}"
 
 
 ASSESMENT_STATUS_CHOICES = (
-        (0, 'Not Submitted'),
-        (1, 'Submitted'),
-        (2, 'Pending'),
-    )
+    (0, "Not Submitted"),
+    (1, "Submitted"),
+    (2, "Pending"),
+)
+
 
 class AssignmentSubmission(models.Model):
     assignment = models.ForeignKey(
@@ -134,12 +122,15 @@ class AssignmentSubmission(models.Model):
         upload_to="material/submissions/",
         validators=[
             FileExtensionValidator(
-                allowed_extensions=['pdf', "doc", "docx", "ppt", "pptx", "txt",'zip']
+                allowed_extensions=["pdf", "doc", "docx", "ppt", "pptx", "txt", "zip"]
             )
         ],
-        null=True, blank=True
+        null=True,
+        blank=True,
     )
-    status = models.PositiveSmallIntegerField(choices=ASSESMENT_STATUS_CHOICES, default=0)
+    status = models.PositiveSmallIntegerField(
+        choices=ASSESMENT_STATUS_CHOICES, default=0
+    )
     submitted_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     remaining_resubmissions = models.IntegerField(default=0)
@@ -151,7 +142,9 @@ class AssignmentSubmission(models.Model):
     def save(self, *args, **kwargs):
         if self.pk is None:
             self.remaining_resubmissions = self.assignment.no_of_resubmissions_allowed
-            print(f"Initialized remaining_resubmissions with {self.remaining_resubmissions}")
+            print(
+                f"Initialized remaining_resubmissions with {self.remaining_resubmissions}"
+            )
 
         super().save(*args, **kwargs)
 
@@ -163,21 +156,12 @@ class AssignmentSubmission(models.Model):
             return True
         return False
 
-# class Grading(models.Model):
-#     submission=models.ForeignKey(AssignmentSubmission, on_delete=models.CASCADE)
-#     grade=models.DecimalField(max_digits=10, decimal_places=2, null=True)
-#     total_grade=models.DecimalField(max_digits=10, decimal_places=2, null=True)
-#     feedback = models.TextField(null=True, blank=True)
-#     graded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-#     graded_at = models.DateTimeField(auto_now_add=True)
-#     updated_at = models.DateTimeField(auto_now=True)
-
-#     def __str__(self):
-#         return f"{self.submission} - {self.grade}"
 
 class Grading(models.Model):
-    submission = models.ForeignKey(AssignmentSubmission, on_delete=models.CASCADE, null=True, blank=True)
-    grade = models.DecimalField(max_digits=10, decimal_places=2, null=True,default=0)
+    submission = models.ForeignKey(
+        AssignmentSubmission, on_delete=models.CASCADE, null=True, blank=True
+    )
+    grade = models.DecimalField(max_digits=10, decimal_places=2, null=True, default=0)
     # total_grade = models.DecimalField(max_digits=10, decimal_places=2, null=True)
     feedback = models.TextField(null=True, blank=True)
     graded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
@@ -195,7 +179,9 @@ class Quizzes(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     total_grade = models.DecimalField(max_digits=10, decimal_places=2, null=True)
-    session = models.ForeignKey(Sessions, on_delete=models.CASCADE,null=True, blank=True)
+    session = models.ForeignKey(
+        Sessions, on_delete=models.CASCADE, null=True, blank=True
+    )
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=1)
     question = models.TextField(null=True, blank=True)
     description = models.TextField(null=True, blank=True)
@@ -203,34 +189,18 @@ class Quizzes(models.Model):
         upload_to="material/quizzes/",
         validators=[
             FileExtensionValidator(
-                allowed_extensions=["pdf", "doc", "docx", "ppt", "pptx", "txt",'zip']
+                allowed_extensions=["pdf", "doc", "docx", "ppt", "pptx", "txt", "zip"]
             )
         ],
-        null=True, blank=True
+        null=True,
+        blank=True,
     )
     no_of_resubmissions_allowed = models.IntegerField(default=0)
     due_date = models.DateTimeField()
+    late_submission = models.BooleanField(default=False)
 
     def __str__(self):
-        return self.question
-
-
-
-# class InstructorQuiz(models.Model):
-#     course = models.ForeignKey(Course, on_delete=models.CASCADE)
-#     session = models.ForeignKey(Sessions, on_delete=models.CASCADE)
-#     instructor = models.ForeignKey('accounts.Instructor', on_delete=models.CASCADE)
-#     quizzes = models.JSONField(default=list)  
-#     created_at = models.DateTimeField(auto_now_add=True)
-#     updated_at = models.DateTimeField(auto_now=True)
-
-#     class Meta:
-#         unique_together = ("course", "session", "instructor")
-
-#     def __str__(self):
-#         return f"{self.instructor} - {self.course} - {self.session}"
-
-
+        return f"{self.question}"
 
 
 class QuizSubmission(models.Model):
@@ -243,11 +213,15 @@ class QuizSubmission(models.Model):
         upload_to="material/quiz_submissions/",
         validators=[
             FileExtensionValidator(
-                allowed_extensions=["pdf", "doc", "docx", "ppt", "pptx", "txt",'zip']
+                allowed_extensions=["pdf", "doc", "docx", "ppt", "pptx", "txt", "zip"]
             )
-        ],null=True, blank=True
+        ],
+        null=True,
+        blank=True,
     )
-    status = models.PositiveSmallIntegerField(choices=ASSESMENT_STATUS_CHOICES, default=0)
+    status = models.PositiveSmallIntegerField(
+        choices=ASSESMENT_STATUS_CHOICES, default=0
+    )
     quiz_submitted_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     remaining_resubmissions = models.IntegerField(default=0)
@@ -259,7 +233,9 @@ class QuizSubmission(models.Model):
     def save(self, *args, **kwargs):
         if self.pk is None:
             self.remaining_resubmissions = self.quiz.no_of_resubmissions_allowed
-            print(f"Initialized remaining_resubmissions with {self.remaining_resubmissions}")
+            print(
+                f"Initialized remaining_resubmissions with {self.remaining_resubmissions}"
+            )
 
         super().save(*args, **kwargs)
 
@@ -272,8 +248,8 @@ class QuizSubmission(models.Model):
 
 
 class QuizGrading(models.Model):
-    quiz_submissions=models.ForeignKey(QuizSubmission, on_delete=models.CASCADE)
-    grade=models.DecimalField(max_digits=10, decimal_places=2, null=True,default=0)
+    quiz_submissions = models.ForeignKey(QuizSubmission, on_delete=models.CASCADE)
+    grade = models.DecimalField(max_digits=10, decimal_places=2, null=True, default=0)
     feedback = models.TextField(null=True, blank=True)
     graded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     graded_at = models.DateTimeField(auto_now_add=True)
@@ -283,9 +259,10 @@ class QuizGrading(models.Model):
         return f"{self.quiz_submissions} - {self.grade}"
 
 
-
 class Project(models.Model):
-    course = models.ForeignKey(Course, related_name='projects', on_delete=models.CASCADE)
+    course = models.ForeignKey(
+        Course, related_name="projects", on_delete=models.CASCADE
+    )
     title = models.CharField(max_length=255)
     description = models.TextField()
     content = models.FileField(
@@ -295,7 +272,8 @@ class Project(models.Model):
                 allowed_extensions=["pdf", "doc", "docx", "ppt", "pptx", "txt", "zip"]
             )
         ],
-        null=True, blank=True
+        null=True,
+        blank=True,
     )
     due_date = models.DateTimeField()
     total_grade = models.DecimalField(max_digits=10, decimal_places=2, null=True)
@@ -303,26 +281,15 @@ class Project(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=1)
-    session = models.ForeignKey(Sessions, on_delete=models.CASCADE,null=True, blank=True)
+    session = models.ForeignKey(
+        Sessions, on_delete=models.CASCADE, null=True, blank=True
+    )
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     no_of_resubmissions_allowed = models.IntegerField(default=0)
+    late_submission = models.BooleanField(default=False)
 
     def __str__(self):
-        return self.title
-
-# class InstructorProject(models.Model):
-#     course = models.ForeignKey(Course, on_delete=models.CASCADE)
-#     session = models.ForeignKey(Sessions, on_delete=models.CASCADE)
-#     instructor = models.ForeignKey('accounts.Instructor', on_delete=models.CASCADE)
-#     projects = models.JSONField(default=list)  
-#     created_at = models.DateTimeField(auto_now_add=True)
-#     updated_at = models.DateTimeField(auto_now=True)
-
-#     class Meta:
-#         unique_together = ("course", "session", "instructor")
-
-#     def __str__(self):
-#         return f"{self.instructor} - {self.course} - {self.session}"
+        return f"{self.title}"
 
 
 class ProjectSubmission(models.Model):
@@ -335,16 +302,19 @@ class ProjectSubmission(models.Model):
         upload_to="material/project_submissions/",
         validators=[
             FileExtensionValidator(
-                allowed_extensions=["pdf", "doc", "docx", "ppt", "pptx", "txt",'zip']
+                allowed_extensions=["pdf", "doc", "docx", "ppt", "pptx", "txt", "zip"]
             )
-        ],null=True, blank=True
+        ],
+        null=True,
+        blank=True,
     )
-    status = models.PositiveSmallIntegerField(choices=ASSESMENT_STATUS_CHOICES, default=0)
+    status = models.PositiveSmallIntegerField(
+        choices=ASSESMENT_STATUS_CHOICES, default=0
+    )
     project_submitted_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     remaining_resubmissions = models.IntegerField(default=0)
     comments = models.TextField(null=True, blank=True)
-
 
     def __str__(self):
         return f"{self.user} - {self.project}"
@@ -352,7 +322,9 @@ class ProjectSubmission(models.Model):
     def save(self, *args, **kwargs):
         if self.pk is None:
             self.remaining_resubmissions = self.project.no_of_resubmissions_allowed
-            print(f"Initialized remaining_resubmissions with {self.remaining_resubmissions}")
+            print(
+                f"Initialized remaining_resubmissions with {self.remaining_resubmissions}"
+            )
 
         super().save(*args, **kwargs)
 
@@ -363,9 +335,10 @@ class ProjectSubmission(models.Model):
             return True
         return False
 
+
 class ProjectGrading(models.Model):
-    project_submissions=models.ForeignKey(ProjectSubmission, on_delete=models.CASCADE)
-    grade=models.DecimalField(max_digits=10, decimal_places=2, null=True,default=0)
+    project_submissions = models.ForeignKey(ProjectSubmission, on_delete=models.CASCADE)
+    grade = models.DecimalField(max_digits=10, decimal_places=2, null=True, default=0)
 
     feedback = models.TextField(null=True, blank=True)
     graded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
@@ -377,7 +350,7 @@ class ProjectGrading(models.Model):
 
 
 class Exam(models.Model):
-    course = models.ForeignKey(Course, related_name='exams', on_delete=models.CASCADE)
+    course = models.ForeignKey(Course, related_name="exams", on_delete=models.CASCADE)
     title = models.CharField(max_length=255)
     description = models.TextField()
     content = models.FileField(
@@ -387,37 +360,24 @@ class Exam(models.Model):
                 allowed_extensions=["pdf", "doc", "docx", "ppt", "pptx", "txt", "zip"]
             )
         ],
-        null=True, blank=True
+        null=True,
+        blank=True,
     )
-    due_date = models.DateTimeField()
+    due_date =  models.DateField()
     total_grade = models.DecimalField(max_digits=10, decimal_places=2, null=True)
-    session = models.ForeignKey(Sessions, on_delete=models.CASCADE,null=True, blank=True)
+    session = models.ForeignKey(
+        Sessions, on_delete=models.CASCADE, null=True, blank=True
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     start_time = models.TimeField(null=True, blank=True)
     end_time = models.TimeField(null=True, blank=True)
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=1)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    late_submission = models.BooleanField(default=False)
 
     def __str__(self):
-        return self.title
-
-
-
-# class InstructorExam(models.Model):
-#     course = models.ForeignKey(Course, on_delete=models.CASCADE)
-#     session = models.ForeignKey(Sessions, on_delete=models.CASCADE)
-#     instructor = models.ForeignKey('accounts.Instructor', on_delete=models.CASCADE)
-#     exams = models.JSONField(default=list)  
-#     created_at = models.DateTimeField(auto_now_add=True)
-#     updated_at = models.DateTimeField(auto_now=True)
-
-#     class Meta:
-#         unique_together = ("course", "session", "instructor")
-
-#     def __str__(self):
-#         return f"{self.instructor} - {self.course} - {self.session}"
-
+        return f"{self.title}"
 
 
 class ExamSubmission(models.Model):
@@ -432,9 +392,13 @@ class ExamSubmission(models.Model):
             FileExtensionValidator(
                 allowed_extensions=["pdf", "doc", "docx", "ppt", "pptx", "txt", "zip"]
             )
-        ],null=True, blank=True
+        ],
+        null=True,
+        blank=True,
     )
-    status = models.PositiveSmallIntegerField(choices=ASSESMENT_STATUS_CHOICES, default=0)
+    status = models.PositiveSmallIntegerField(
+        choices=ASSESMENT_STATUS_CHOICES, default=0
+    )
     exam_submitted_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     resubmission = models.BooleanField(default=False)
@@ -443,9 +407,10 @@ class ExamSubmission(models.Model):
     def __str__(self):
         return f"{self.user} - {self.exam}"
 
+
 class ExamGrading(models.Model):
     exam_submission = models.ForeignKey(ExamSubmission, on_delete=models.CASCADE)
-    grade = models.DecimalField(max_digits=10, decimal_places=2, null=True,default=0)
+    grade = models.DecimalField(max_digits=10, decimal_places=2, null=True, default=0)
     feedback = models.TextField(null=True, blank=True)
     graded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     graded_at = models.DateTimeField(auto_now_add=True)
@@ -456,13 +421,15 @@ class ExamGrading(models.Model):
 
 
 class Weightage(models.Model):
-    course = models.ForeignKey(Course, related_name='weightage', on_delete=models.CASCADE)
-    session = models.ForeignKey(Sessions, on_delete=models.CASCADE,null=True, blank=True)
-    assignments_weightage = models.FloatField(default=0,null=True, blank=True)
-    quizzes_weightage = models.FloatField(default=0,null=True, blank=True)
-    projects_weightage = models.FloatField(default=0,null=True, blank=True)
-    exams_weightage = models.FloatField(default=0,null=True, blank=True)
+    course = models.ForeignKey(
+        Course, related_name="weightage", on_delete=models.CASCADE
+    )
+    session = models.ForeignKey(
+        Sessions, on_delete=models.CASCADE, null=True, blank=True
+    )
+    assignments_weightage = models.FloatField(default=0, null=True, blank=True)
+    quizzes_weightage = models.FloatField(default=0, null=True, blank=True)
+    projects_weightage = models.FloatField(default=0, null=True, blank=True)
+    exams_weightage = models.FloatField(default=0, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,null=True, blank=True)
-

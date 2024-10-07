@@ -318,10 +318,10 @@ class QuizzesByCourseIDAPIView(CustomResponseMixin, APIView):
             submission = QuizSubmission.objects.filter(quiz=quiz, user=user).first()
             if submission:
                 if submission.status == 1:  # Submitted
-                    if submission.quiz_submitted_at > quiz.due_date:
-                        submission_status = "Late Submission"
-                    else:
-                        submission_status = "Submitted"
+                    # if submission.quiz_submitted_at > quiz.due_date:
+                    #     submission_status = "Late Submission"
+                    # else:
+                    submission_status = "Submitted"
                 else:
                     submission_status = "Pending"  # Status is pending if not yet graded
             else:
@@ -350,9 +350,10 @@ class QuizzesByCourseIDAPIView(CustomResponseMixin, APIView):
             quiz_data = {
                 'id': quiz.id,
                 'total_grade':quiz.total_grade,
-                'content_url': quiz.content.url if quiz.content else None, 
+                "content": quiz.content.url if quiz.content else None, 
                 'question': quiz.question,
                 'description': quiz.description,
+                'late_submission':quiz.late_submission,
                 'session': session_data,
                 'status':quiz.status,
                 'due_date': quiz.due_date,
@@ -441,10 +442,10 @@ class QuizDetailView(APIView):
 
             if submission:
                 if submission.status == 1:  # Submitted
-                    if submission.quiz_submitted_at > quiz.due_date:
-                        submission_status = "Late Submission"
-                    else:
-                        submission_status = "Submitted"
+                    # if submission.quiz_submitted_at > quiz.due_date:
+                    #     submission_status = "Late Submission"
+                    # else:
+                    submission_status = "Submitted"
                 else:
                     submission_status = "Pending"  # Status is pending if not yet graded
             else:

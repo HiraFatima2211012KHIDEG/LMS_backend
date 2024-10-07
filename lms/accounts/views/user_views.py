@@ -1,4 +1,4 @@
-from rest_framework import views, viewsets, status, generics, permissions, filters
+from rest_framework import views, viewsets, status, generics, permissions
 from rest_framework.response import Response
 from ..serializers.user_serializers import *
 from django.contrib.auth import authenticate
@@ -63,6 +63,42 @@ class UserLoginView(views.APIView):
     View to handle user login and generate authentication tokens.
     """
 
+
+    def get_tokens_for_user(self, user):
+        """
+        Generate JWT tokens for the authenticated user.
+        Args:
+            user (User): The authenticated user object.
+        Returns:
+            dict: A dictionary containing the refresh and access tokens.
+        """
+        try:
+            refresh = RefreshToken.for_user(user)
+            return {
+                "refresh": str(refresh),
+                "access": str(refresh.access_token),
+            }
+        except Exception as e:
+            raise Exception(f"Error generating tokens: {str(e)}")
+
+    def get_group_permissions(self, group_id):
+        """Retrieve all the permissions related to a user group"""
+        permissions_dict = {}
+        access_controls = AccessControl.objects.filter(group_id=group_id)
+        for access_control in access_controls:
+            model_name = access_control.model
+            permissions_value = ""
+            if access_control.create:
+                permissions_value += constants.CREATE
+            if access_control.read:
+                permissions_value += constants.READ
+            if access_control.update:
+                permissions_value += constants.UPDATE
+            if access_control.remove:
+                permissions_value += constants.DELETE
+            permissions_dict[model_name] = permissions_value
+        return permissions_dict
+  
     @custom_extend_schema(UserLoginSerializer)
     def post(self, request):
         """
@@ -73,7 +109,7 @@ class UserLoginView(views.APIView):
             request (Request): The HTTP request object containing the login data.
         Returns:
             Response: A Response object with authentication tokens if successful,
-                      or error details if validation fails.
+                    or error details if validation fails.
         """
         data = request.data
         if "email" not in data:
@@ -101,38 +137,30 @@ class UserLoginView(views.APIView):
                 tokens = self.get_tokens_for_user(user)
                 user_group = Group.objects.get(user=user.id)
                 permission = self.get_group_permissions(user_group.id)
-                user_profile = UserProfileSerializer(user, context={'user' : user})
+                user_profile = UserProfileSerializer(user, context={'user': user})
                 user_serializer = None
-                session_data = []
+                session_assigned = False  # Default to no session
+
                 if user_group.name == "student":
                     student = Student.objects.get(user=user.id)
                     user_serializer = StudentSerializer(student)
                     try:
                         student_sessions = StudentSession.objects.filter(student=student)
-                        for student_session in student_sessions:
-                            session_info=SessionsSerializer(student_session.session).data
-                            try:
-                                instructor_session = InstructorSession.objects.get(session=student_session.session)
-                                instructor_data = {
-                                    "instructor_id": instructor_session.instructor.id.id,  # This will give you the user ID
-                                    "instructor_name": f"{instructor_session.instructor.id.first_name} {instructor_session.instructor.id.last_name}",
-                                }
-                                session_info["instructor"] = instructor_data
-                            except InstructorSession.DoesNotExist:
-                                session_info["instructor"] = None
-                            session_data.append(session_info)
+                        if student_sessions.exists():
+                            session_assigned = True  # Set to true if sessions exist
                     except StudentSession.DoesNotExist:
-                        session_data = []
+                        session_assigned = False
+
                 elif user_group.name == "instructor":
                     instructor = Instructor.objects.get(id=user.id)
                     user_serializer = InstructorSerializer(instructor)
                     try:
                         instructor_sessions = InstructorSession.objects.filter(instructor=instructor)
-                        for instructor_session in instructor_sessions:
-                            session_data.append(SessionsSerializer(instructor_session.session).data)
-
+                        if instructor_sessions.exists():
+                            session_assigned = True  # Set to true if sessions exist
                     except InstructorSession.DoesNotExist:
-                        session_data = []
+                        session_assigned = False
+
                 return Response(
                     {
                         "status_code": status.HTTP_200_OK,
@@ -141,11 +169,8 @@ class UserLoginView(views.APIView):
                             "token": tokens,
                             "Group": user_group.name,
                             "User": user_profile.data,
-                            "permissions": permission,
-                            "user_data": (
-                                user_serializer.data if user_serializer else None
-                            ),
-                            "session": session_data if session_data else None,
+                            "user_data": user_serializer.data if user_serializer else None,
+                            "session": session_assigned,  # Return true or false based on session existence
                         },
                     }
                 )
@@ -163,6 +188,156 @@ class UserLoginView(views.APIView):
                 "response": serializer.errors,
             }
         )
+
+
+    # @custom_extend_schema(UserLoginSerializer)
+    # def post(self, request):
+    #     """
+    #     Handle POST requests for user login.
+    #     This method processes the login request by validating the provided credentials.
+    #     If valid, it authenticates the user and generates authentication tokens.
+    #     Args:
+    #         request (Request): The HTTP request object containing the login data.
+    #     Returns:
+    #         Response: A Response object with authentication tokens if successful,
+    #                   or error details if validation fails.
+    #     """
+    #     data = request.data
+    #     if "email" not in data:
+    #         return Response(
+    #             {
+    #                 "status_code": status.HTTP_400_BAD_REQUEST,
+    #                 "message": "Email is not provided.",
+    #             }
+    #         )
+    #     if "password" not in data:
+    #         return Response(
+    #             {
+    #                 "status_code": status.HTTP_400_BAD_REQUEST,
+    #                 "message": "Password is not provided.",
+    #             }
+    #         )
+    #     data["email"] = data.get("email", "").lower()
+    #     serializer = UserLoginSerializer(data=data)
+    #     if serializer.is_valid(raise_exception=True):
+    #         user = authenticate(
+    #             email=serializer.validated_data["email"],
+    #             password=serializer.validated_data["password"],
+    #         )
+    #         if user is not None:
+    #             tokens = self.get_tokens_for_user(user)
+    #             user_group = Group.objects.get(user=user.id)
+    #             permission = self.get_group_permissions(user_group.id)
+    #             user_profile = UserProfileSerializer(user, context={'user' : user})
+    #             user_serializer = None
+    #             session_data = []
+    #             if user_group.name == "student":
+    #                 student = Student.objects.get(user=user.id)
+    #                 user_serializer = StudentSerializer(student)
+    #                 try:
+    #                     student_sessions = StudentSession.objects.filter(student=student)
+    #                     for student_session in student_sessions:
+    #                         session_info=SessionsSerializer(student_session.session).data
+    #                         try:
+    #                             instructor_session = InstructorSession.objects.get(session=student_session.session)
+    #                             instructor_data = {
+    #                                 "instructor_id": instructor_session.instructor.id.id, 
+    #                                 "instructor_name": f"{instructor_session.instructor.id.first_name} {instructor_session.instructor.id.last_name}",
+    #                             }
+    #                             session_info["instructor"] = instructor_data
+    #                         except InstructorSession.DoesNotExist:
+    #                             session_info["instructor"] = None
+    #                         session_data.append(session_info)
+    #                 except StudentSession.DoesNotExist:
+    #                     session_data = []
+    #             elif user_group.name == "instructor":
+    #                 instructor = Instructor.objects.get(id=user.id)
+    #                 user_serializer = InstructorSerializer(instructor)
+    #                 try:
+    #                     instructor_sessions = InstructorSession.objects.filter(instructor=instructor)
+    #                     for instructor_session in instructor_sessions:
+    #                         session_data.append(SessionsSerializer(instructor_session.session).data)
+
+    #                 except InstructorSession.DoesNotExist:
+    #                     session_data = []
+    #             return Response(
+    #                 {
+    #                     "status_code": status.HTTP_200_OK,
+    #                     "message": "Login Successful.",
+    #                     "response": {
+    #                         "token": tokens,
+    #                         "Group": user_group.name,
+    #                         "User": user_profile.data,
+    #                         "permissions": permission,
+    #                         "user_data": (
+    #                             user_serializer.data if user_serializer else None
+    #                         ),
+    #                         "session": session_data if session_data else None,
+    #                     },
+    #                 }
+    #             )
+    #         else:
+    #             return Response(
+    #                 {
+    #                     "status_code": status.HTTP_401_UNAUTHORIZED,
+    #                     "message": "Invalid credentials.",
+    #                 },
+    #             )
+    #     return Response(
+    #         {
+    #             "status_code": status.HTTP_400_BAD_REQUEST,
+    #             "message": "Unable to login.",
+    #             "response": serializer.errors,
+    #         }
+    #     )
+
+class UserSessionAPIView(views.APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request):
+        """
+        Handle GET requests to return session data for the authenticated user.
+        """
+        user = request.user
+        user_group = Group.objects.get(user=user.id)
+        session_data = []
+
+        if user_group.name == "student":
+            student = Student.objects.get(user=user.id)
+            try:
+                student_sessions = StudentSession.objects.filter(student=student)
+                for student_session in student_sessions:
+                    session_info = SessionsSerializer(student_session.session).data
+                    try:
+                        instructor_session = InstructorSession.objects.get(session=student_session.session)
+                        instructor_data = {
+                            "instructor_id": instructor_session.instructor.id.id, 
+                            "instructor_name": f"{instructor_session.instructor.id.first_name} {instructor_session.instructor.id.last_name}",
+                        }
+                        session_info["instructor"] = instructor_data
+                    except InstructorSession.DoesNotExist:
+                        session_info["instructor"] = None
+                    session_data.append(session_info)
+            except StudentSession.DoesNotExist:
+                session_data = []
+
+        elif user_group.name == "instructor":
+            instructor = Instructor.objects.get(id=user.id)
+            try:
+                instructor_sessions = InstructorSession.objects.filter(instructor=instructor)
+                for instructor_session in instructor_sessions:
+                    session_data.append(SessionsSerializer(instructor_session.session).data)
+            except InstructorSession.DoesNotExist:
+                session_data = []
+
+        return Response(
+            {
+                "status_code": status.HTTP_200_OK,
+                "message": "Session data retrieved successfully.",
+                "session": session_data if session_data else None,
+            }
+        )
+
 
 
     # class UserLoginView(views.APIView):
@@ -242,22 +417,22 @@ class UserLoginView(views.APIView):
     #                 "response": serializer.errors,
     #             }
     #         )
-    def get_tokens_for_user(self, user):
-        """
-        Generate JWT tokens for the authenticated user.
-        Args:
-            user (User): The authenticated user object.
-        Returns:
-            dict: A dictionary containing the refresh and access tokens.
-        """
-        try:
-            refresh = RefreshToken.for_user(user)
-            return {
-                "refresh": str(refresh),
-                "access": str(refresh.access_token),
-            }
-        except Exception as e:
-            raise Exception(f"Error generating tokens: {str(e)}")
+    # def get_tokens_for_user(self, user):
+    #     """
+    #     Generate JWT tokens for the authenticated user.
+    #     Args:
+    #         user (User): The authenticated user object.
+    #     Returns:
+    #         dict: A dictionary containing the refresh and access tokens.
+    #     """
+    #     try:
+    #         refresh = RefreshToken.for_user(user)
+    #         return {
+    #             "refresh": str(refresh),
+    #             "access": str(refresh.access_token),
+    #         }
+    #     except Exception as e:
+    #         raise Exception(f"Error generating tokens: {str(e)}")
 
     def get_group_permissions(self, group_id):
         """Retrieve all the permissions related to a user group"""

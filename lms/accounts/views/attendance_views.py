@@ -241,12 +241,12 @@ class StudentAttendanceListView(CustomResponseMixin, APIView):
 class InstructorAttendanceView(CustomResponseMixin, APIView):
     permission_classes = [permissions.IsAuthenticated]
 
-    def get(self, request, session_id, *args, **kwargs):
+    def get(self, request, session_id, course_id=None, *args, **kwargs):
         date_filter = request.query_params.get('date', None)
         
         # Get students for the session
         students = Student.objects.filter(studentsession__session_id=session_id)
-        
+   
         # Filter attendance by course and date if provided 
         attendances = Attendance.objects.filter(student__in=students)
         

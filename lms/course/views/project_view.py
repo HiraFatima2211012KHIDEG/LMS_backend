@@ -330,10 +330,10 @@ class ProjectsByCourseIDAPIView(CustomResponseMixin, APIView):
 
             if submission:
                 if submission.status == 1:  # Submitted
-                    if submission.project_submitted_at > project.due_date:
-                        submission_status = "Late Submission"
-                    else:
-                        submission_status = "Submitted"
+                    # if submission.project_submitted_at > project.due_date:
+                    #     submission_status = "Late Submission"
+                    # else:
+                    submission_status = "Submitted"
                 else:
                     submission_status = "Pending"  # Status is pending if not yet graded
             else:
@@ -354,6 +354,7 @@ class ProjectsByCourseIDAPIView(CustomResponseMixin, APIView):
                 'content': project.content.url if project.content else None, 
                 'question': project.title,
                 'description': project.description,
+                'late_submission':project.late_submission,
                 'session': session_data,
                 'status':project.status,
                 'due_date': project.due_date,
@@ -441,10 +442,10 @@ class ProjectDetailView(APIView):
 
             if submission:
                 if submission.status == 1:  # Submitted
-                    if submission.project_submitted_at > project.due_date:
-                        submission_status = "Late Submission"
-                    else:
-                        submission_status = "Submitted"
+                    # if submission.project_submitted_at > project.due_date:
+                    #     submission_status = "Late Submission"
+                    # else:
+                    submission_status = "Submitted"
                 else:
                     submission_status = "Pending"  # Status is pending if not yet graded
             else:
@@ -660,10 +661,10 @@ class ProjectStudentListView(CustomResponseMixin, APIView):
 
             if submission:
                 if submission.status == 1:  # Submitted
-                    if submission.project_submitted_at > project.due_date:
-                        submission_status = "Late Submission"
-                    else:
-                        submission_status = "Submitted"
+                    # if submission.project_submitted_at > project.due_date:
+                    #     submission_status = "Late Submission"
+                    # else:
+                    submission_status = "Submitted"
                 else:
                     submission_status = "Pending"  # Status is pending if not yet graded
             else:

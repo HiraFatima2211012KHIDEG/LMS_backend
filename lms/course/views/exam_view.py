@@ -295,10 +295,10 @@ class ExamsByCourseIDAPIView(CustomResponseMixin, APIView):
 
             if submission:
                 if submission.status == 1:  # Submitted
-                    if submission.exam_submitted_at > exam.due_date:
-                        submission_status = "Late Submission"
-                    else:
-                        submission_status = "Submitted"
+                    # if submission.exam_submitted_at > exam.due_date:
+                    #     submission_status = "Late Submission"
+                    # else:
+                    submission_status = "Submitted"
                 else:
                     submission_status = "Pending"  # Status is pending if not yet graded
             else:
@@ -321,6 +321,7 @@ class ExamsByCourseIDAPIView(CustomResponseMixin, APIView):
                 'content': exam.content.url if exam.content else None, 
                 'question': exam.title,
                 'description': exam.description,
+                'late_submission':exam.late_submission,
                 'session': session_data,
                 'status':exam.status,
                 'due_date': exam.due_date,
@@ -499,10 +500,10 @@ class ExamStudentListView(CustomResponseMixin, APIView):
 
             if submission:
                 if submission.status == 1:  # Submitted
-                    if submission.exam_submitted_at > exam.due_date:
-                        submission_status = "Late Submission"
-                    else:
-                        submission_status = "Submitted"
+                    # if submission.exam_submitted_at > exam.due_date:
+                    #     submission_status = "Late Submission"
+                    # else:
+                    submission_status = "Submitted"
                 else:
                     submission_status = "Pending"  # Status is pending if not yet graded
             else:
@@ -653,10 +654,10 @@ class ExamDetailView(APIView):
 
             if submission:
                 if submission.status == 1:  # Submitted
-                    if submission.exam_submitted_at > exam.due_date:
-                        submission_status = "Late Submission"
-                    else:
-                        submission_status = "Submitted"
+                    # if submission.exam_submitted_at > exam.due_date:
+                    #     submission_status = "Late Submission"
+                    # else:
+                    submission_status = "Submitted"
                 else:
                     submission_status = "Pending"  # Status is pending if not yet graded
             else:

@@ -3,14 +3,8 @@ from .models.models import *
 from .models.program_model import *
 
 
-
-
-
 class CourseSerializer(serializers.ModelSerializer):
-    skills = serializers.PrimaryKeyRelatedField(
-        many=True, queryset=Skill.objects.all()
-    )
-
+    skills = serializers.PrimaryKeyRelatedField(many=True, queryset=Skill.objects.all())
 
     class Meta:
         model = Course
@@ -28,8 +22,6 @@ class CourseSerializer(serializers.ModelSerializer):
             "status",
             "picture",
         ]
-
-
 
 
 class ProgramSerializer(serializers.ModelSerializer):
@@ -100,6 +92,7 @@ class ModuleSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({"course": "Invalid course ID."})
         return data
 
+
 class AssignmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Assignment
@@ -112,6 +105,7 @@ class AssignmentSerializer(serializers.ModelSerializer):
             "session",
             "question",
             "description",
+            "late_submission",
             "content",
             "due_date",
             "no_of_resubmissions_allowed",
@@ -120,36 +114,88 @@ class AssignmentSerializer(serializers.ModelSerializer):
 
 
 class AssignmentPendingSerializer(serializers.ModelSerializer):
-    course_id = serializers.CharField(source='course.id', read_only=True)
-    course_name = serializers.CharField(source='course.name', read_only=True)
-    type = serializers.CharField(default='assignment')
+    course_id = serializers.CharField(source="course.id", read_only=True)
+    course_name = serializers.CharField(source="course.name", read_only=True)
+    type = serializers.CharField(default="assignment")
+
     class Meta:
         model = Assignment
-        fields = ['id','type', 'course_id', 'course_name', 'question', 'description', 'created_at', 'due_date', 'status', 'content']
+        fields = [
+            "id",
+            "type",
+            "course_id",
+            "course_name",
+            "question",
+            "description",
+            "created_at",
+            "due_date",
+            "status",
+            "content",
+        ]
+
 
 class QuizPendingSerializer(serializers.ModelSerializer):
-    course_id = serializers.CharField(source='course.id', read_only=True)
-    course_name = serializers.CharField(source='course.name', read_only=True)
-    type = serializers.CharField(default='quiz')
+    course_id = serializers.CharField(source="course.id", read_only=True)
+    course_name = serializers.CharField(source="course.name", read_only=True)
+    type = serializers.CharField(default="quiz")
+
     class Meta:
         model = Quizzes
-        fields = ['id', 'type', 'course_id', 'course_name', 'question', 'description', 'created_at', 'due_date', 'status', 'content']
+        fields = [
+            "id",
+            "type",
+            "course_id",
+            "course_name",
+            "question",
+            "description",
+            "created_at",
+            "due_date",
+            "status",
+            "content",
+        ]
+
 
 class ProjectPendingSerializer(serializers.ModelSerializer):
-    course_id = serializers.CharField(source='course.id', read_only=True)
-    course_name = serializers.CharField(source='course.name', read_only=True)
-    type = serializers.CharField(default='project')
+    course_id = serializers.CharField(source="course.id", read_only=True)
+    course_name = serializers.CharField(source="course.name", read_only=True)
+    type = serializers.CharField(default="project")
+
     class Meta:
         model = Project
-        fields = ['id','type',  'course_id', 'course_name', 'title', 'description', 'created_at', 'due_date', 'status', 'content']
+        fields = [
+            "id",
+            "type",
+            "course_id",
+            "course_name",
+            "title",
+            "description",
+            "created_at",
+            "due_date",
+            "status",
+            "content",
+        ]
+
 
 class ExamPendingSerializer(serializers.ModelSerializer):
-    course_id = serializers.CharField(source='course.id', read_only=True)
-    course_name = serializers.CharField(source='course.name', read_only=True)
-    type = serializers.CharField(default='exam')
+    course_id = serializers.CharField(source="course.id", read_only=True)
+    course_name = serializers.CharField(source="course.name", read_only=True)
+    type = serializers.CharField(default="exam")
+
     class Meta:
         model = Exam
-        fields = ['id','type',  'course_id', 'course_name', 'title', 'description', 'created_at', 'due_date', 'status', 'content']
+        fields = [
+            "id",
+            "type",
+            "course_id",
+            "course_name",
+            "title",
+            "description",
+            "created_at",
+            "due_date",
+            "status",
+            "content",
+        ]
+
 
 class AssignmentSubmissionSerializer(serializers.ModelSerializer):
     class Meta:
@@ -165,10 +211,10 @@ class AssignmentSubmissionSerializer(serializers.ModelSerializer):
             "remaining_resubmissions",
             "comments",
         ]
+
     def create(self, validated_data):
         assignment_submission = AssignmentSubmission.objects.create(**validated_data)
         return assignment_submission
-
 
 
 # class StudentDetailSerializer(serializers.ModelSerializer):
@@ -207,6 +253,7 @@ class AssignmentSubmissionSerializer(serializers.ModelSerializer):
 
 # class GradingSerializer(serializers.ModelSerializer):
 
+
 #     class Meta:
 #         model = Grading
 #         fields = [
@@ -229,7 +276,7 @@ class GradingSerializer(serializers.ModelSerializer):
             "graded_by",
             "graded_at",
         ]
-   
+
 
 class QuizzesSerializer(serializers.ModelSerializer):
     class Meta:
@@ -243,6 +290,7 @@ class QuizzesSerializer(serializers.ModelSerializer):
             "session",
             "question",
             "description",
+            "late_submission",
             "content",
             "due_date",
             "no_of_resubmissions_allowed",
@@ -264,9 +312,11 @@ class QuizSubmissionSerializer(serializers.ModelSerializer):
             "remaining_resubmissions",
             "comments",
         ]
+
     def create(self, validated_data):
         quiz_submission = QuizSubmission.objects.create(**validated_data)
         return quiz_submission
+
 
 class QuizGradingSerializer(serializers.ModelSerializer):
     class Meta:
@@ -275,7 +325,6 @@ class QuizGradingSerializer(serializers.ModelSerializer):
             "id",
             "quiz_submissions",
             "grade",
-           
             "feedback",
             "graded_by",
             "graded_at",
@@ -294,6 +343,7 @@ class ProjectSerializer(serializers.ModelSerializer):
             "session",
             "title",
             "description",
+            "late_submission",
             "content",
             "due_date",
             "status",
@@ -314,9 +364,11 @@ class ProjectSubmissionSerializer(serializers.ModelSerializer):
             "remaining_resubmissions",
             "comments",
         ]
+
     def create(self, validated_data):
         project_submission = ProjectSubmission.objects.create(**validated_data)
         return project_submission
+
 
 class ProjectGradingSerializer(serializers.ModelSerializer):
     class Meta:
@@ -325,7 +377,6 @@ class ProjectGradingSerializer(serializers.ModelSerializer):
             "id",
             "project_submissions",
             "grade",
-           
             "feedback",
             "graded_by",
             "graded_at",
@@ -367,6 +418,7 @@ class QuizProgressSerializer(serializers.Serializer):
     submitted_quiz = serializers.IntegerField()
     progress_percentage = serializers.FloatField()
 
+
 class CourseProgressSerializer(serializers.Serializer):
     user_id = serializers.IntegerField()
     student_id = serializers.CharField()
@@ -376,13 +428,13 @@ class CourseProgressSerializer(serializers.Serializer):
     progress_percentage = serializers.FloatField()
 
 
-
 class WeightageSerializer(serializers.ModelSerializer):
     class Meta:
         model = Weightage
-        fields = '__all__'
+        fields = "__all__"
+
 
 class SkillSerializer(serializers.ModelSerializer):
     class Meta:
         model = Skill
-        fields = '__all__'
+        fields = "__all__"

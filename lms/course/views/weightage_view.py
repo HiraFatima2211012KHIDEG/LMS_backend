@@ -96,7 +96,7 @@ class WeightageListByCourseId(APIView, CustomResponseMixin):
 
         if not weightages.exists():
             return self.custom_response(
-                status_code=status.HTTP_404_NOT_FOUND,
+                status_code=status.HTTP_200_OK,
                 message='No weightages found for the given course and session',
                 data=None
             )

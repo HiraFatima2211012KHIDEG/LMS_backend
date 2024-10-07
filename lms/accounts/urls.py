@@ -4,7 +4,7 @@ Urls for the Accounts app
 
 from django.urls import path
 from .views.application_views import *
-from .views import user_views
+from .views import user_views,UserSessionAPIView
 from .views.location_views import (
     CityViewSet,
     BatchViewSet,
@@ -44,6 +44,7 @@ urlpatterns = [
     # path('registration/', UserRegistrationView.as_view(), name='registration-completion'),
     path("create/", user_views.CreateUserView.as_view(), name="create"),
     path("login/", user_views.UserLoginView.as_view(), name="login"),
+    path('user-details/', UserSessionAPIView.as_view(), name='user-details'),
     path(
         "change-password/",
         user_views.ChangePasswordView.as_view(),

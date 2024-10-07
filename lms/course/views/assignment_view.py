@@ -385,10 +385,10 @@ class AssignmentsByCourseIDAPIView(CustomResponseMixin, APIView):
 
             if submission:
                 if submission.status == 1:  # Submitted
-                    if submission.submitted_at > assignment.due_date:
-                        submission_status = "Late Submission"  # Submitted but late
-                    else:
-                        submission_status = "Submitted"  # Submitted on time
+                    # if submission.submitted_at > assignment.due_date:
+                    #     submission_status = "Late Submission"  # Submitted but late
+                    # else:
+                    submission_status = "Submitted"  # Submitted on time
                 else:
                     submission_status = "Pending"  # Status is pending if not yet graded
             else:
@@ -405,6 +405,7 @@ class AssignmentsByCourseIDAPIView(CustomResponseMixin, APIView):
                 "content": assignment.content.url if assignment.content else None, 
                 "question": assignment.question,
                 "description": assignment.description,
+                "late_submission":assignment.late_submission,
                 "session": session_data,
                 "status":assignment.status,
                 "due_date": assignment.due_date,
@@ -528,10 +529,10 @@ class AssignmentStudentListView(CustomResponseMixin, APIView):
 
             if submission:
                 if submission.status == 1:  # Submitted
-                    if submission.submitted_at > assignment.due_date:
-                        submission_status = "Late Submission"
-                    else:
-                        submission_status = "Submitted"
+                    # if submission.submitted_at > assignment.due_date:
+                    #     submission_status = "Late Submission"
+                    # else:
+                    submission_status = "Submitted"
                 else:
                     submission_status = "Pending"  # Status is pending if not yet graded
             else:
@@ -550,6 +551,7 @@ class AssignmentStudentListView(CustomResponseMixin, APIView):
                 'registration_id': student.registration_id,
                 'submission_id': submission.id if submission else None,
                 'submitted_file': submission.submitted_file.url if submission and submission.submitted_file else None,
+                'comments':submission.comments if submission else None,
                 'submitted_at': submission.submitted_at if submission else None,
                 'status': submission_status,
                 'grade': 0,
@@ -682,12 +684,19 @@ class StudentsListSubmittedAssignmentAPIView(CustomResponseMixin, APIView):
 
 
 
-class StudentScoresSummaryAPIView(APIView):
+class StudentScoresSummaryAPIView(CustomResponseMixin,APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request, course_id,session_id, registration_id):
-        # Fetch weightage values
-        weightage = Weightage.objects.get(course_id=course_id)
+        try:
+            # Fetch weightage values
+            weightage = Weightage.objects.get(course_id=course_id, session_id=session_id)
+        except Weightage.DoesNotExist:
+            return self.custom_response(
+                status.HTTP_200_OK,
+                "Weightage not found for the provided course and session.",
+                None
+            )
 
         # Fetch assignments and their total grades directly from Assignment model
         assignments = Assignment.objects.filter(course_id=course_id,session_id=session_id)
@@ -931,7 +940,9 @@ class CourseProgressAPIView(CustomResponseMixin, APIView):
         total_attendance = attendance_records.count()
 
         if total_modules > 0:
-            progress_percentage = (total_attendance / total_modules) * 100
+            # progress_percentage = (total_attendance / total_modules) * 100
+            progress_percentage =  min((total_attendance / total_modules) * 100, 100)
+
         else:
             progress_percentage = 0
 
@@ -953,7 +964,7 @@ class CourseProgressAPIView(CustomResponseMixin, APIView):
 
 def get_pending_assignments_for_student(program_id, registration_id):
     courses = Course.objects.filter(program__id=program_id)
-    all_assignments = Assignment.objects.filter(course__in=courses)
+    all_assignments = Assignment.objects.filter(course__in=courses).exclude(status=2) 
     submitted_assignments = AssignmentSubmission.objects.filter(
         assignment__course__in=courses, registration_id=registration_id
     ).values_list("assignment_id", flat=True)
@@ -967,7 +978,7 @@ def get_pending_assignments_for_student(program_id, registration_id):
 
 def get_pending_quizzes_for_student(program_id, registration_id):
     courses = Course.objects.filter(program__id=program_id)
-    all_quizzes = Quizzes.objects.filter(course__in=courses)
+    all_quizzes = Quizzes.objects.filter(course__in=courses).exclude(status=2) 
     submitted_quizzes = QuizSubmission.objects.filter(
         quiz__course__in=courses, registration_id=registration_id
     ).values_list("quiz_id", flat=True)
@@ -981,7 +992,7 @@ def get_pending_quizzes_for_student(program_id, registration_id):
 
 def get_pending_exams_for_student(program_id, registration_id):
     courses = Course.objects.filter(program__id=program_id)
-    all_exams = Exam.objects.filter(course__in=courses)
+    all_exams = Exam.objects.filter(course__in=courses).exclude(status=2) 
     submitted_exams = ExamSubmission.objects.filter(
         exam__course__in=courses, registration_id=registration_id
     ).values_list("exam_id", flat=True)
@@ -995,7 +1006,7 @@ def get_pending_exams_for_student(program_id, registration_id):
 
 def get_pending_projects_for_student(program_id, registration_id):
     courses = Course.objects.filter(program__id=program_id)
-    all_projects = Project.objects.filter(course__in=courses)
+    all_projects = Project.objects.filter(course__in=courses).exclude(status=2) 
     submitted_projects = ProjectSubmission.objects.filter(
         project__course__in=courses, registration_id=registration_id
     ).values_list("project_id", flat=True)

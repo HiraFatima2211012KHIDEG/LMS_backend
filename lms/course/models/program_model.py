@@ -1,6 +1,6 @@
 from django.db import models
-from .models import *
-from accounts.models.location_models import *
+from django.conf import settings
+from .models import Course
 from .models import STATUS_CHOICES
 
 
@@ -17,7 +17,6 @@ class Program(models.Model):
     picture = models.ImageField(
         upload_to="material/program_pictures/", blank=True, null=True
     )
-    # start_date = models.DateField(null=True)
-    # end_date = models.DateField(null=True)
+
     def __str__(self):
-        return self.name
+        return f"{self.name}"

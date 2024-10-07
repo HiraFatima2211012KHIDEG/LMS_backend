@@ -694,7 +694,8 @@ class ResendVerificationEmail(views.APIView, CustomResponseMixin):
             token = self.create_signed_token(applicant.id, applicant.email)
             print("Resend",token)
             verification_link = (
-                f"http://localhost:3000/auth/account-verify/{str(token)}"
+                # f"http://localhost:3000/auth/account-verify/{str(token)}"
+                f"https://lms-phi-two.vercel.app/auth/account-verify/{str(token)}"
             )
             print(token)
             body = (
@@ -823,7 +824,18 @@ class TechSkillViewSet(viewsets.ModelViewSet):
 
 class ApplicationStatusCount(views.APIView, CustomResponseMixin):
     permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
-
+    def get_verified_and_unverified_counts(self, approved_applications):
+        users = User.objects.all()
+        user_emails_verified_status = {user.email: user.is_verified for user in users}
+        verified_count = 0
+        unverified_count = 0
+        for application in approved_applications:
+            email = application.application.email
+            if user_emails_verified_status.get(email, False):
+                verified_count += 1
+            else:
+                unverified_count += 1
+        return verified_count, unverified_count
     @extend_schema(
         parameters=[
             OpenApiParameter(
@@ -848,90 +860,116 @@ class ApplicationStatusCount(views.APIView, CustomResponseMixin):
                 "filteration_id is not provided.",
                 None,
             )
-
-        # Get the group_name from the query parameters
         group_name = request.query_params.get("group_name")
-
-        # Validate group_name input
         if group_name not in ["student", "instructor"]:
             return self.custom_response(
                 status.HTTP_400_BAD_REQUEST,
                 "Invalid group_name. Choices are 'student' and 'instructor'.",
                 None,
             )
-
-        # Get the application status from query parameters
         application_status = request.query_params.get("status", None)
-
-        # Validate status input
-        if application_status not in ["pending", "short_listed", "approved", None]:
-            return self.custom_response(
-                status.HTTP_400_BAD_REQUEST,
-                "Invalid status. Choices are 'pending', 'approved', 'short_listed'.",
-                None,
-            )
-
         try:
-            # Base query filtering on filteration_id and group_name
-            base_query = Applications.objects.filter(
-                Q(program__id=filteration_id, group_name=group_name)
-                | Q(required_skills__id=filteration_id, group_name=group_name)
-            ).distinct()
-
-            # Print the queryset before filtering further
-            print("Base Query Objects: ", list(base_query))  # Log the base query objects
-
-            # Filter the base query by the application status if provided
-            if application_status:
-                filtered_query = base_query.filter(application_status=application_status)
-                print(f"Filtered Query Objects for status '{application_status}': ", list(filtered_query))  # Log the filtered objects
-                count = filtered_query.count()
-                return self.custom_response(
-                    status.HTTP_200_OK,
-                    f"Count for status '{application_status}' fetched successfully.",
-                    {application_status: count},
+            if group_name == "student":
+                base_query = Applications.objects.filter(
+                    program__id=filteration_id, group_name="student"
                 )
-
-            # If no specific status is provided, get counts for all statuses
-            counts = {
-                "approved": base_query.filter(application_status="approved").count(),
-                "short_listed": base_query.filter(
-                    application_status="short_listed"
-                ).count(),
-                "pending": base_query.filter(application_status="pending").count(),
-            }
-
-            # Print counts for all statuses
-            print("Counts for all statuses: ", counts)
-
-            # Count of verified accounts: emails exist in both Applications and User and have status 'approved'
-            verified_count = base_query.filter(
-                email__in=User.objects.values_list("email", flat=True),
-                application_status="approved",
-            ).count()
-
-            # Count of unverified accounts: emails do not exist in User but have status 'approved'
-            unverified_count = base_query.filter(
-                ~Q(email__in=User.objects.values_list("email", flat=True)),
-                application_status="approved",
-            ).count()
-
-            # Print verified and unverified counts
-            print("Verified count: ", verified_count)
-            print("Unverified count: ", unverified_count)
-
-            # Add verified and unverified counts to the response data
-            counts["verified"] = verified_count
-            counts["unverified"] = unverified_count
-
-            return self.custom_response(
-                status.HTTP_200_OK,
-                "Counts for all statuses fetched successfully.",
-                counts,
-            )
-
+                if application_status:
+                    if application_status == "approved":
+                        approved_count = StudentApplicationSelection.objects.filter(
+                            selected_program__id=filteration_id,
+                            application__application_status="approved",
+                        ).count()
+                        return self.custom_response(
+                            status.HTTP_200_OK,
+                            f"Count for 'approved' students fetched successfully.",
+                            {"approved": approved_count},
+                        )
+                    count = base_query.filter(
+                        application_status=application_status
+                    ).count()
+                    return self.custom_response(
+                        status.HTTP_200_OK,
+                        f"Count for status '{application_status}' fetched successfully.",
+                        {application_status: count},
+                    )
+                else:
+                    approved_applications = StudentApplicationSelection.objects.filter(
+                        selected_program__id=filteration_id,
+                        application__application_status="approved",
+                    )
+                    verified_count, unverified_count = (
+                        self.get_verified_and_unverified_counts(approved_applications)
+                    )
+                    counts = {
+                        "approved": approved_applications.count(),
+                        "short_listed": base_query.filter(
+                            application_status="short_listed"
+                        ).count(),
+                        "pending": base_query.filter(
+                            application_status="pending"
+                        ).count(),
+                        "verified": verified_count,
+                        "unverified": unverified_count,
+                    }
+                    return self.custom_response(
+                        status.HTTP_200_OK,
+                        "Counts for all statuses fetched successfully.",
+                        counts,
+                    )
+            elif group_name == "instructor":
+                base_query = Applications.objects.filter(
+                    required_skills__id=filteration_id, group_name="instructor"
+                ).distinct()
+                if application_status:
+                    if application_status == "approved":
+                        approved_count = (
+                            InstructorApplicationSelection.objects.filter(
+                                application__required_skills__id=filteration_id,
+                                application__application_status="approved",
+                            )
+                            .distinct()
+                            .count()
+                        )
+                        return self.custom_response(
+                            status.HTTP_200_OK,
+                            f"Count for 'approved' instructors fetched successfully.",
+                            {"approved": approved_count},
+                        )
+                    count = base_query.filter(
+                        application_status=application_status
+                    ).count()
+                    return self.custom_response(
+                        status.HTTP_200_OK,
+                        f"Count for status '{application_status}' fetched successfully.",
+                        {application_status: count},
+                    )
+                else:
+                    approved_applications = (
+                        InstructorApplicationSelection.objects.filter(
+                            application__required_skills__id=filteration_id,
+                            application__application_status="approved",
+                        )
+                    )
+                    verified_count, unverified_count = (
+                        self.get_verified_and_unverified_counts(approved_applications)
+                    )
+                    counts = {
+                        "approved": approved_applications.distinct().count(),
+                        "short_listed": base_query.filter(
+                            application_status="short_listed"
+                        ).count(),
+                        "pending": base_query.filter(
+                            application_status="pending"
+                        ).count(),
+                        "verified": verified_count,
+                        "unverified": unverified_count,
+                    }
+                    return self.custom_response(
+                        status.HTTP_200_OK,
+                        "Counts for all statuses fetched successfully.",
+                        counts,
+                    )
         except Exception as e:
-            # Catch any unexpected exceptions and log them if necessary
             return self.custom_response(
                 status.HTTP_500_INTERNAL_SERVER_ERROR,
                 f"An error occurred: {str(e)}",
