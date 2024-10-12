@@ -125,8 +125,8 @@ class AssignmentSubmission(models.Model):
                 allowed_extensions=["pdf", "doc", "docx", "ppt", "pptx", "txt", "zip"]
             )
         ],
-        null=True,
-        blank=True,
+        # null=True,
+        # blank=True,
     )
     status = models.PositiveSmallIntegerField(
         choices=ASSESMENT_STATUS_CHOICES, default=0
@@ -209,15 +209,15 @@ class QuizSubmission(models.Model):
     )
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     registration_id = models.CharField(max_length=50, null=True, blank=True)
-    quiz_submitted_file = models.FileField(
+    submitted_file = models.FileField(
         upload_to="material/quiz_submissions/",
         validators=[
             FileExtensionValidator(
                 allowed_extensions=["pdf", "doc", "docx", "ppt", "pptx", "txt", "zip"]
             )
         ],
-        null=True,
-        blank=True,
+        # null=True,
+        # blank=True,
     )
     status = models.PositiveSmallIntegerField(
         choices=ASSESMENT_STATUS_CHOICES, default=0
@@ -298,15 +298,15 @@ class ProjectSubmission(models.Model):
     )
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     registration_id = models.CharField(max_length=50, null=True, blank=True)
-    project_submitted_file = models.FileField(
+    submitted_file = models.FileField(
         upload_to="material/project_submissions/",
         validators=[
             FileExtensionValidator(
                 allowed_extensions=["pdf", "doc", "docx", "ppt", "pptx", "txt", "zip"]
             )
         ],
-        null=True,
-        blank=True,
+        # null=True,
+        # blank=True,
     )
     status = models.PositiveSmallIntegerField(
         choices=ASSESMENT_STATUS_CHOICES, default=0
@@ -386,15 +386,15 @@ class ExamSubmission(models.Model):
     )
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     registration_id = models.CharField(max_length=50, null=True, blank=True)
-    exam_submitted_file = models.FileField(
+    submitted_file = models.FileField(
         upload_to="material/exam_submissions/",
         validators=[
             FileExtensionValidator(
                 allowed_extensions=["pdf", "doc", "docx", "ppt", "pptx", "txt", "zip"]
             )
         ],
-        null=True,
-        blank=True,
+        # null=True,
+        # blank=True,
     )
     status = models.PositiveSmallIntegerField(
         choices=ASSESMENT_STATUS_CHOICES, default=0
@@ -431,5 +431,6 @@ class Weightage(models.Model):
     quizzes_weightage = models.FloatField(default=0, null=True, blank=True)
     projects_weightage = models.FloatField(default=0, null=True, blank=True)
     exams_weightage = models.FloatField(default=0, null=True, blank=True)
+    attendance_weightage = models.FloatField(default=0, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

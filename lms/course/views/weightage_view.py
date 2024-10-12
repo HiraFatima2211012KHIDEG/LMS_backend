@@ -71,6 +71,7 @@ class WeightageDetailAPIView(APIView, CustomResponseMixin):
             data=None
         )
 
+
 class WeightageListByCourseId(APIView, CustomResponseMixin):
     permission_classes = (permissions.IsAuthenticated,)
 
@@ -107,7 +108,6 @@ class WeightageListByCourseId(APIView, CustomResponseMixin):
             message='Courses weightages retrieved successfully',
             data=serializer.data
         )
-
 
 
 # Skill Views

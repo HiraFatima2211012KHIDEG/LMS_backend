@@ -16,7 +16,7 @@ from ..serializers.location_serializers import (
     AssignSessionsSerializer,
     SessionsCalendarSerializer
 )
-from utils.custom import CustomResponseMixin, custom_extend_schema
+from utils.custom import CustomResponseMixin, custom_extend_schema, cascade_status_change
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from rest_framework import views
 from drf_spectacular.utils import extend_schema, inline_serializer
@@ -40,6 +40,26 @@ class BatchViewSet(BaseLocationViewSet):
 class LocationViewSet(BaseLocationViewSet):
     queryset = Location.objects.all()
     serializer_class = LocationSerializer
+
+    def create(self, request, *args, **kwargs):
+        location = request.data.get("name")
+        short_name = request.data.get("shortname")
+        print("data", location, short_name)
+        # Check if a Location with the same city and shortname already exists
+        if Location.objects.filter(
+            name=location, shortname=short_name, status__in=[0, 1]
+        ).exists():
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST,
+                "A location with this name and shortname already exists.",
+                None,
+            )
+
+        # Proceed with the standard create method if no matching record is found
+        response = super().create(request, *args, **kwargs)
+        return self.custom_response(
+            status.HTTP_201_CREATED, "created successfully", response.data
+        )
 
 
 # class SessionsViewSet(BaseLocationViewSet):
@@ -141,9 +161,10 @@ class LocationViewSet(BaseLocationViewSet):
 #             status=status.HTTP_200_OK,
 #             headers=headers
 #         )
-    
+
+
 class SessionsAPIView(APIView):
-    permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
+    #permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
 
     def get(self, request, *args, **kwargs):
         # Check if we're fetching a single session by id or filtered sessions
@@ -159,8 +180,10 @@ class SessionsAPIView(APIView):
             )
         else:
             # Filter sessions based on query parameters
-            queryset = Sessions.objects.all()
-
+            queryset = Sessions.objects.filter(
+                status__in=[0, 1]
+            )
+            print(queryset)
             # Filtering by 'course' if provided in the query parameters
             course_id = request.query_params.get('course')
             if course_id:
@@ -174,33 +197,8 @@ class SessionsAPIView(APIView):
                 {"status_code": status.HTTP_200_OK, "message": "Sessions fetched successfully.", "data": serializer.data},
                 status=status.HTTP_200_OK
             )
-    def post(self, request, *args, **kwargs):
-        data = request.data
 
-        if isinstance(data, list):
-            # Handle bulk session creation
-            serializer = SessionsSerializer(data=data, many=True)
-            serializer.is_valid(raise_exception=True)
-            self.perform_create(serializer)
-            return Response(
-                {"status_code": status.HTTP_201_CREATED, "message": "Sessions created successfully.", "data": serializer.data},
-                status=status.HTTP_201_CREATED
-            )
-        else:
-            # Handle single session creation
-            serializer = SessionsSerializer(data=data)
-            try:
-                serializer.is_valid(raise_exception=True)
-                self.perform_create(serializer)
-            except ValidationError as e:
-                return Response(
-                    {"status_code": status.HTTP_400_BAD_REQUEST, "message": str(e), "data": None},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            return Response(
-                {"status_code": status.HTTP_201_CREATED, "message": "Session created successfully.", "data": serializer.data},
-                status=status.HTTP_201_CREATED
-            )
+
 
     def post(self, request, *args, **kwargs):
         data = request.data
@@ -234,6 +232,14 @@ class SessionsAPIView(APIView):
         session_id = kwargs.get('pk', None)
         instance = get_object_or_404(Sessions, id=session_id)
         serializer = SessionsSerializer(instance, data=request.data, partial=True)
+        # if instance.status == 0:
+        #     instance.status = 0
+        #     instance.save()
+
+        #     # Cascade the status change to related objects
+        #     cascade_status_change(instance, 0)
+
+
 
         try:
             serializer.is_valid(raise_exception=True)
@@ -256,6 +262,26 @@ class SessionsAPIView(APIView):
 
     def perform_update(self, serializer):
         serializer.save()
+
+    def delete(self, request, *args, **kwargs):
+        session_id = kwargs.get("pk", None)
+        instance = get_object_or_404(Sessions, id=session_id)
+
+        # Set the status of the instance to 2
+        instance.status = 2
+        instance.save()
+
+        # Cascade the status change to related objects
+        cascade_status_change(instance, 2)
+
+        return Response(
+            {
+                "status_code": status.HTTP_204_NO_CONTENT,
+                "message": "Session deleted successfully.",
+            },
+            status=status.HTTP_204_NO_CONTENT,
+        )
+
 
 
 class CreateBatchLocationSessionView(views.APIView):
@@ -538,6 +564,7 @@ class CityStatsView(views.APIView, CustomResponseMixin):
 
 
 
+
 WEEKDAYS = {
     0: ("Monday", "Mon"),
     1: ("Tuesday", "Tue"),
@@ -547,86 +574,6 @@ WEEKDAYS = {
     5: ("Saturday", "Sat"),
     6: ("Sunday", "Sun"),
 }
-# class SessionCalendarAPIView(APIView, CustomResponseMixin):
-#     def get(self, request, user_id, *args, **kwargs):
-#         user = get_object_or_404(User, id=user_id)
-#         sessions = []
-
-#         try:
-#             student = Student.objects.get(user=user)
-#             student_sessions = StudentSession.objects.filter(student=student)
-#             sessions.extend([ss.session for ss in student_sessions])
-#         except Student.DoesNotExist:
-#             try:
-#                 instructor = Instructor.objects.get(id=user)
-#                 instructor_sessions = InstructorSession.objects.filter(instructor=instructor)
-#                 sessions.extend([is_.session for is_ in instructor_sessions])
-#             except Instructor.DoesNotExist:
-#                 return Response({"detail": "User is neither a student nor an instructor."}, status=status.HTTP_404_NOT_FOUND)
-
-#         if not sessions:
-#             return Response({"detail": "No sessions found for this user."}, status=status.HTTP_404_NOT_FOUND)
-
-#         calendar_data = {}
-
-#         # Iterate over sessions and process each one
-#         for session in sessions:
-#             # Directly use session's start and end date
-#             start_date = session.start_date
-#             end_date = session.end_date
-
-#             # Generate the actual dates based on days of the week
-#             session_days = session.days_of_week
-#             actual_dates = self.get_dates_from_days(start_date, end_date, session_days)
-
-#             session_data = SessionsCalendarSerializer(session).data
-
-#             for date in actual_dates:
-#                 if date not in calendar_data:
-#                     calendar_data[date] = []
-
-#                 # Add the session data to the list for the given date
-#                 calendar_data[date].append({
-#                     "start_time": session_data['start_time'],
-#                     "end_time": session_data['end_time'],
-#                     "course_id": session_data['course_id'],
-#                     "course_name": session_data['course_name'],
-#                     "location": session_data['location_name'],
-#                     # "day_name": day_name  # If needed, you can still add the day name here
-#                 })
-
-#         # Format the data into the required structure
-#         formatted_data = [
-#             {
-#                 "date": date,
-#                 "day_name": WEEKDAYS[datetime.strptime(date, "%Y-%m-%d").weekday()][0],  # Get the day name
-#                 "sessions": session_list
-#             }
-#             for date, session_list in calendar_data.items()
-#         ]
-
-#         # Sort the formatted data by date
-#         formatted_data.sort(key=lambda x: x['date'])
-
-#         return self.custom_response(
-#             status.HTTP_200_OK,
-#             "Calendar data fetched successfully.",
-#             formatted_data
-#         )
-
-#     def get_dates_from_days(self, start_date, end_date, days_of_week):
-#         """Generate a list of dates based on start and end dates and specified days of the week."""
-#         current_date = start_date
-#         actual_dates = []
-
-#         # Iterate through each day in the range
-#         while current_date <= end_date:
-#             if current_date.weekday() in days_of_week:
-#                 actual_dates.append(current_date.strftime("%Y-%m-%d"))  # Format as string or datetime as needed
-#             current_date += timedelta(days=1)
-
-#         return actual_dates
-
 class SessionCalendarAPIView(APIView, CustomResponseMixin):
     def get(self, request, user_id, *args, **kwargs):
         user = get_object_or_404(User, id=user_id)
@@ -649,41 +596,33 @@ class SessionCalendarAPIView(APIView, CustomResponseMixin):
 
         calendar_data = {}
 
+        # Iterate over sessions and process each one
         for session in sessions:
+            # Directly use session's start and end date
             start_date = session.start_date
             end_date = session.end_date
+
+            # Generate the actual dates based on days of the week
             session_days = session.days_of_week
             actual_dates = self.get_dates_from_days(start_date, end_date, session_days)
+
             session_data = SessionsCalendarSerializer(session).data
 
-            # Add session data to the calendar
             for date in actual_dates:
                 if date not in calendar_data:
                     calendar_data[date] = []
 
+                # Add the session data to the list for the given date
                 calendar_data[date].append({
                     "start_time": session_data['start_time'],
                     "end_time": session_data['end_time'],
                     "course_id": session_data['course_id'],
                     "course_name": session_data['course_name'],
                     "location": session_data['location_name'],
+                    # "day_name": day_name  # If needed, you can still add the day name here
                 })
 
-            # Add assessments (assignments, quizzes, projects, exams) based on their due dates
-            for assessment_type in ['assignments', 'quizzes', 'projects', 'exams']:
-                for assessment in session_data[assessment_type]:
-                    due_date = assessment["due_date"]
-                    if due_date not in calendar_data:
-                        calendar_data[due_date] = []
-                    calendar_data[due_date].append({
-                        "assessment_name": assessment["name"],
-                        "due_time": assessment["due_time"],
-                        "course_id": session_data['course_id'],
-                        "course_name": session_data['course_name'],
-                        "type": assessment_type.capitalize()[:-1],  # To show type as Assignment, Quiz, etc.
-                    })
-
-        # Format and sort the data
+        # Format the data into the required structure
         formatted_data = [
             {
                 "date": date,
@@ -692,6 +631,8 @@ class SessionCalendarAPIView(APIView, CustomResponseMixin):
             }
             for date, session_list in calendar_data.items()
         ]
+
+        # Sort the formatted data by date
         formatted_data.sort(key=lambda x: x['date'])
 
         return self.custom_response(
@@ -699,6 +640,7 @@ class SessionCalendarAPIView(APIView, CustomResponseMixin):
             "Calendar data fetched successfully.",
             formatted_data
         )
+
     def get_dates_from_days(self, start_date, end_date, days_of_week):
         """Generate a list of dates based on start and end dates and specified days of the week."""
         current_date = start_date
@@ -711,3 +653,8 @@ class SessionCalendarAPIView(APIView, CustomResponseMixin):
             current_date += timedelta(days=1)
 
         return actual_dates
+
+
+
+
+

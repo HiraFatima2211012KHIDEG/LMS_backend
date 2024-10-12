@@ -373,7 +373,7 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
                                     status.HTTP_400_BAD_REQUEST,
                                     "Selected location_id is not provided.",
                                     None,
-                                )                               
+                                )
                             try:
                                 program = Program.objects.get(id=program_id)
                                 location = Location.objects.get(id=location_id)
@@ -388,7 +388,7 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
                                     status.HTTP_404_NOT_FOUND,
                                     "No location object found for this ID.",
                                     None,
-                                )                                
+                                )
 
                             related_programs = application_obj.program.all()
 
@@ -398,13 +398,13 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
                                     f"Invalid program_id.",
                                     None,
                                 )
-                            related_locations = application_obj.location.all()    
+                            related_locations = application_obj.location.all()
                             if location not in related_locations:
                                 return self.custom_response(
                                     status.HTTP_400_BAD_REQUEST,
                                     f"Invalid location_id.",
                                     None,
-                                )                                    
+                                )
 
                             StudentApplicationSelection.objects.create(
                                 application=application_obj, selected_program=program, selected_location=location
@@ -616,7 +616,8 @@ class VerifyEmailandSetPasswordView(views.APIView, CustomResponseMixin):
                     else:
                         category = "Annual"
 
-                    batch = f"{city_abb.upper()}-{year}-{category[:3]}-{program_name}"
+                    batch = f"{city_abb.upper()}-{category[:3].upper()}-{year}-{program_name}"
+                    print(' batch here', batch)
                     Student.objects.create(
                         user=user, registration_id=f"{batch}-{user.id}"
                     )
@@ -642,7 +643,6 @@ class VerifyEmailandSetPasswordView(views.APIView, CustomResponseMixin):
                         serializer.errors,
                     )
 
-                # Include the email in the response
                 response_data = serializer.data
                 response_data['email'] = user.email
 
@@ -651,7 +651,6 @@ class VerifyEmailandSetPasswordView(views.APIView, CustomResponseMixin):
                     "Email verified and user created successfully.",
                     # serializer.data,
                     response_data
-                    
                 )
 
         except SignatureExpired:
@@ -673,7 +672,7 @@ class VerifyEmailandSetPasswordView(views.APIView, CustomResponseMixin):
 
 class ResendVerificationEmail(views.APIView, CustomResponseMixin):
 
-    permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
+    # permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
 
     def post(self, request):
         email = request.data.get("email")
@@ -694,8 +693,7 @@ class ResendVerificationEmail(views.APIView, CustomResponseMixin):
             token = self.create_signed_token(applicant.id, applicant.email)
             print("Resend",token)
             verification_link = (
-                # f"http://localhost:3000/auth/account-verify/{str(token)}"
-                f"https://lms-phi-two.vercel.app/auth/account-verify/{str(token)}"
+                f"http://localhost:3000/auth/account-verify/{str(token)}"
             )
             print(token)
             body = (
@@ -822,20 +820,28 @@ class TechSkillViewSet(viewsets.ModelViewSet):
     queryset = TechSkill.objects.all()
     serializer_class = TechSkillSerializer
 
+
+
 class ApplicationStatusCount(views.APIView, CustomResponseMixin):
     permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
+
     def get_verified_and_unverified_counts(self, approved_applications):
+
         users = User.objects.all()
         user_emails_verified_status = {user.email: user.is_verified for user in users}
+
         verified_count = 0
         unverified_count = 0
+
         for application in approved_applications:
             email = application.application.email
             if user_emails_verified_status.get(email, False):
                 verified_count += 1
             else:
                 unverified_count += 1
+
         return verified_count, unverified_count
+
     @extend_schema(
         parameters=[
             OpenApiParameter(
@@ -860,38 +866,47 @@ class ApplicationStatusCount(views.APIView, CustomResponseMixin):
                 "filteration_id is not provided.",
                 None,
             )
+
         group_name = request.query_params.get("group_name")
+
         if group_name not in ["student", "instructor"]:
             return self.custom_response(
                 status.HTTP_400_BAD_REQUEST,
                 "Invalid group_name. Choices are 'student' and 'instructor'.",
                 None,
             )
+
         application_status = request.query_params.get("status", None)
+
         try:
             if group_name == "student":
                 base_query = Applications.objects.filter(
                     program__id=filteration_id, group_name="student"
                 )
+
                 if application_status:
                     if application_status == "approved":
                         approved_count = StudentApplicationSelection.objects.filter(
                             selected_program__id=filteration_id,
                             application__application_status="approved",
                         ).count()
+
                         return self.custom_response(
                             status.HTTP_200_OK,
                             f"Count for 'approved' students fetched successfully.",
                             {"approved": approved_count},
                         )
+
                     count = base_query.filter(
                         application_status=application_status
                     ).count()
+
                     return self.custom_response(
                         status.HTTP_200_OK,
                         f"Count for status '{application_status}' fetched successfully.",
                         {application_status: count},
                     )
+
                 else:
                     approved_applications = StudentApplicationSelection.objects.filter(
                         selected_program__id=filteration_id,
@@ -900,6 +915,7 @@ class ApplicationStatusCount(views.APIView, CustomResponseMixin):
                     verified_count, unverified_count = (
                         self.get_verified_and_unverified_counts(approved_applications)
                     )
+
                     counts = {
                         "approved": approved_applications.count(),
                         "short_listed": base_query.filter(
@@ -911,15 +927,18 @@ class ApplicationStatusCount(views.APIView, CustomResponseMixin):
                         "verified": verified_count,
                         "unverified": unverified_count,
                     }
+
                     return self.custom_response(
                         status.HTTP_200_OK,
                         "Counts for all statuses fetched successfully.",
                         counts,
                     )
+
             elif group_name == "instructor":
                 base_query = Applications.objects.filter(
                     required_skills__id=filteration_id, group_name="instructor"
                 ).distinct()
+
                 if application_status:
                     if application_status == "approved":
                         approved_count = (
@@ -930,19 +949,23 @@ class ApplicationStatusCount(views.APIView, CustomResponseMixin):
                             .distinct()
                             .count()
                         )
+
                         return self.custom_response(
                             status.HTTP_200_OK,
                             f"Count for 'approved' instructors fetched successfully.",
                             {"approved": approved_count},
                         )
+
                     count = base_query.filter(
                         application_status=application_status
                     ).count()
+
                     return self.custom_response(
                         status.HTTP_200_OK,
                         f"Count for status '{application_status}' fetched successfully.",
                         {application_status: count},
                     )
+
                 else:
                     approved_applications = (
                         InstructorApplicationSelection.objects.filter(
@@ -964,17 +987,20 @@ class ApplicationStatusCount(views.APIView, CustomResponseMixin):
                         "verified": verified_count,
                         "unverified": unverified_count,
                     }
+
                     return self.custom_response(
                         status.HTTP_200_OK,
                         "Counts for all statuses fetched successfully.",
                         counts,
                     )
+
         except Exception as e:
             return self.custom_response(
                 status.HTTP_500_INTERNAL_SERVER_ERROR,
                 f"An error occurred: {str(e)}",
                 None,
             )
+
 
 # class VerifiedUnverifiedAccountsCountView(views.APIView, CustomResponseMixin):
 

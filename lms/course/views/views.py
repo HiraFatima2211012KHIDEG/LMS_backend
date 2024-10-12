@@ -10,14 +10,26 @@ import logging
 from django.apps import apps
 from drf_spectacular.utils import extend_schema
 from utils.custom import CustomResponseMixin, custom_extend_schema
-
+from django.db.models import Q
 logger = logging.getLogger(__name__)
+
+
+
+# class CourseModulesAPIView(CustomResponseMixin, APIView):
+#     permission_classes = (permissions.IsAuthenticated,)
+
+#     def get(self, request, course_id,session_id, format=None):
+#         course = get_object_or_404(Course, id=course_id)
+#         modules = Module.objects.filter(course=course,session_id=session_id).order_by('-created_at')
+#         serializer = ModuleSerializer(modules, many=True)
+#         return self.custom_response(status.HTTP_200_OK, 'Modules retrieved successfully', serializer.data)
 
 
 class CourseModulesAPIView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request, course_id, session_id, format=None):
+        user = request.user
         course_exists = Course.objects.filter(id=course_id).exists()
         if not course_exists:
             return self.custom_response(
@@ -30,7 +42,12 @@ class CourseModulesAPIView(CustomResponseMixin, APIView):
                 status.HTTP_404_NOT_FOUND, "Session not found.",{}
             )
 
-        modules = Module.objects.filter(course_id=course_id, session_id=session_id).exclude(status=2).order_by('-created_at')
+        is_student = Student.objects.filter(user=user).exists()
+        
+        if is_student:
+            modules = Module.objects.filter(course_id=course_id, session_id=session_id).exclude(Q(status=2) | Q(status=0)).order_by('-created_at')
+        else:
+            modules = Module.objects.filter(course_id=course_id, session_id=session_id).exclude(status=2).order_by('-created_at')
 
         if not modules.exists():
             return self.custom_response(
@@ -43,12 +60,14 @@ class CourseModulesAPIView(CustomResponseMixin, APIView):
             status.HTTP_200_OK, 'Modules retrieved successfully', serializer.data
         )
 
+
+
 class CourseListCreateAPIView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
 
     def get(self, request, format=None):
-        courses = Course.objects.all().order_by('name')
+        courses = Course.objects.all().exclude(status=2).order_by('name')
         serializer = CourseSerializer(courses, many=True)
         logger.info("Retrieved all courses")
         return self.custom_response(status.HTTP_200_OK, 'Courses retrieved successfully', serializer.data)
@@ -190,6 +209,7 @@ class ModuleDetailAPIView(CustomResponseMixin, APIView):
             return self.custom_response(status.HTTP_200_OK, 'Module updated successfully', serializer.data)
 
         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error updating module', serializer.errors)
+
 
 
     def patch(self, request, pk, format=None):

@@ -328,18 +328,18 @@ class ResetPasswordSerializer(serializers.Serializer):
         user = User.objects.get(email=value)
         uid = urlsafe_base64_encode(force_bytes(user.id))
         token = PasswordResetTokenGenerator().make_token(user)
-        link = f"http://localhost:3000/auth/set-password/{uid}/{token}"
+        link=f"https://lms-phi-two.vercel.app/auth/set-password/{uid}/{token}"
         print("Password reset link:", link)
 
         # Email sending logic can be included here or in a separate function/task
         # Example:
-        # body = f"Hey {user.first_name} {user.last_name},\nPlease click the following link to reset your password. {link}\nThe link will expire in 10 minutes."
-        # data = {
-        #     "email_subject": "Reset Password",
-        #     "body": body,
-        #     "to_email": user.email,
-        # }
-        # send_email.apply_async(args=[data, "reset_password.html"], countdown=3)
+        body = f"Hey {user.first_name} {user.last_name},\nPlease click the following link to reset your password. {link}\nThe link will expire in 10 minutes."
+        data = {
+             "email_subject": "Reset Password",
+             "body": body,
+             "to_email": user.email,
+        }
+        send_email(data)
 
         return value
 
@@ -482,15 +482,12 @@ class AssignCoursesSerializer(serializers.Serializer):
         return value
 
 class InstructorSessionSerializer(serializers.ModelSerializer):
-    instructor_name = serializers.SerializerMethodField()  # To combine the instructor's first name and last name
-    session_id = serializers.IntegerField(source='session.id')  # To get the session ID
+    instructor_email = serializers.SerializerMethodField()
 
     class Meta:
         model = InstructorSession
-        fields = ['session_id', 'instructor_name']
+        fields = ['session', 'status',  'instructor_email']
 
-    def get_instructor_name(self, obj):
-        # Combine the first name and last name
-        first_name = obj.instructor.user.first_name
-        last_name = obj.instructor.user.last_name
-        return f"{first_name} {last_name}".strip()
+    def get_instructor_email(self, obj):
+        # Ensure obj.instructor exists and has an email
+        return obj.instructor.id.email if obj.instructor and obj.instructor.id else None

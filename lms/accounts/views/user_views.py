@@ -1,4 +1,4 @@
-from rest_framework import views, viewsets, status, generics, permissions
+from rest_framework import views, viewsets, status, generics, permissions, filters
 from rest_framework.response import Response
 from ..serializers.user_serializers import *
 from django.contrib.auth import authenticate
@@ -14,7 +14,6 @@ from ..serializers.user_serializers import (
 
 )
 from ..models.user_models import Student
-# from ..models.location_models import Ses
 from django_filters.rest_framework import DjangoFilterBackend
 import constants
 from utils.custom import CustomResponseMixin, custom_extend_schema
@@ -63,6 +62,108 @@ class UserLoginView(views.APIView):
     View to handle user login and generate authentication tokens.
     """
 
+    # @custom_extend_schema(UserLoginSerializer)
+    # def post(self, request):
+    #     """
+    #     Handle POST requests for user login.
+    #     This method processes the login request by validating the provided credentials.
+    #     If valid, it authenticates the user and generates authentication tokens.
+    #     Args:
+    #         request (Request): The HTTP request object containing the login data.
+    #     Returns:
+    #         Response: A Response object with authentication tokens if successful,
+    #                   or error details if validation fails.
+    #     """
+    #     data = request.data
+    #     if "email" not in data:
+    #         return Response(
+    #             {
+    #                 "status_code": status.HTTP_400_BAD_REQUEST,
+    #                 "message": "Email is not provided.",
+    #             }
+    #         )
+    #     if "password" not in data:
+    #         return Response(
+    #             {
+    #                 "status_code": status.HTTP_400_BAD_REQUEST,
+    #                 "message": "Password is not provided.",
+    #             }
+    #         )
+    #     data["email"] = data.get("email", "").lower()
+    #     serializer = UserLoginSerializer(data=data)
+    #     if serializer.is_valid(raise_exception=True):
+    #         user = authenticate(
+    #             email=serializer.validated_data["email"],
+    #             password=serializer.validated_data["password"],
+    #         )
+    #         if user is not None:
+    #             tokens = self.get_tokens_for_user(user)
+    #             user_group = Group.objects.get(user=user.id)
+    #             permission = self.get_group_permissions(user_group.id)
+    #             user_profile = UserProfileSerializer(user, context={'user' : user})
+    #             user_serializer = None
+    #             session_data = []
+    #             if user_group.name == "student":
+    #                 student = Student.objects.get(user=user.id)
+    #                 user_serializer = StudentSerializer(student)
+    #                 try:
+    #                     student_sessions = StudentSession.objects.filter(student=student)
+    #                     for student_session in student_sessions:
+    #                         session_info=SessionsSerializer(student_session.session).data
+    #                         try:
+    #                             instructor_session = InstructorSession.objects.get(session=student_session.session)
+    #                             instructor_data = {
+    #                                 "instructor_id": instructor_session.instructor.id.id,  # This will give you the user ID
+    #                                 "instructor_name": f"{instructor_session.instructor.id.first_name} {instructor_session.instructor.id.last_name}",
+    #                             }
+    #                             session_info["instructor"] = instructor_data
+    #                         except InstructorSession.DoesNotExist:
+    #                             session_info["instructor"] = None
+    #                         session_data.append(session_info)
+    #                 except StudentSession.DoesNotExist:
+    #                     session_data = []
+    #             elif user_group.name == "instructor":
+    #                 instructor = Instructor.objects.get(id=user.id)
+    #                 user_serializer = InstructorSerializer(instructor)
+    #                 try:
+    #                     instructor_sessions = InstructorSession.objects.filter(instructor=instructor)
+    #                     for instructor_session in instructor_sessions:
+    #                         session_data.append(SessionsSerializer(instructor_session.session).data)
+
+    #                 except InstructorSession.DoesNotExist:
+    #                     session_data = []
+    #             return Response(
+    #                 {
+    #                     "status_code": status.HTTP_200_OK,
+    #                     "message": "Login Successful.",
+    #                     "response": {
+    #                         "token": tokens,
+    #                         "Group": user_group.name,
+    #                         "User": user_profile.data,
+
+    #                         "user_data": (
+    #                             user_serializer.data if user_serializer else None
+    #                         ),
+    #                         "session": session_data if session_data else None,
+    #                     },
+    #                 }
+    #             )
+    #         else:
+    #             return Response(
+    #                 {
+    #                     "status_code": status.HTTP_401_UNAUTHORIZED,
+    #                     "message": "Invalid credentials.",
+    #                 },
+    #             )
+    #     return Response(
+    #         {
+    #             "status_code": status.HTTP_400_BAD_REQUEST,
+    #             "message": "Unable to login.",
+    #             "response": serializer.errors,
+    #         }
+    #     )
+
+
 
     def get_tokens_for_user(self, user):
         """
@@ -98,7 +199,8 @@ class UserLoginView(views.APIView):
                 permissions_value += constants.DELETE
             permissions_dict[model_name] = permissions_value
         return permissions_dict
-  
+
+
     @custom_extend_schema(UserLoginSerializer)
     def post(self, request):
         """
@@ -169,6 +271,7 @@ class UserLoginView(views.APIView):
                             "token": tokens,
                             "Group": user_group.name,
                             "User": user_profile.data,
+                            "permissions": permission,
                             "user_data": user_serializer.data if user_serializer else None,
                             "session": session_assigned,  # Return true or false based on session existence
                         },
@@ -190,106 +293,6 @@ class UserLoginView(views.APIView):
         )
 
 
-    # @custom_extend_schema(UserLoginSerializer)
-    # def post(self, request):
-    #     """
-    #     Handle POST requests for user login.
-    #     This method processes the login request by validating the provided credentials.
-    #     If valid, it authenticates the user and generates authentication tokens.
-    #     Args:
-    #         request (Request): The HTTP request object containing the login data.
-    #     Returns:
-    #         Response: A Response object with authentication tokens if successful,
-    #                   or error details if validation fails.
-    #     """
-    #     data = request.data
-    #     if "email" not in data:
-    #         return Response(
-    #             {
-    #                 "status_code": status.HTTP_400_BAD_REQUEST,
-    #                 "message": "Email is not provided.",
-    #             }
-    #         )
-    #     if "password" not in data:
-    #         return Response(
-    #             {
-    #                 "status_code": status.HTTP_400_BAD_REQUEST,
-    #                 "message": "Password is not provided.",
-    #             }
-    #         )
-    #     data["email"] = data.get("email", "").lower()
-    #     serializer = UserLoginSerializer(data=data)
-    #     if serializer.is_valid(raise_exception=True):
-    #         user = authenticate(
-    #             email=serializer.validated_data["email"],
-    #             password=serializer.validated_data["password"],
-    #         )
-    #         if user is not None:
-    #             tokens = self.get_tokens_for_user(user)
-    #             user_group = Group.objects.get(user=user.id)
-    #             permission = self.get_group_permissions(user_group.id)
-    #             user_profile = UserProfileSerializer(user, context={'user' : user})
-    #             user_serializer = None
-    #             session_data = []
-    #             if user_group.name == "student":
-    #                 student = Student.objects.get(user=user.id)
-    #                 user_serializer = StudentSerializer(student)
-    #                 try:
-    #                     student_sessions = StudentSession.objects.filter(student=student)
-    #                     for student_session in student_sessions:
-    #                         session_info=SessionsSerializer(student_session.session).data
-    #                         try:
-    #                             instructor_session = InstructorSession.objects.get(session=student_session.session)
-    #                             instructor_data = {
-    #                                 "instructor_id": instructor_session.instructor.id.id, 
-    #                                 "instructor_name": f"{instructor_session.instructor.id.first_name} {instructor_session.instructor.id.last_name}",
-    #                             }
-    #                             session_info["instructor"] = instructor_data
-    #                         except InstructorSession.DoesNotExist:
-    #                             session_info["instructor"] = None
-    #                         session_data.append(session_info)
-    #                 except StudentSession.DoesNotExist:
-    #                     session_data = []
-    #             elif user_group.name == "instructor":
-    #                 instructor = Instructor.objects.get(id=user.id)
-    #                 user_serializer = InstructorSerializer(instructor)
-    #                 try:
-    #                     instructor_sessions = InstructorSession.objects.filter(instructor=instructor)
-    #                     for instructor_session in instructor_sessions:
-    #                         session_data.append(SessionsSerializer(instructor_session.session).data)
-
-    #                 except InstructorSession.DoesNotExist:
-    #                     session_data = []
-    #             return Response(
-    #                 {
-    #                     "status_code": status.HTTP_200_OK,
-    #                     "message": "Login Successful.",
-    #                     "response": {
-    #                         "token": tokens,
-    #                         "Group": user_group.name,
-    #                         "User": user_profile.data,
-    #                         "permissions": permission,
-    #                         "user_data": (
-    #                             user_serializer.data if user_serializer else None
-    #                         ),
-    #                         "session": session_data if session_data else None,
-    #                     },
-    #                 }
-    #             )
-    #         else:
-    #             return Response(
-    #                 {
-    #                     "status_code": status.HTTP_401_UNAUTHORIZED,
-    #                     "message": "Invalid credentials.",
-    #                 },
-    #             )
-    #     return Response(
-    #         {
-    #             "status_code": status.HTTP_400_BAD_REQUEST,
-    #             "message": "Unable to login.",
-    #             "response": serializer.errors,
-    #         }
-    #     )
 
 class UserSessionAPIView(views.APIView):
     permission_classes = (permissions.IsAuthenticated,)
@@ -305,13 +308,13 @@ class UserSessionAPIView(views.APIView):
         if user_group.name == "student":
             student = Student.objects.get(user=user.id)
             try:
-                student_sessions = StudentSession.objects.filter(student=student)
+                student_sessions = StudentSession.objects.filter(student=student, status=1)
                 for student_session in student_sessions:
                     session_info = SessionsSerializer(student_session.session).data
                     try:
-                        instructor_session = InstructorSession.objects.get(session=student_session.session)
+                        instructor_session = InstructorSession.objects.get(session=student_session.session, status=1)
                         instructor_data = {
-                            "instructor_id": instructor_session.instructor.id.id, 
+                            "instructor_id": instructor_session.instructor.id.id,
                             "instructor_name": f"{instructor_session.instructor.id.first_name} {instructor_session.instructor.id.last_name}",
                         }
                         session_info["instructor"] = instructor_data
@@ -324,7 +327,7 @@ class UserSessionAPIView(views.APIView):
         elif user_group.name == "instructor":
             instructor = Instructor.objects.get(id=user.id)
             try:
-                instructor_sessions = InstructorSession.objects.filter(instructor=instructor)
+                instructor_sessions = InstructorSession.objects.filter(instructor=instructor, status=1)
                 for instructor_session in instructor_sessions:
                     session_data.append(SessionsSerializer(instructor_session.session).data)
             except InstructorSession.DoesNotExist:
@@ -339,118 +342,6 @@ class UserSessionAPIView(views.APIView):
         )
 
 
-
-    # class UserLoginView(views.APIView):
-    #     """
-    #     View to handle user login and generate authentication tokens.
-    #     """
-    #     @extend_schema(
-    #         request=UserLoginSerializer,
-    #         responses={
-    #             200: "Login Successful.",
-    #             400: "Bad Request.",
-    #             401: "Unauthorized.",
-    #         },
-    #     )
-    #     def post(self, request):
-    #         """
-    #         Handle POST requests for user login.
-    #         This method processes the login request by validating the provided credentials.
-    #         If valid, it authenticates the user and generates authentication tokens.
-    #         Args:
-    #             request (Request): The HTTP request object containing the login data.
-    #         Returns:
-    #             Response: A Response object with authentication tokens if successful,
-    #                       or error details if validation fails.
-    #         """
-    #         data = request.data
-    #         if "email" not in data:
-    #             return Response(
-    #                 {
-    #                     "status_code": status.HTTP_400_BAD_REQUEST,
-    #                     "message": "Email is not provided.",
-    #                 }
-    #             )
-    #         if "password" not in data:
-    #             return Response(
-    #                 {
-    #                     "status_code": status.HTTP_400_BAD_REQUEST,
-    #                     "message": "Password is not provided.",
-    #                 }
-    #             )
-    #         data["email"] = data.get("email", "").lower()
-    #         serializer = UserLoginSerializer(data=data)
-    #         if serializer.is_valid(raise_exception=True):
-    #             user = authenticate(
-    #                 email=serializer.validated_data["email"],
-    #                 password=serializer.validated_data["password"],
-    #             )
-    #             if user is not None:
-    #                 tokens = self.get_tokens_for_user(user)
-    #                 user_group = Group.objects.get(user=user.id)
-    #                 permission = self.get_group_permissions(user_group.id)
-    #                 user_profile = UserProfileSerializer(user)
-    #                 return Response(
-    #                     {
-    #                         "status_code": status.HTTP_200_OK,
-    #                         "message": "Login Successful.",
-    #                         "response": {
-    #                             "token": tokens,
-    #                             "Group": user_group.name,
-    #                             "user": user_profile.data,
-    #                             "permissions": permission,
-
-    #                         },
-    #                     }
-    #                 )
-    #             else:
-    #                 return Response(
-    #                     {
-    #                         "status_code": status.HTTP_401_UNAUTHORIZED,
-    #                         "message": "Invalid credentials.",
-    #                     },
-    #                 )
-    #         return Response(
-    #             {
-    #                 "status_code": status.HTTP_400_BAD_REQUEST,
-    #                 "message": "Unable to login.",
-    #                 "response": serializer.errors,
-    #             }
-    #         )
-    # def get_tokens_for_user(self, user):
-    #     """
-    #     Generate JWT tokens for the authenticated user.
-    #     Args:
-    #         user (User): The authenticated user object.
-    #     Returns:
-    #         dict: A dictionary containing the refresh and access tokens.
-    #     """
-    #     try:
-    #         refresh = RefreshToken.for_user(user)
-    #         return {
-    #             "refresh": str(refresh),
-    #             "access": str(refresh.access_token),
-    #         }
-    #     except Exception as e:
-    #         raise Exception(f"Error generating tokens: {str(e)}")
-
-    def get_group_permissions(self, group_id):
-        """Retrieve all the permissions related to a user group"""
-        permissions_dict = {}
-        access_controls = AccessControl.objects.filter(group_id=group_id)
-        for access_control in access_controls:
-            model_name = access_control.model
-            permissions_value = ""
-            if access_control.create:
-                permissions_value += constants.CREATE
-            if access_control.read:
-                permissions_value += constants.READ
-            if access_control.update:
-                permissions_value += constants.UPDATE
-            if access_control.remove:
-                permissions_value += constants.DELETE
-            permissions_dict[model_name] = permissions_value
-        return permissions_dict
 
 
 class UserProfileView(views.APIView):
@@ -1175,6 +1066,80 @@ class UsersCountAdminSectionView(views.APIView, CustomResponseMixin):
 #                 None,
 #             )
 
+class PreferredInstructorSessionView(views.APIView, CustomResponseMixin):
+    """
+    View to fetch sessions based on the instructor's city from the Applications table.
+    """
+
+    def get(self, request):
+        instructor_id = request.query_params.get("instructor_id")
+
+        # Check if instructor_id is provided
+        if not instructor_id:
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST,
+                "Instructor ID is required.",
+                None,
+            )
+
+        try:
+            # Fetch the instructor
+            instructor = Instructor.objects.get(id=instructor_id)
+        except Instructor.DoesNotExist:
+            return self.custom_response(
+                status.HTTP_404_NOT_FOUND,
+                "The specified instructor does not exist.",
+                None,
+            )
+
+        # Fetch the email of the instructor
+        instructor_email = instructor.id.email
+
+        try:
+            # Fetch the city from the Applications table using the email
+            application = Applications.objects.get(email=instructor_email)
+        except Applications.DoesNotExist:
+            return self.custom_response(
+                status.HTTP_404_NOT_FOUND,
+                "No application found for the instructor's email.",
+                None,
+            )
+
+        city = application.city
+
+        # Retrieve all sessions for this city
+        queryset = Sessions.objects.filter(location__city=city, status=1)
+
+        if not queryset.exists():
+            return self.custom_response(
+                status.HTTP_404_NOT_FOUND,
+                "No sessions found for the instructor's city.",
+                None,
+            )
+
+        # Serialize the sessions data
+        session_data = SessionsSerializer(queryset, many=True).data
+
+        # Prepare the response
+        response_data = {
+            "instructor": {
+                "id": instructor.id.id,
+                "email": instructor_email,
+            },
+            "city": {
+                "name": city,
+            },
+            "sessions": session_data,
+        }
+
+        return self.custom_response(
+            status.HTTP_200_OK,
+            "Instructor sessions fetched successfully.",
+            response_data,
+        )
+
+
+
 
 class PreferredSessionView(views.APIView, CustomResponseMixin):
     """
@@ -1218,7 +1183,7 @@ class PreferredSessionView(views.APIView, CustomResponseMixin):
         print('a', courses)
 
         # Fetch sessions based on the courses and the specified location
-        sessions = Sessions.objects.filter(course__in=courses, location=location)
+        sessions = Sessions.objects.filter(course__in=courses, location=location, status=1)
         print('b', sessions)
 
         # Check if any sessions match the criteria
@@ -1268,7 +1233,7 @@ class PreferredSessionView(views.APIView, CustomResponseMixin):
         try:
             # Get the Student object based on the provided user_id
             student = Student.objects.get(user_id=user_id)
-            
+
             # Use the student.user.email to fetch the application
             application = Applications.objects.get(email=student.user.email)
         except Student.DoesNotExist:
@@ -1304,7 +1269,8 @@ class PreferredSessionView(views.APIView, CustomResponseMixin):
                 student=student,
                 session__course=session.course,
                 session__start_time=session.start_time,
-                session__end_time=session.end_time
+                session__end_time=session.end_time,
+                status=1
             ).exists():
                 return self.custom_response(
                     status.HTTP_400_BAD_REQUEST,
@@ -1313,9 +1279,10 @@ class PreferredSessionView(views.APIView, CustomResponseMixin):
                 )
             if StudentSession.objects.filter(
                 student=student,
-            
+
                 session__start_time=session.start_time,
-                session__end_time=session.end_time
+                session__end_time=session.end_time,
+                status=1
             ).exists():
                 return self.custom_response(
                     status.HTTP_400_BAD_REQUEST,
@@ -1328,7 +1295,8 @@ class PreferredSessionView(views.APIView, CustomResponseMixin):
                 student=student,
                 session__location=session.location,
                 session__start_time__lt=session.end_time,
-                session__end_time__gt=session.start_time
+                session__end_time__gt=session.start_time,
+                status=1
             )
 
             if overlapping_sessions.exists():
@@ -1389,7 +1357,7 @@ class PreferredSessionView(views.APIView, CustomResponseMixin):
             "body": email_body,
             "to_email": student.user.email,  # Assuming your Student model has access to user.email
         }
-        
+
         # Send email (using the existing send_email function or Django's default send_mail)
         send_email(email_data)
 
@@ -1399,13 +1367,19 @@ class PreferredSessionView(views.APIView, CustomResponseMixin):
             response_data
         )
 
+
+
+
+
 class UserSessionsView(views.APIView, CustomResponseMixin):
     """View to get all sessions assigned to a specific user."""
 
     def get(self, request, user_id):
         # Determine whether the user is a student or instructor
         group_name = request.query_params.get("group_name")
-        course_id = request.query_params.get("course_id")  # Get the course filter from query params
+        course_id = request.query_params.get(
+            "course_id"
+        )  # Get the course filter from query params
 
         if group_name not in ["student", "instructor"]:
             return self.custom_response(
@@ -1426,7 +1400,7 @@ class UserSessionsView(views.APIView, CustomResponseMixin):
                 )
 
             # Fetch all sessions assigned to this student
-            user_sessions = StudentSession.objects.filter(student=student)
+            user_sessions = StudentSession.objects.filter(student=student, status=1)
 
         elif group_name == "instructor":
             try:
@@ -1443,11 +1417,14 @@ class UserSessionsView(views.APIView, CustomResponseMixin):
             if course_id:
                 user_sessions = InstructorSession.objects.filter(
                     instructor=instructor,
-                    session__course__id=course_id  # Filter sessions based on course_id
+                    session__course__id=course_id,  # Filter sessions based on course_id
+                    status=1,
                 )
             else:
                 # Fetch all sessions assigned to this instructor
-                user_sessions = InstructorSession.objects.filter(instructor=instructor)
+                user_sessions = InstructorSession.objects.filter(
+                    instructor=instructor, status=1
+                )
 
         if not user_sessions.exists():
             return self.custom_response(
@@ -1463,8 +1440,14 @@ class UserSessionsView(views.APIView, CustomResponseMixin):
             session_info = {
                 "session_id": session.id,
                 "status": user_session.status,  # Session-specific status
-                "start_time": session.start_time.strftime("%H:%M:%S") if session.start_time else None,
-                "end_time": session.end_time.strftime("%H:%M:%S") if session.end_time else None,
+                "start_time": (
+                    session.start_time.strftime("%H:%M:%S")
+                    if session.start_time
+                    else None
+                ),
+                "end_time": (
+                    session.end_time.strftime("%H:%M:%S") if session.end_time else None
+                ),
                 "no_of_student": session.no_of_students,
                 "course": session.course.name if session.course else None,
                 "location": session.location.name if session.location else None,
@@ -1477,6 +1460,75 @@ class UserSessionsView(views.APIView, CustomResponseMixin):
             "Sessions fetched successfully.",
             session_data,
         )
+
+    def delete(self, request, *args, user_id, **kwargs):
+        session_id = request.query_params.get("pk", None)
+        print(session_id)
+        group_name = request.query_params.get("group_name")
+        user_id = user_id  # Get the user_id from URL or query params
+
+        if not group_name:
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST,
+                "group_name query param is required.",
+                None,
+            )
+
+        if group_name not in ["student", "instructor"]:
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST,
+                "Invalid group_name. Choices are 'student' and 'instructor'.",
+                None,
+            )
+
+        # Get the session instance
+        instance = get_object_or_404(Sessions, id=session_id)
+
+        if group_name == "student":
+            try:
+                # Get the student session based on the user_id and session_id
+                student = Student.objects.get(user__id=user_id)
+                student_session = StudentSession.objects.get(
+                    student=student, session=instance
+                )
+            except (Student.DoesNotExist, StudentSession.DoesNotExist):
+                return self.custom_response(
+                    status.HTTP_404_NOT_FOUND,
+                    "Student or session not found for the given user.",
+                    None,
+                )
+            # Update the status to 2 (soft delete)
+            student_session.status = 2
+            student_session.save()
+
+        elif group_name == "instructor":
+
+            try:
+                # Get the instructor session based on the user_id and session_id
+                instructor = Instructor.objects.get(id__id=user_id)
+                instructor_session = InstructorSession.objects.get(
+                    instructor=instructor, session=instance
+                )
+            except (Instructor.DoesNotExist, InstructorSession.DoesNotExist):
+                return self.custom_response(
+                    status.HTTP_404_NOT_FOUND,
+                    "Instructor or session not found for the given user.",
+                    None,
+                )
+            # Update the status to 2 (soft delete)
+            instructor_session.status = 2
+            instructor_session.save()
+
+        return Response(
+            {
+                "status_code": status.HTTP_204_NO_CONTENT,
+                "message": f"Session deleted successfully for {group_name}.",
+            },
+            status=status.HTTP_204_NO_CONTENT,
+        )
+
+
+
 
 
 # class InstructorSessionsView(views.APIView, CustomResponseMixin):
@@ -1523,7 +1575,7 @@ class UserSessionsView(views.APIView, CustomResponseMixin):
 #             course = session.course
 #             # if InstructorSession.objects.filter(
 #             #     instructor=instructor,
-            
+
 #             # ).exclude(session__location=session.location):
 #             #     return self.custom_response(
 #             #         status.HTTP_400_BAD_REQUEST,
@@ -1635,16 +1687,18 @@ class UserSessionsView(views.APIView, CustomResponseMixin):
 #             "Sessions assigned successfully and email sent.",
 #             response_data
 #         )
-    
 
-    
+
+
 class InstructorSessionsView(views.APIView, CustomResponseMixin):
     """
     View to assign sessions to an instructor.
     """
+
     def post(self, request):
         user_id = request.data.get("user_id")
         session_ids = request.data.get("session_ids", [])
+
         # Validate if user_id and session_ids are provided
         if not user_id or not session_ids:
             return self.custom_response(
@@ -1654,13 +1708,14 @@ class InstructorSessionsView(views.APIView, CustomResponseMixin):
             )
         try:
             # Get the Instructor object based on the provided user_id
-            instructor = Instructor.objects.get(id__id=user_id)  # Assuming Instructor has a user field for user_id
+            instructor = Instructor.objects.get(id__id=user_id)
         except Instructor.DoesNotExist:
             return self.custom_response(
                 status.HTTP_404_NOT_FOUND,
                 "Instructor does not exist for the provided user_id.",
                 None,
             )
+
         # Fetch sessions based on provided session_ids
         sessions = Sessions.objects.filter(id__in=session_ids)
         if not sessions.exists():
@@ -1669,74 +1724,89 @@ class InstructorSessionsView(views.APIView, CustomResponseMixin):
                 "No valid sessions found for the provided session_ids.",
                 None,
             )
+
         created_sessions = []
-        session_details = []  # To collect details for email content
+        session_details = []
         date_time_slots = {}
+
         for session in sessions:
             course = session.course
-            # if InstructorSession.objects.filter(
-            #     instructor=instructor,
-            # ).exclude(session__location=session.location):
-            #     return self.custom_response(
-            #         status.HTTP_400_BAD_REQUEST,
-            #         f"Location must be the same to this instructor",
-            #         None,
-            #     )
-            # if InstructorSession.objects.filter(
-            #     instructor=instructor,
-            #     session__course=session.course,
-            #     session__start_time=session.start_time,
-            #     session__end_time=session.end_time
-            # ).exists():
-            #     return self.custom_response(
-            #         status.HTTP_400_BAD_REQUEST,
-            #         f"Session with course {session.course.name} and timings {session.start_time} - {session.end_time} is already assigned to this instructor.",
-            #         None,
-            #     )
 
-            # Check if the instructor is already assigned to this course
-            # if InstructorSession.objects.filter(instructor=instructor, session__course=course).exists():
-            #     return self.custom_response(
-            #         status.HTTP_400_BAD_REQUEST,
-            #         f"Instructor is already assigned to the course '{course.name}'.",
-            #         None,
-            #     )
-            # Check if the session already has an instructor assigned
-            if session.location.city != instructor.id.city:
-                return self.custom_response(
-                    status.HTTP_400_BAD_REQUEST,
-                    f"Instructor from city {instructor.id.city} cannot be assigned to sessions in city {session.location.city}.",
-                    None,
-                )
-            if InstructorSession.objects.filter(session=session).exists():
+            # Check if the session is already assigned to this instructor
+            instructor_session = InstructorSession.objects.filter(
+                instructor=instructor,
+                session=session,
+            ).first()
+
+            if instructor_session:
+                # Before changing the status from 2 to 1, check if the session is assigned to another instructor with status 1
+                existing_instructor_sessions = InstructorSession.objects.filter(
+                    session=session
+                ).exclude(instructor=instructor)
+
+                # Check if any instructor has this session with status 1 (active)
+                if existing_instructor_sessions.filter(status=1).exists():
+                    return self.custom_response(
+                        status.HTTP_400_BAD_REQUEST,
+                        f"Session with course {session.course.name} is already assigned to another active instructor.",
+                        None,
+                    )
+
+                # If session is already assigned to this instructor and the status is 2, change it to 1
+                if instructor_session.status == 2:
+                    instructor_session.status = 1
+                    instructor_session.save()
+                    created_sessions.append(instructor_session)
+                    continue  # Skip further checks, continue with the next session
+
+                # Skip this session as it's already assigned and status is not 2
+                continue
+
+            # Check if the session is assigned to another instructor
+            existing_instructor_sessions = InstructorSession.objects.filter(
+                session=session
+            ).exclude(instructor=instructor)
+
+            # If the session is already assigned to another instructor with status 1, raise an error
+            if existing_instructor_sessions.filter(status=1).exists():
                 return self.custom_response(
                     status.HTTP_400_BAD_REQUEST,
                     f"Session with course {session.course.name} is already assigned to another instructor.",
                     None,
                 )
-            if InstructorSession.objects.filter(
+
+            # Create or update InstructorSession if it's not assigned to any active instructor
+            instructor_session, created = InstructorSession.objects.get_or_create(
                 instructor=instructor,
-                session__start_time=session.start_time,
-                session__end_time=session.end_time
-            ).exists():
-                return self.custom_response(
-                    status.HTTP_400_BAD_REQUEST,
-                    f"Session with course {session.course.name} same timings {session.start_time} - {session.end_time} is already assigned to this instructor.",
-                    None,
-                )
-            # Check for overlapping session timings for the student
+                session=session,
+                defaults={
+                    "status": 1,  # Default status or modify based on your needs
+                },
+            )
+            created_sessions.append(instructor_session)
+
+
+
+            # Check for date overlap
             overlapping_sessions = InstructorSession.objects.filter(
                 instructor=instructor,
-                #session__location=session.location,
-                session__start_time__lt=session.end_time,
-                session__end_time__gt=session.start_time
+                session__location=session.location,
+                session__start_date__lte=session.end_date,
+                session__end_date__gte=session.start_date,
             )
+
             if overlapping_sessions.exists():
-                return self.custom_response(
-                    status.HTTP_400_BAD_REQUEST,
-                    f"Session timings overlap with existing sessions for this instructor.",
-                    None,
+                # If dates overlap, check for time overlap
+                overlapping_times = overlapping_sessions.filter(
+                    session__start_time__lt=session.end_time,
+                    session__end_time__gt=session.start_time,
                 )
+                if overlapping_times.exists():
+                    return self.custom_response(
+                        status.HTTP_400_BAD_REQUEST,
+                        f"Session timings overlap with existing sessions for this instructor.",
+                        None,
+                    )
 
             # Collect start and end times for each day of the week using the day integers
             for day_int in session.days_of_week:
@@ -1757,50 +1827,66 @@ class InstructorSessionsView(views.APIView, CustomResponseMixin):
                 instructor=instructor,
                 session=session,
                 defaults={
-                    'status': 1,  # Default status or modify based on your needs
-                }
+                    "status": 1,  # Default status or modify based on your needs
+                },
             )
             created_sessions.append(instructor_session)
+
             if session.course:
                 session.course.instructors.add(instructor)
+
             # Collect session details for email
             session_details.append(
                 f"Course: {course.name}\n"
                 f"Location: {session.location.name} Center\n"
-                f"Timings: {session.start_time} - {session.end_time}\n"  # Adjust field names as per your model
+                f"Timings: {session.start_time} - {session.end_time}\n"
             )
+
         # Serialize created or updated InstructorSession objects with detailed session data
-        response_data = [{
-            "instructor_email": sess.instructor.id.email,  # Instructor's email
-            "session": {
-                "session_id": sess.session.id,
-                "course_name": sess.session.course.name,  # Accessing course details
-                "status": sess.status,
+        response_data = [
+            {
+                "instructor_email": sess.instructor.id.email,
+                "session": {
+                    "session_id": sess.session.id,
+                    "course_name": sess.session.course.name,
+                    "status": sess.status,
+                },
             }
-        } for sess in created_sessions]
+            for sess in created_sessions
+        ]
+
         # Compose the email content
         email_subject = "Session Assignment Notification"
         email_body = (
             f"Dear {instructor.id.first_name} {instructor.id.last_name},\n\n"
             f"You have been assigned to the following sessions:\n\n"
-            + "\n\n".join(session_details) +
-            "\n\nPlease review your schedule and be prepared for your upcoming sessions.\n"
+            + "\n\n".join(session_details)
+            + "\n\nPlease review your schedule and be prepared for your upcoming sessions.\n"
             f"Login to the portal from the link below to view details and manage your sessions.\n"
             f"https://lms-phi-two.vercel.app/auth/login"
         )
+
         # Email configuration
         email_data = {
             "email_subject": email_subject,
             "body": email_body,
-            "to_email": instructor.id.email,  # Assuming the Instructor model has access to user.email
+            "to_email": instructor.id.email,
         }
-        # Send email (using the existing send_email function or Django's default send_mail)
+
+        # Send email
         send_email(email_data)
+
         return self.custom_response(
             status.HTTP_200_OK,
             "Sessions assigned successfully and email sent.",
-            response_data
+            response_data,
         )
+
+
+
+
+
+
 
 class ApplicationUserView(views.APIView, CustomResponseMixin):
     """View to fetch applications and user details based on group (student or instructor)."""
@@ -1897,6 +1983,8 @@ class ApplicationUserView(views.APIView, CustomResponseMixin):
                 f"An unexpected error occurred: {str(e)}",
                 None,
             )
+
+
 
 class UserDetailsView(views.APIView, CustomResponseMixin):
     """View to fetch program, location, skills, and other details based on user ID."""
@@ -2016,56 +2104,55 @@ class UserDetailsView(views.APIView, CustomResponseMixin):
             )
 
 
-class ListStudentsByCourseAndInstructor(views.APIView):
-    def get(self, request, course_id, instructor_id, session_id):
-        # Retrieve the course
-        course = get_object_or_404(Course, id=course_id)
-        # Retrieve the instructor separately
-        instructor = get_object_or_404(Instructor, id=instructor_id)
-        # Check if the instructor is associated with the course
-        if not course.instructors.filter(id=instructor_id).exists():
-            return Response(
-                {"detail": "Instructor is not associated with the given course."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        # Retrieve the session from the URL parameter
-        session = get_object_or_404(Sessions, id=session_id)
-        # Ensure the session is associated with the instructor for the given course
-        instructor_session = InstructorSession.objects.filter(
-            instructor=instructor, course=course, session=session
-        ).first()
-        if not instructor_session:
-            return Response(
-                {"message": "Instructor is not associated with the given session and course."},
-                status=status.HTTP_404_NOT_FOUND,
-            )
-        # Retrieve the program(s) associated with the course
-        programs_with_course = Program.objects.filter(courses=course)
-        # Filter students who are associated with the program and match the session
-        matching_students = Student.objects.filter(
-            program__in=programs_with_course,
-            studentsession__session=session,  # Match session from request parameter
-        ).distinct()
-        if not matching_students.exists():
-            return Response(
-                {"message": "No students found for this course and session."},
-                status=status.HTTP_404_NOT_FOUND,
-            )
-        # Prepare response data
-        student_data = [
-            {
-                "student_id": student.registration_id,
-                "student_name": f"{student.user.first_name} {student.user.last_name}",
-                "session_id": session.id,  # Include session_id in response
-            }
-            for student in matching_students
-        ]
-        return Response(
-            {
-                "course": course.name,
-                "instructor": f"{instructor.user.first_name} {instructor.user.last_name}",
-                "session_id": session.id,  # Include session_id in response
-                "matching_students": student_data,
-            },
-            status=status.HTTP_200_OK,
-        )
+# class ListStudentsByCourseAndInstructor(views.APIView):
+#     def get(self, request, course_id, instructor_id):
+#         # Retrieve the course
+#         course = get_object_or_404(Course, id=course_id)
+#         # Retrieve the instructor separately
+#         instructor = get_object_or_404(Instructor, id=instructor_id)
+#         # Check if the instructor is associated with the course
+#         if not course.instructors.filter(id=instructor_id).exists():
+#             return Response(
+#                 {"detail": "Instructor is not associated with the given course."},
+#                 status=status.HTTP_400_BAD_REQUEST,
+#             )
+#         # Get the session(s) assigned to the instructor
+#         instructor_sessions = InstructorSession.objects.filter(
+#             instructor=instructor
+#         ).values_list("session", flat=True)
+#         if not instructor_sessions:
+#             return Response(
+#                 {"message": "No sessions found for this instructor."},
+#                 status=status.HTTP_404_NOT_FOUND,
+#             )
+#         # Retrieve the program(s) associated with the course
+#         programs_with_course = Program.objects.filter(courses=course)
+#         # Filter students who are associated with the program and match the instructor's session(s)
+#         matching_students = Student.objects.filter(
+#             program__in=programs_with_course,
+#             studentsession__session__in=instructor_sessions,
+#         ).distinct()
+#         if not matching_students.exists():
+#             return Response(
+#                 {"message": "No students found for this course and session."},
+#                 status=status.HTTP_404_NOT_FOUND,
+#             )
+#         # Prepare response data
+#         student_data = [
+#             {
+#                 "student_id": student.registration_id,
+#                 "student_name": f"{student.user.first_name} {student.user.last_name}",
+#                 # "session_id": student.studentsession.session.id,
+#             }
+#             for student in matching_students
+#         ]
+#         return Response(
+#             {
+#                 "course": course.name,
+#                 "instructor": f"{instructor.id.first_name} {instructor.id.last_name}",
+#                 "matching_students": student_data,
+#             },
+#             status=status.HTTP_200_OK,
+#         )
+
+
