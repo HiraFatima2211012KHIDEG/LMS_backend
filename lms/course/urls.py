@@ -33,7 +33,6 @@ urlpatterns = [
     path('assignments_grading/', AssignmentGradingListCreateAPIView.as_view(), name='grade-assignment'),
     path('assignments_grading/<int:pk>/', AssignmentGradingDetailAPIView.as_view(), name='grading-detail'),
     path('assignments/course/<int:course_id>/session/<int:session_id>/', AssignmentsByCourseIDAPIView.as_view(), name='assignments-by-course-id'),
-
     path('assignments/<int:assignment_id>/courses/<int:course_id>/sessions/<int:session_id>/students/',
         AssignmentStudentListView.as_view(),
         name='assignment-student-list'

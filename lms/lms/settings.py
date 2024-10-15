@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     "course",
     #  'django_extensions',
     "django_extensions",
+    "storages",
 ]
 
 MIDDLEWARE = [
@@ -190,13 +191,17 @@ EMAIL_FROM_ADDRESS = "maazjavaidsiddique10@gmail.com"
 EMAIL_DEBUG = True
 
 
+
+
+
+
 PASSWORD_RESET_TIMEOUT = 600  # 600Sec = 10 Min
 
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/3.2/howto/static-files/
-
 STATIC_URL = "/static/"
+
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/3.2/ref/settings/#default-auto-field

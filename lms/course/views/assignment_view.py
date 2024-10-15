@@ -14,6 +14,7 @@ from django.utils import timezone
 from rest_framework import status
 from decimal import Decimal
 from utils.custom import CustomResponseMixin, custom_extend_schema
+from accounts.utils import send_email
 
 
 logger = logging.getLogger(__name__)
@@ -34,7 +35,7 @@ class AssignmentListCreateAPIView(CustomResponseMixin, APIView):
         data = {key: value for key, value in request.data.items()}
         data["created_by"] = request.user.id
 
-        file_content = request.FILES.get("content", None)
+        file_content = request.data.get("content", None)
         if file_content is not None:
             data["content"] = file_content
         else:
@@ -69,7 +70,7 @@ class AssignmentDetailAPIView(CustomResponseMixin, APIView):
         data["created_by"] = request.user.id
 
         assignment = get_object_or_404(Assignment, pk=pk)
-        file_content = request.FILES.get("content", None)
+        file_content = request.data.get("content", None)
         if file_content is not None:
             data["content"] = file_content
         else:
@@ -154,39 +155,77 @@ class AssignmentSubmissionCreateAPIView(CustomResponseMixin, APIView):
             serializer.errors,
         )
 
+    # @custom_extend_schema(AssignmentSubmissionSerializer)
     # def post(self, request, format=None):
     #     data = {key: value for key, value in request.data.items()}
-    #     data['user'] = request.user.id
+    #     data["user"] = request.user.id
 
     #     try:
     #         student_instructor = Student.objects.get(user=request.user)
-    #         data['registration_id'] = student_instructor.registration_id
+    #         data["registration_id"] = student_instructor.registration_id
     #     except Student.DoesNotExist:
     #         logger.error("Student not found for user: %s", request.user)
-    #         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Student not found for user', {})
+    #         return self.custom_response(
+    #             status.HTTP_400_BAD_REQUEST, "Student not found for user", {}
+    #         )
 
-    #     assignment_id = data.get('assignment')
-    #     if not assignment_id:
-    #         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Assignment ID is required', {})
-
-    #     # Check if the student has already submitted this assignment
-    #     existing_submission = AssignmentSubmission.objects.filter(
-    #         user=request.user,
-    #         assignment_id=assignment_id
-    #     ).first()
-
-    #     if existing_submission:
-    #         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'You have already submitted this assignment', {})
-
-    #     data['status'] = 1
-    #     print("Data to be saved:", data)
+    #     data["status"] = 1
     #     serializer = AssignmentSubmissionSerializer(data=data)
+        
     #     if serializer.is_valid():
-    #         serializer.save()
-    #         return self.custom_response(status.HTTP_201_CREATED, 'Assignment submission created successfully', serializer.data)
+    #         submission = serializer.save()
 
-    #     return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error creating assignment submission', serializer.errors)
+    #         # Retrieve the instructor for the session associated with the assignment
+    #         assignment = submission.assignment
+    #         try:
+    #             instructor_session = InstructorSession.objects.get(session=assignment.session)
+    #             instructor = instructor_session.instructor
+    #         except InstructorSession.DoesNotExist:
+    #             logger.error("Instructor not found for session: %s", assignment.session)
+    #             return self.custom_response(
+    #                 status.HTTP_400_BAD_REQUEST, "Instructor not found for session", {}
+    #             )
 
+    #         # Compose the email content for the instructor
+    #         email_subject = "New Assignment Submission"
+    #         email_body = (
+    #             f"Dear {instructor.id.first_name} {instructor.id.last_name},\n\n"
+    #             f"A new assignment has been submitted for the session '{assignment.session}' in the course '{assignment.course}'.\n"
+    #             f"Student: {request.user.first_name} {request.user.last_name}\n"
+    #             f"Assignment: {assignment.question}\n"
+    #             f"Submitted at: {submission.submitted_at}\n\n"
+    #             "Please log in to the portal to review the submission.\n"
+    #             f"https://lms-phi-two.vercel.app/auth/login"
+    #         )
+
+    #         # Email configuration
+    #         email_data = {
+    #             "email_subject": email_subject,
+    #             "body": email_body,
+    #             "to_email": instructor.id.email,  
+    #         }
+
+    #         # Send email (using your custom send_email function or Django's send_mail)
+    #         send_email(email_data)
+    #         # Or use Django's send_mail function
+    #         # send_mail(
+    #         #     email_subject,
+    #         #     email_body,
+    #         #     settings.DEFAULT_FROM_EMAIL,
+    #         #     [instructor.user.email],
+    #         # )
+
+    #         return self.custom_response(
+    #             status.HTTP_201_CREATED,
+    #             "Assignment submission created successfully and email sent to the instructor",
+    #             serializer.data,
+    #         )
+
+    #     return self.custom_response(
+    #         status.HTTP_400_BAD_REQUEST,
+    #         "Error creating assignment submission",
+    #         serializer.errors,
+    #     )
 
 class AssignmentSubmissionDetailAPIView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
@@ -423,7 +462,7 @@ class AssignmentsByCourseIDAPIView(CustomResponseMixin, APIView):
             assignment_data = {
                 "id": assignment.id,
                 "total_grade":assignment.total_grade,
-                "content": assignment.content.url if assignment.content else None, 
+                "content": assignment.content if assignment.content else None, 
                 "question": assignment.question,
                 "description": assignment.description,
                 "late_submission":assignment.late_submission,
@@ -435,7 +474,7 @@ class AssignmentsByCourseIDAPIView(CustomResponseMixin, APIView):
                 "submission_status": submission_status,
                 "submitted_at": submission.submitted_at if submission else None,
                 "submitted_file": (
-                    submission.submitted_file.url
+                    submission.submitted_file
                     if submission and submission.submitted_file
                     else None
                 ),
@@ -505,7 +544,7 @@ class AssignmentStudentListView(CustomResponseMixin, APIView):
                 'student_name': f"{user.first_name} {user.last_name}",
                 'registration_id': student.registration_id,
                 'submission_id': submission.id if submission else None,
-                'submitted_file': submission.submitted_file.url if submission and submission.submitted_file else None,
+                'submitted_file': submission.submitted_file if submission and submission.submitted_file else None,
                 'submitted_at': submission.submitted_at if submission else None,
                 'comments':submission.comments if submission else None,
                 'status': submission_status,

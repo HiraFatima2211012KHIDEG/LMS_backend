@@ -14,9 +14,7 @@ class Program(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     courses = models.ManyToManyField(Course, blank=True)
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=1)
-    picture = models.ImageField(
-        upload_to="material/program_pictures/", blank=True, null=True
-    )
+    picture = models.TextField()
 
     def __str__(self):
         return f"{self.name}"

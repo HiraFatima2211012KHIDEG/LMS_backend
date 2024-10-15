@@ -28,7 +28,7 @@ class QuizListCreateAPIView(CustomResponseMixin, APIView):
         data = {key: value for key, value in request.data.items()}
         data['created_by'] = request.user.id
 
-        file_content = request.FILES.get('content', None)
+        file_content = request.data.get('content', None)
         if file_content is not None:
             data['content'] = file_content
         else:
@@ -55,7 +55,7 @@ class QuizDetailAPIView(CustomResponseMixin, APIView):
 
 
         quiz = get_object_or_404(Quizzes, pk=pk)
-        file_content = request.FILES.get('content', None)
+        file_content = request.data.get('content', None)
         if file_content is not None:
             data['content'] = file_content
         else:
@@ -305,7 +305,7 @@ class QuizzesByCourseIDAPIView(CustomResponseMixin, APIView):
                 'id': quiz.id,
                 'total_grade':quiz.total_grade,
                 # 'content_url': quiz.content.url if quiz.content else None, 
-                "content": quiz.content.url if quiz.content else None,
+                "content": quiz.content if quiz.content else None,
                 'question': quiz.question,
                 'description': quiz.description,
                 'late_submission':quiz.late_submission,
@@ -316,7 +316,7 @@ class QuizzesByCourseIDAPIView(CustomResponseMixin, APIView):
                 'submission_id':  submission.id if submission else None,
                 'submission_status': submission_status,
                 'submitted_at': submission.quiz_submitted_at if submission else None,
-                'submitted_file': submission.submitted_file.url if submission and submission.submitted_file else None,
+                'submitted_file': submission.submitted_file if submission and submission.submitted_file else None,
                 "no_of_resubmissions_allowed":quiz.no_of_resubmissions_allowed,
                 'remaining_resubmissions': submission.remaining_resubmissions if submission else 0,
             }
@@ -524,7 +524,7 @@ class QuizStudentListView(CustomResponseMixin, APIView):
                 'student_name': f"{user.first_name} {user.last_name}",
                 'registration_id': student.registration_id,
                 'submission_id': submission.id if submission else None,
-                'submitted_file': submission.submitted_file.url if submission and submission.submitted_file else None,
+                'submitted_file': submission.submitted_file if submission and submission.submitted_file else None,
                 'submitted_at': submission.quiz_submitted_at if submission else None,
                 'comments':submission.comments if submission else None,
                 'status': submission_status,

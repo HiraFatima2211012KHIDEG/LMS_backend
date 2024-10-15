@@ -156,19 +156,23 @@ class ModuleListCreateAPIView(CustomResponseMixin, APIView):
         data = {key: value for key, value in request.data.items()}
         data['created_by'] = request.user.id
 
-        # Validate the number of files
-        files = request.FILES.getlist('files')
-        if len(files) > 5:
+        # Get the file paths instead of file uploads
+        file_paths = request.data.getlist('files')
+        if len(file_paths) > 5:
             return self.custom_response(status.HTTP_400_BAD_REQUEST, 'You can upload a maximum of 5 files per module.', {})
 
         serializer = ModuleSerializer(data=data)
         if serializer.is_valid():
             module = serializer.save()
-            for file in files:
-                ContentFile.objects.create(module=module, file=file)
+
+            # Save the file paths in the database
+            for file_path in file_paths:
+                ContentFile.objects.create(module=module, file=file_path)
+
             return self.custom_response(status.HTTP_201_CREATED, 'Module created successfully', serializer.data)
 
         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error creating Module', serializer.errors)
+
 
 
 class ModuleDetailAPIView(CustomResponseMixin, APIView):
@@ -186,29 +190,32 @@ class ModuleDetailAPIView(CustomResponseMixin, APIView):
 
         module = get_object_or_404(Module, pk=pk)
         serializer = ModuleSerializer(module, data=data)
+
         if serializer.is_valid():
             module = serializer.save()
 
-            # Validate the number of files
-            files = request.FILES.getlist('files')
-            if len(files) > 5:
-                return self.custom_response(status.HTTP_400_BAD_REQUEST, 'You can upload a maximum of 5 files per module.', {})
+            # Get the file paths from the request data
+            file_paths = request.data.getlist('files')
+            if len(file_paths) > 5:
+                return self.custom_response(status.HTTP_400_BAD_REQUEST, 'You can upload a maximum of 5 file paths per module.', {})
 
-            # Handle file updates
+            # Get existing files associated with the module
             existing_files = set(module.files.values_list('id', flat=True))
-            uploaded_files = set()
+            updated_files = set()
 
-            # Create new files
-            for file in files:
-                content_file = ContentFile.objects.create(module=module, file=file)
-                uploaded_files.add(content_file.id)
+            # Update or create new file paths
+            for file_path in file_paths:
+                content_file = ContentFile.objects.create(module=module, file=file_path)
+                updated_files.add(content_file.id)
 
-            # Delete old files that are not in the uploaded files
-            files_to_delete = existing_files - uploaded_files
+            # Delete old files that are not in the updated list of file paths
+            files_to_delete = existing_files - updated_files
             ContentFile.objects.filter(id__in=files_to_delete).delete()
+
             return self.custom_response(status.HTTP_200_OK, 'Module updated successfully', serializer.data)
 
         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error updating module', serializer.errors)
+
 
 
 

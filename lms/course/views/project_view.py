@@ -28,7 +28,7 @@ class ProjectListCreateAPIView(CustomResponseMixin,APIView):
         data = {key: value for key, value in request.data.items()}
         data['created_by'] = request.user.id
 
-        file_content = request.FILES.get('content', None)
+        file_content = request.data.get('content', None)
         if file_content is not None:
             data['content'] = file_content
         else:
@@ -55,7 +55,7 @@ class ProjectDetailAPIView(CustomResponseMixin, APIView):
 
 
         project = get_object_or_404(Project, pk=pk)
-        file_content = request.FILES.get('content', None)
+        file_content = request.data.get('content', None)
         if file_content is not None:
             data['content'] = file_content
         else:
@@ -306,7 +306,7 @@ class ProjectsByCourseIDAPIView(CustomResponseMixin, APIView):
             project_data = {
                 'id': project.id,
                 'total_grade':project.total_grade,
-                'content': project.content.url if project.content else None, 
+                'content': project.content if project.content else None, 
                 'question': project.title,
                 'description': project.description,
                 'late_submission':project.late_submission,
@@ -317,7 +317,7 @@ class ProjectsByCourseIDAPIView(CustomResponseMixin, APIView):
                 'submission_id':  submission.id if submission else None,
                 'submission_status': submission_status,
                 'submitted_at': submission.project_submitted_at if submission else None,
-                'submitted_file': submission.submitted_file.url if submission and submission.submitted_file else None,
+                'submitted_file': submission.submitted_file if submission and submission.submitted_file else None,
                 'remaining_resubmissions': submission.remaining_resubmissions if submission else False,
                 "no_of_resubmissions_allowed":project.no_of_resubmissions_allowed,
                 'comments': submission.comments if submission else 0,
@@ -593,7 +593,7 @@ class ProjectStudentListView(CustomResponseMixin, APIView):
                 'student_name': f"{user.first_name} {user.last_name}",
                 'registration_id': student.registration_id,
                 'submission_id': submission.id if submission else None,
-                'submitted_file': submission.submitted_file.url if submission and submission.submitted_file else None,
+                'submitted_file': submission.submitted_file if submission and submission.submitted_file else None,
                 'submitted_at': submission.project_submitted_at if submission else None,
                 'comments':submission.comments if submission else None,
                 'status': submission_status,

@@ -29,7 +29,7 @@ class ExamListCreateAPIView(CustomResponseMixin, APIView):
         data['created_by'] = request.user.id
 
 
-        file_content = request.FILES.get('content', None)
+        file_content = request.data.get('content', None)
         if file_content is not None:
             data['content'] = file_content
         else:
@@ -57,7 +57,7 @@ class ExamDetailAPIView(CustomResponseMixin, APIView):
 
 
         exam = get_object_or_404(Exam, pk=pk)
-        file_content = request.FILES.get('content', None)
+        file_content = request.data.get('content', None)
         if file_content is not None:
             data['content'] = file_content
         else:
@@ -279,7 +279,7 @@ class ExamsByCourseIDAPIView(CustomResponseMixin, APIView):
                 'total_grade':exam.total_grade,
                 'start_time':exam.start_time,
                 'end_time':exam.end_time,
-                'content': exam.content.url if exam.content else None, 
+                'content': exam.content if exam.content else None, 
                 'question': exam.title,
                 'description': exam.description,
                 'late_submission':exam.late_submission,
@@ -290,7 +290,7 @@ class ExamsByCourseIDAPIView(CustomResponseMixin, APIView):
                 'submission_id':  submission.id if submission else None,
                 'submission_status': submission_status,
                 'submitted_at': submission.exam_submitted_at if submission else None,
-                'submitted_file': submission.submitted_file.url if submission and submission.submitted_file else None,
+                'submitted_file': submission.submitted_file if submission and submission.submitted_file else None,
                 'resubmission': submission.resubmission if submission else False,
             }
             exams_data.append(exam_data)
@@ -429,7 +429,7 @@ class ExamStudentListView(CustomResponseMixin, APIView):
                 'student_name': f"{user.first_name} {user.last_name}",
                 'registration_id': student.registration_id,
                 'submission_id': submission.id if submission else None,
-                'submitted_file': submission.submitted_file.url if submission and submission.submitted_file else None,
+                'submitted_file': submission.submitted_file if submission and submission.submitted_file else None,
                 'submitted_at': submission.exam_submitted_at if submission else None,
                 'comments':submission.comments if submission else None,
                 'status': submission_status,

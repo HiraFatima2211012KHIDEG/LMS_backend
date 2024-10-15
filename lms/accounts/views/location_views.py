@@ -574,6 +574,7 @@ WEEKDAYS = {
     5: ("Saturday", "Sat"),
     6: ("Sunday", "Sun"),
 }
+
 class SessionCalendarAPIView(APIView, CustomResponseMixin):
     def get(self, request, user_id, *args, **kwargs):
         user = get_object_or_404(User, id=user_id)
@@ -596,33 +597,41 @@ class SessionCalendarAPIView(APIView, CustomResponseMixin):
 
         calendar_data = {}
 
-        # Iterate over sessions and process each one
         for session in sessions:
-            # Directly use session's start and end date
             start_date = session.start_date
             end_date = session.end_date
-
-            # Generate the actual dates based on days of the week
             session_days = session.days_of_week
             actual_dates = self.get_dates_from_days(start_date, end_date, session_days)
-
             session_data = SessionsCalendarSerializer(session).data
 
+            # Add session data to the calendar
             for date in actual_dates:
                 if date not in calendar_data:
                     calendar_data[date] = []
 
-                # Add the session data to the list for the given date
                 calendar_data[date].append({
                     "start_time": session_data['start_time'],
                     "end_time": session_data['end_time'],
                     "course_id": session_data['course_id'],
                     "course_name": session_data['course_name'],
                     "location": session_data['location_name'],
-                    # "day_name": day_name  # If needed, you can still add the day name here
                 })
 
-        # Format the data into the required structure
+            # Add assessments (assignments, quizzes, projects, exams) based on their due dates
+            for assessment_type in ['assignments', 'quizzes', 'projects', 'exams']:
+                for assessment in session_data[assessment_type]:
+                    due_date = assessment["due_date"]
+                    if due_date not in calendar_data:
+                        calendar_data[due_date] = []
+                    calendar_data[due_date].append({
+                        "assessment_name": assessment["name"],
+                        "due_time": assessment["due_time"],
+                        "course_id": session_data['course_id'],
+                        "course_name": session_data['course_name'],
+                        "type": assessment_type.capitalize()[:-1],  # To show type as Assignment, Quiz, etc.
+                    })
+
+        # Format and sort the data
         formatted_data = [
             {
                 "date": date,
@@ -631,8 +640,6 @@ class SessionCalendarAPIView(APIView, CustomResponseMixin):
             }
             for date, session_list in calendar_data.items()
         ]
-
-        # Sort the formatted data by date
         formatted_data.sort(key=lambda x: x['date'])
 
         return self.custom_response(
@@ -640,7 +647,6 @@ class SessionCalendarAPIView(APIView, CustomResponseMixin):
             "Calendar data fetched successfully.",
             formatted_data
         )
-
     def get_dates_from_days(self, start_date, end_date, days_of_week):
         """Generate a list of dates based on start and end dates and specified days of the week."""
         current_date = start_date
@@ -653,8 +659,6 @@ class SessionCalendarAPIView(APIView, CustomResponseMixin):
             current_date += timedelta(days=1)
 
         return actual_dates
-
-
 
 
 
