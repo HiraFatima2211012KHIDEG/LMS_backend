@@ -199,10 +199,6 @@ class SessionsCalendarSerializer(serializers.ModelSerializer):
     course_id = serializers.IntegerField(source="course.id", read_only=True)
     course_name = serializers.CharField(source="course.name", read_only=True)
     dates_with_days = serializers.SerializerMethodField()
-    assignments = serializers.SerializerMethodField()
-    quizzes = serializers.SerializerMethodField()
-    projects = serializers.SerializerMethodField()
-    exams = serializers.SerializerMethodField()
 
     class Meta:
         model = Sessions
@@ -221,10 +217,6 @@ class SessionsCalendarSerializer(serializers.ModelSerializer):
             "day_names",
             "dates_with_days",  # New field for dates with days
             "status",
-            "assignments",
-            "quizzes",
-            "projects",
-            "exams",
         ]
 
     def get_day_names(self, obj):
@@ -233,13 +225,14 @@ class SessionsCalendarSerializer(serializers.ModelSerializer):
 
     def get_dates_with_days(self, obj):
         """Get the dates corresponding to the days of the week within the program's date range."""
-
+     
         start_date = obj.start_date
         end_date = obj.end_date
         days_of_week = obj.days_of_week
-
+        
         # Generate the dates based on the start and end date and days of the week
         return self.get_dates_from_days(start_date, end_date, days_of_week)
+        
 
     def get_dates_from_days(self, start_date, end_date, days_of_week):
         """Generate a list of dates based on start and end dates and specified days of the week."""
@@ -249,65 +242,7 @@ class SessionsCalendarSerializer(serializers.ModelSerializer):
         # Iterate through each day in the range
         while current_date <= end_date:
             if current_date.weekday() in days_of_week:
-                actual_dates.append(
-                    current_date.strftime("%Y-%m-%d")
-                )  # Format as string or datetime as needed
+                actual_dates.append(current_date.strftime("%Y-%m-%d"))  # Format as string or datetime as needed
             current_date += timedelta(days=1)
 
         return actual_dates
-
-    # New methods to fetch assessments
-    def get_assignments(self, obj):
-        assignments = Assignment.objects.filter(
-            course=obj.course, due_date__range=[obj.start_date, obj.end_date]
-        )
-
-        # Extract date and time from `due_date`
-        return [
-            {
-                "name": assignment.question,
-                "due_date": assignment.due_date.strftime("%Y-%m-%d"),  # Extract date
-                "due_time": assignment.due_date.strftime("%H:%M"),  # Extract time
-            }
-            for assignment in assignments
-        ]
-
-    def get_quizzes(self, obj):
-        quizzes = Quizzes.objects.filter(
-            course=obj.course, due_date__range=[obj.start_date, obj.end_date]
-        )
-        return [
-            {
-                "name": quiz.question,
-                "due_date": quiz.due_date.strftime("%Y-%m-%d"),
-                "due_time": quiz.due_date.strftime("%H:%M"), 
-            }
-            for quiz in quizzes
-        ]
-
-    def get_projects(self, obj):
-        projects = Project.objects.filter(
-            course=obj.course, due_date__range=[obj.start_date, obj.end_date]
-        )
-        return [
-            {
-                "name": project.title,
-                "due_date": project.due_date.strftime("%Y-%m-%d"),
-                "due_time": project.due_date.strftime("%H:%M"), 
-            }
-            for project in projects
-        ]
-
-    def get_exams(self, obj):
-        exams = Exam.objects.filter(
-            course=obj.course, due_date__range=[obj.start_date, obj.end_date]
-        )
-        return [
-            {
-                "name": exam.title,
-                "due_date": exam.due_date.strftime("%Y-%m-%d"),
-                "due_time": exam.due_date.strftime("%H:%M"), 
-            }
-            for exam in exams
-        ]
-
