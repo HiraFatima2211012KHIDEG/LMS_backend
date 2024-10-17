@@ -48,7 +48,7 @@ class Applications(models.Model):
     date_of_birth = models.DateField(null=True, blank=True)
     years_of_experience = models.IntegerField(null=True, blank=True)
     required_skills = models.ManyToManyField(TechSkill, blank=True)
-    resume = models.TextField()
+    resume = models.TextField(null=True,blank=True)
     # program_order = ArrayField(models.IntegerField(), blank=True, null=True)
     def __str__(self):
         return f"{self.email} - {self.city} - {self.program}"
