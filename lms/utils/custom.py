@@ -1,14 +1,11 @@
 from rest_framework.response import Response
-from rest_framework import viewsets, mixins, status, permissions
+from rest_framework import viewsets, mixins, status, serializers
 from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema
+from django.contrib.auth.hashers import check_password
 from django.db import models
-
-STATUS_CHOICES = (
-    (0, "Not Active"),
-    (1, "Active"),
-    (2, "Deleted"),
-)
+from datetime import timedelta
+import re
 
 
 class CustomResponseMixin:
@@ -28,10 +25,9 @@ class BaseLocationViewSet(
     mixins.ListModelMixin,
     viewsets.GenericViewSet,
 ):
-#    permission_classes = [permissions.IsAuthenticated]
+    #    permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        # Filter the queryset to only return records with status 0 or 1
         return super().get_queryset().filter(status__in=[0, 1])
 
     def create(self, request, *args, **kwargs):
@@ -70,25 +66,83 @@ def cascade_status_change(instance, new_status):
         instance: The parent model instance whose status is changing.
         new_status: The new status value to be applied to the instance and related objects.
     """
-    # Update the status of the parent instance first
     instance.status = new_status
-    # instance.save()
-
-    # Iterate over related models
     for rel in instance._meta.related_objects:
         related_model = rel.related_model
         field_name = rel.field.name
 
-        # Check if the related model has a 'status' field
         if hasattr(related_model, "status"):
-            # Handle ForeignKey relationships
-            if isinstance(rel, models.ManyToOneRel):  # ForeignKey
+            if isinstance(rel, models.ManyToOneRel):
                 related_objects = related_model.objects.filter(**{field_name: instance})
                 related_objects.update(status=new_status)
 
-            # Handle ManyToManyField relationships
-            elif isinstance(rel, models.ManyToManyRel):  # ManyToManyField
+            elif isinstance(rel, models.ManyToManyRel):
                 related_objects = getattr(instance, rel.get_accessor_name()).all()
                 for obj in related_objects:
                     obj.status = new_status
                     obj.save()
+
+
+def get_assessment(self, obj, Model):
+    model = Model.objects.filter(
+        course=obj.course, due_date__range=[obj.start_date, obj.end_date]
+    )
+    return [
+        {
+            "name": assessment.question,
+            "due_date": assessment.due_date.strftime("%Y-%m-%d"),
+            "due_time": assessment.due_date.strftime("%H:%M"),
+        }
+        for assessment in model
+    ]
+
+
+def get_dates_from_days(self, start_date, end_date, days_of_week):
+    """Generate a list of dates based on start and end dates and specified days of the week."""
+    current_date = start_date
+    actual_dates = []
+
+    # Iterate through each day in the range
+    while current_date <= end_date:
+        if current_date.weekday() in days_of_week:
+            actual_dates.append(current_date.strftime("%Y-%m-%d"))
+        current_date += timedelta(days=1)
+
+    return actual_dates
+
+
+def validate_password(self, value):
+    """
+    Validate that new_password and password2 match, and that new_password meets complexity requirements.
+    """
+    password = value.get("password")
+    password2 = value.get("password2")
+    user = self.context.get("user")
+
+    if password != password2:
+        raise serializers.ValidationError(
+            "Password and confirm password are not the same."
+        )
+
+    if len(password) < 8:
+        raise serializers.ValidationError(
+            "Password must be at least 8 characters long."
+        )
+
+    if " " in password:
+        raise serializers.ValidationError("Password cannot contain spaces.")
+
+    if not re.match(
+        r"^(?=.*[a-zA-Z])(?=.*\d)(?=.*[@$!%*?&^#(){}[\]=+/\\|_\-<>])[A-Za-z\d@$!%*?&^#(){}[\]=+/\\|_\-<>]+$",
+        password,
+    ):
+        raise serializers.ValidationError(
+            "Password must contain letters, numbers, and special characters."
+        )
+
+    if user and check_password(password, user.password):
+        raise serializers.ValidationError(
+            "New password cannot be the same as the old one."
+        )
+
+    return value

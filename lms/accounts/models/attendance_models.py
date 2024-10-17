@@ -1,12 +1,6 @@
 from django.db import models
-from django.conf import settings
-import sys
-
-sys.path.append("...")
-from .location_models import Sessions
-from utils.custom import STATUS_CHOICES
 from course.models.models import Course
-from .user_models import Student, Instructor, User
+from .user_models import Student
 
 
 class Attendance(models.Model):
@@ -16,9 +10,9 @@ class Attendance(models.Model):
     date = models.DateField(auto_now_add=True)
     course = models.ForeignKey(Course, on_delete=models.CASCADE, null=True)
     status = models.PositiveSmallIntegerField(
-            choices=[(0, "Present"), (1, "Absent"), (2, "Leave")],
-            default=0,
-        )
+        choices=[(0, "Present"), (1, "Absent"), (2, "Leave")],
+        default=0,
+    )
     marked_by = models.CharField(max_length=50, null=True)
 
     class Meta:
@@ -26,4 +20,3 @@ class Attendance(models.Model):
 
     def __str__(self):
         return f"{self.student} - {self.course} - {self.date}"
-

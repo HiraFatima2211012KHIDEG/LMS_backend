@@ -16,10 +16,8 @@ import re
 from accounts.utils import send_email
 from ..models.user_models import *
 from course.models.models import Course
-from django.contrib.auth.models import Group
 from course.serializers import CourseSerializer
-
-# from accounts.utils import send_email
+from utils.custom import validate_password
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -39,24 +37,7 @@ class UserSerializer(serializers.ModelSerializer):
         extra_kwargs = {"password": {"write_only": True, "max_length": 50}}
 
     def validate(self, attrs):
-        password = attrs.get("password")
-        if len(password) < 8:
-            raise serializers.ValidationError(
-                "Password must be at least 8 characters long."
-            )
-
-        if " " in password:
-            raise serializers.ValidationError("Password cannot contain spaces.")
-
-        if not re.match(
-            r"^(?=.*[a-zA-Z])(?=.*\d)(?=.*[@$!%*?&^#(){}[\]=+/\\|_\-<>])[A-Za-z\d@$!%*?&^#(){}[\]=+/\\|_\-<>]+$",
-            password,
-        ):
-            raise serializers.ValidationError(
-                "Password must contain letters, numbers, and special characters."
-            )
-
-        return super().validate(attrs)
+        validate_password(attrs)
 
     def create(self, validated_data):
         """Create and Return a user with encrypted password."""
@@ -72,7 +53,6 @@ class UserSerializer(serializers.ModelSerializer):
         return user
 
     def perform_create(self, serializer):
-        # Save the user and return the created user instance
         return serializer.save()
 
 
@@ -92,24 +72,6 @@ class UserLoginSerializer(serializers.Serializer):
 
     email = serializers.EmailField()
     password = serializers.CharField(style={"input_type": "password"}, write_only=True)
-
-
-# class UserLoginSerializer(serializers.ModelSerializer):
-#     """Serializer for user login"""
-
-#     class Meta:
-#         model = get_user_model()
-#         fields = ['email', 'password']
-#         extra_kwargs = {'password': {'write_only': True, 'min_length':  5}}
-
-# email = serializers.EmailField()
-# password = serializers.CharField(style = {'input_type' : 'password'}, write_only = True)
-
-
-# class UserProfileSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = User
-#         fields = ['id', 'first_name', 'last_name', 'contact', 'city']
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
@@ -144,10 +106,6 @@ class UserProfileSerializer(serializers.ModelSerializer):
         elif user and user.groups.filter(name="instructor").exists():
             self.fields.pop("program")
 
-
-
-
-
     def get_program(self, obj):
         try:
             application = Applications.objects.get(email=obj.email)
@@ -165,19 +123,20 @@ class UserProfileSerializer(serializers.ModelSerializer):
         try:
             # Get the instructor based on the user's email (assuming email is the primary key)
             instructor = Instructor.objects.get(id=obj.id)
-            
-            instructor_sessions = InstructorSession.objects.filter(instructor=instructor)
+
+            instructor_sessions = InstructorSession.objects.filter(
+                instructor=instructor
+            )
 
             # Extract courses from the related sessions
             courses = [session.session.course for session in instructor_sessions]
 
             # Return course details (id and name) as a list of dictionaries
             return [{"id": course.id, "name": course.name} for course in courses]
-            
+
         except (Instructor.DoesNotExist, InstructorSession.DoesNotExist):
             # Return None if the instructor or their sessions don't exist
             return None
-
 
 
 class UserProfileUpdateSerializer(serializers.ModelSerializer):
@@ -205,40 +164,8 @@ class ChangePasswordSerializer(serializers.Serializer):
     )
 
     def validate(self, data):
-        """
-        Validate that new_password and password2 match, and that new_password meets complexity requirements.
-        """
-        password = data.get("password")
-        password2 = data.get("password2")
-        user = self.context.get("user")
-
-        if password != password2:
-            raise serializers.ValidationError(
-                "Password and confirm password are not the same."
-            )
-
-        if len(password) < 8:
-            raise serializers.ValidationError(
-                "Password must be at least 8 characters long."
-            )
-
-        if " " in password:
-            raise serializers.ValidationError("Password cannot contain spaces.")
-
-        if not re.match(
-            r"^(?=.*[a-zA-Z])(?=.*\d)(?=.*[@$!%*?&^#(){}[\]=+/\\|_\-<>])[A-Za-z\d@$!%*?&^#(){}[\]=+/\\|_\-<>]+$",
-            password,
-        ):
-            raise serializers.ValidationError(
-                "Password must contain letters, numbers, and special characters."
-            )
-
-        if user and check_password(password, user.password):
-            raise serializers.ValidationError(
-                "New password cannot be the same as the old one."
-            )
-
-        return data
+        res = validate_password(self, data)
+        return res
 
     def validate_old_password(self, old_password):
         user = self.context.get("user")
@@ -266,42 +193,9 @@ class SetPasswordSerializer(serializers.Serializer):
         max_length=50, style={"input_type": "password"}, write_only=True
     )
 
-    def validate_password(self, value):
-        """
-        Validate that the password meets complexity requirements.
-        """
-        if len(value) < 8:
-            raise serializers.ValidationError(
-                "Password should be at least 8 characters long."
-            )
-
-        if " " in value:
-            raise serializers.ValidationError("Password cannot contain spaces.")
-
-        if not re.match(
-            r"^(?=.*[a-zA-Z])(?=.*\d)(?=.*[@$!%*?&^#(){}[\]=+/\\|_\-<>])[A-Za-z\d@$!%*?&^#(){}[\]=+/\\|_\-<>]+$",
-            value,
-        ):
-            raise serializers.ValidationError(
-                "Password should contain letters, numbers, and special characters."
-            )
-
-        return value
-
     def validate(self, data):
-        """
-        Validate that the password and password2 fields match, and that the new password is not the same as the old password.
-        """
-        password = data.get("password")
-        password2 = data.get("password2")
-        user = self.context.get("user")
-
-        if password != password2:
-            raise serializers.ValidationError(
-                "Password and confirm password are not the same."
-            )
-
-        return data
+        res = validate_password(self, data)
+        return res
 
     def save(self):
         """
@@ -328,19 +222,16 @@ class ResetPasswordSerializer(serializers.Serializer):
         user = User.objects.get(email=value)
         uid = urlsafe_base64_encode(force_bytes(user.id))
         token = PasswordResetTokenGenerator().make_token(user)
-        link=f"https://lms-phi-two.vercel.app/auth/set-password/{uid}/{token}"
+        link = f"https://lms-phi-two.vercel.app/auth/set-password/{uid}/{token}"
         print("Password reset link:", link)
 
-        # Email sending logic can be included here or in a separate function/task
-        # Example:
         body = f"Hey {user.first_name} {user.last_name},\nPlease click the following link to reset your password. {link}\nThe link will expire in 10 minutes."
         data = {
-             "email_subject": "Reset Password",
-             "body": body,
-             "to_email": user.email,
+            "email_subject": "Reset Password",
+            "body": body,
+            "to_email": user.email,
         }
         send_email(data)
-
         return value
 
 
@@ -359,35 +250,6 @@ class UserpasswordResetSerializer(serializers.Serializer):
     class Meta:
         fields = ["password", "password2"]
 
-    def validate_password(self, value):
-        """
-        Validate the password for required complexity.
-
-        Args:
-            value (str): The new password to validate.
-
-        Returns:
-            str: The validated password.
-
-        Raises:
-            serializers.ValidationError: If the password does not meet complexity requirements.
-        """
-        # Check if password length is at least 8 characters
-        if len(value) < 8:
-            raise serializers.ValidationError(
-                "Password should be at least 8 characters long."
-            )
-
-        # Check if password contains alphabets, numeric, and special characters
-        if not re.match(
-            r"^(?=.*[a-zA-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]+$", value
-        ):
-            raise serializers.ValidationError(
-                "Password should contain alphabets, numeric, and special characters."
-            )
-
-        return value
-
     def validate(self, data):
         """
         Validate that the passwords match and the token is valid.
@@ -401,43 +263,34 @@ class UserpasswordResetSerializer(serializers.Serializer):
         Raises:
             serializers.ValidationError: If validation fails for any reason.
         """
+
         try:
             password = data.get("password")
             password2 = data.get("password2")
             uid = self.context.get("uid")
             token = self.context.get("token")
 
-            if password != password2:
-                raise serializers.ValidationError(
-                    "Password and confirm password are not the same."
-                )
+            res = validate_password(self, data)
 
             id = smart_str(urlsafe_base64_decode(uid))
             user = User.objects.get(id=id)
             if not PasswordResetTokenGenerator().check_token(user, token):
                 raise serializers.ValidationError("Token is not valid or expired.")
 
-            if user and check_password(password, user.password):
-                raise serializers.ValidationError(
-                    "New password cannot be the same as the old one."
-                )
-
             user.set_password(password)
             user.save()
-            return data
+            return res
 
         except DjangoUnicodeDecodeError:
             raise serializers.ValidationError("Token is not valid or expired.")
 
+
 class StudentSerializer(serializers.ModelSerializer):
-    # session_details = serializers.SerializerMethodField()
 
     class Meta:
         model = Student
-        fields = ["registration_id", "user"]  # Removed 'session' field
+        fields = ["registration_id", "user"]
 
-    # def get_session_details(self, obj):
-    #     return obj.get_session_details()
 
 class StudentDetailSerializer(serializers.ModelSerializer):
     full_name = serializers.SerializerMethodField()
@@ -454,9 +307,11 @@ class InstructorSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(source="id.email")
     first_name = serializers.CharField(source="id.first_name", allow_null=True)
     last_name = serializers.CharField(source="id.last_name", allow_null=True)
+
     class Meta:
         model = Instructor
         fields = ["id", "email", "first_name", "last_name"]
+
 
 class InstructorCoursesSerializer(serializers.ModelSerializer):
     courses = serializers.SerializerMethodField()
@@ -467,7 +322,9 @@ class InstructorCoursesSerializer(serializers.ModelSerializer):
 
     def get_courses(self, obj):
         sessions = InstructorSession.objects.filter(instructor=obj)
-        courses = Sessions.objects.filter(id__in=sessions.values_list('session', flat=True)).values_list('course', flat=True)
+        courses = Sessions.objects.filter(
+            id__in=sessions.values_list("session", flat=True)
+        ).values_list("course", flat=True)
         courses = Course.objects.filter(id__in=courses)
         return CourseSerializer(courses, many=True).data
 
@@ -476,18 +333,17 @@ class AssignCoursesSerializer(serializers.Serializer):
     course_ids = serializers.ListField(child=serializers.IntegerField())
 
     def validate_course_ids(self, value):
-        # Ensure all course IDs are valid
         if not Course.objects.filter(id__in=value).exists():
             raise serializers.ValidationError("Some course IDs are invalid.")
         return value
+
 
 class InstructorSessionSerializer(serializers.ModelSerializer):
     instructor_email = serializers.SerializerMethodField()
 
     class Meta:
         model = InstructorSession
-        fields = ['session', 'status',  'instructor_email']
+        fields = ["session", "status", "instructor_email"]
 
     def get_instructor_email(self, obj):
-        # Ensure obj.instructor exists and has an email
         return obj.instructor.id.email if obj.instructor and obj.instructor.id else None

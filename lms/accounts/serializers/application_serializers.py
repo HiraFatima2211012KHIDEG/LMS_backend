@@ -8,7 +8,6 @@ class TechSkillSerializer(serializers.ModelSerializer):
         fields = ['id', 'name']
 
 
-
 class ApplicationSerializer(serializers.ModelSerializer):
     """Serializer for the Applications object."""
 
@@ -63,19 +62,11 @@ class ApplicationSerializer(serializers.ModelSerializer):
         location_data = validated_data.pop('location', None)
         application = Applications.objects.create(**validated_data)
 
-        # Set many-to-many relationships if provided
         if programs_data:
             application.program.set(programs_data)
         if required_skills_data:
             application.required_skills.set(required_skills_data)
         if location_data:
             application.location.set(location_data)
-
-        # Create or set selection records based on group_name
-        # group_name = validated_data.get('group_name')
-        # if group_name == 'student':
-        #     StudentApplicationSelection.objects.create(application=application)
-        # elif group_name == 'instructor':
-        #     InstructorApplicationSelection.objects.create(application=application)
 
         return application

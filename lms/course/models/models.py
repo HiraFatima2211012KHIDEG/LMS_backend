@@ -31,9 +31,7 @@ class Course(models.Model):
     lab_credit_hours = models.IntegerField(blank=True, default=0)
     skills = models.ManyToManyField("Skill", blank=True)
     instructors = models.ManyToManyField("accounts.Instructor", blank=True)
-    picture = models.ImageField(
-        upload_to="material/course_pictures/", blank=True, null=True
-    )
+    picture = models.TextField(null=True, blank=True)
 
     def __str__(self):
         return f"{self.name}"
@@ -43,7 +41,7 @@ class Module(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name="modules")
     name = models.CharField(max_length=100)
     description = models.TextField()
-    session = models.ForeignKey(Sessions, on_delete=models.CASCADE)
+    session = models.ForeignKey(Sessions, on_delete=models.CASCADE, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
@@ -74,7 +72,7 @@ class Assignment(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    session = models.ForeignKey(Sessions, on_delete=models.CASCADE)
+    session = models.ForeignKey(Sessions, on_delete=models.CASCADE, null=True)
     total_grade = models.DecimalField(max_digits=10, decimal_places=2, null=True)
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=1)
     question = models.TextField(null=True, blank=True)
@@ -125,8 +123,8 @@ class AssignmentSubmission(models.Model):
                 allowed_extensions=["pdf", "doc", "docx", "ppt", "pptx", "txt", "zip"]
             )
         ],
-        # null=True,
-        # blank=True,
+        null=True,
+        blank=True,
     )
     status = models.PositiveSmallIntegerField(
         choices=ASSESMENT_STATUS_CHOICES, default=0
@@ -216,8 +214,8 @@ class QuizSubmission(models.Model):
                 allowed_extensions=["pdf", "doc", "docx", "ppt", "pptx", "txt", "zip"]
             )
         ],
-        # null=True,
-        # blank=True,
+        null=True,
+        blank=True,
     )
     status = models.PositiveSmallIntegerField(
         choices=ASSESMENT_STATUS_CHOICES, default=0
@@ -305,8 +303,8 @@ class ProjectSubmission(models.Model):
                 allowed_extensions=["pdf", "doc", "docx", "ppt", "pptx", "txt", "zip"]
             )
         ],
-        # null=True,
-        # blank=True,
+        null=True,
+        blank=True,
     )
     status = models.PositiveSmallIntegerField(
         choices=ASSESMENT_STATUS_CHOICES, default=0
@@ -363,7 +361,7 @@ class Exam(models.Model):
         null=True,
         blank=True,
     )
-    due_date =  models.DateField()
+    due_date = models.DateField()
     total_grade = models.DecimalField(max_digits=10, decimal_places=2, null=True)
     session = models.ForeignKey(
         Sessions, on_delete=models.CASCADE, null=True, blank=True

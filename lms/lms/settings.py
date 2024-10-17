@@ -5,8 +5,6 @@ import datetime
 # Load environment variables from .env file
 
 
-
-
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -25,10 +23,24 @@ SECRET_KEY = "django-insecure-y$aw0745t@#7s@v8c&^_fr&sh$snyd^32*jn_8p2436#acbql(
 # SECURITY WARNING: don't run with debug turned on in production!
 # DEBUG = True
 
-ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS = ["*", "192.168.53.83", "www.lms-api-xloopdigital.com"]
 # settings.py
 DEBUG = True
 
+# server {
+#     listen 80;
+#     server_name lms-api-xloopdigital.com;
+
+#     location = /favicon.ico { access_log off; log_not_found off; }
+#     location /static/ {
+#         root /home/hirafatima/learning/Django/lms_backend/version_5/LMS_backend/lms;
+#     }
+
+#     location / {
+#         include proxy_params;
+#         proxy_pass http://unix:/run/gunicorn.sock;
+#     }
+# }
 
 # Application definition
 
@@ -88,14 +100,14 @@ WSGI_APPLICATION = "lms.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        'HOST': os.getenv('DB_HOST'),
-        'NAME': os.getenv('DB_NAME'),
-        'USER': os.getenv('DB_USER'),
-        'PASSWORD': os.getenv('DB_PASSWORD'),
-        # "HOST": "localhost",
-        # "NAME": "newdb",
-        # "USER": "postgres",
-        # "PASSWORD": "password",
+        # 'HOST': os.getenv('DB_HOST'),
+        # 'NAME': os.getenv('DB_NAME'),
+        # 'USER': os.getenv('DB_USER'),
+        # 'PASSWORD': os.getenv('DB_PASSWORD'),
+        "HOST": "localhost",
+        "NAME": "newdb",
+        "USER": "postgres",
+        "PASSWORD": "password",
     }
 }
 # DATABASES = {
@@ -150,7 +162,7 @@ USE_L10N = True
 
 # USE_TZ = True
 USE_TZ = False
-TIME_ZONE = 'Asia/Karachi'
+TIME_ZONE = "Asia/Karachi"
 
 AUTH_USER_MODEL = "accounts.User"
 
@@ -195,6 +207,8 @@ PASSWORD_RESET_TIMEOUT = 600  # 600Sec = 10 Min
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/3.2/howto/static-files/
+
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 
 STATIC_URL = "/static/"
 

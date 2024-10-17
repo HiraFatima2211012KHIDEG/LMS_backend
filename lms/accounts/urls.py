@@ -4,7 +4,7 @@ Urls for the Accounts app
 
 from django.urls import path
 from .views.application_views import *
-from .views import user_views,UserSessionAPIView
+from .views import user_views, UserSessionAPIView
 from .views.location_views import (
     CityViewSet,
     BatchViewSet,
@@ -17,8 +17,8 @@ from .views.location_views import (
     # FilterSessionsByLocationView,
     # FilterSessionsView,
     CityStatsView,
-    SessionCalendarAPIView
-
+    SessionCalendarAPIView,
+    FilterUsersByBatchView,
 )
 from .views.attendance_views import *
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
@@ -44,7 +44,7 @@ urlpatterns = [
     # path('registration/', UserRegistrationView.as_view(), name='registration-completion'),
     path("create/", user_views.CreateUserView.as_view(), name="create"),
     path("login/", user_views.UserLoginView.as_view(), name="login"),
-    path('user-details/', UserSessionAPIView.as_view(), name='user-details'),
+    path("user-details/", UserSessionAPIView.as_view(), name="user-details"),
     path(
         "change-password/",
         user_views.ChangePasswordView.as_view(),
@@ -107,10 +107,13 @@ urlpatterns = [
         ),
         name="location-detail",
     ),
-    path('session/', SessionsAPIView.as_view(), name='sessions_list_create'),
-    path('session/<int:pk>/', SessionsAPIView.as_view(), name='session_detail_update'),
-    
-    path('sessions/calendar/<int:user_id>/', SessionCalendarAPIView.as_view(), name='session-list-calendar'),
+    path("session/", SessionsAPIView.as_view(), name="sessions_list_create"),
+    path("session/<int:pk>/", SessionsAPIView.as_view(), name="session_detail_update"),
+    path(
+        "sessions/calendar/<int:user_id>/",
+        SessionCalendarAPIView.as_view(),
+        name="session-list-calendar",
+    ),
     path(
         "filter-batches-by-city/",
         FilterBatchByCityView.as_view(),
@@ -189,7 +192,6 @@ urlpatterns = [
     #     AttendanceFilterViewSet.as_view({"get": "list"}),
     #     name="filter-attendance",
     # ),
-
     path(
         "create-batch-location-session/",
         CreateBatchLocationSessionView.as_view(),
@@ -227,20 +229,64 @@ urlpatterns = [
     #     user_views.UserProcessView.as_view(),
     #     name="users-count",
     # ),
-    path('preferred-sessions/', user_views.PreferredSessionView.as_view(), name='preferred-sessions'),
-
-    path('user-sessions/<int:user_id>/', user_views.UserSessionsView.as_view(), name='user-sessions'),
-    path('instructor-sessions/', user_views.InstructorSessionsView.as_view(), name='instructor-sessions'),
-    path('user-process/<int:filteration_id>/', user_views.ApplicationUserView.as_view(), name='application-user'),
-    path('user-details/<int:user_id>/', user_views.UserDetailsView.as_view(), name='user-details'),
+    path(
+        "preferred-sessions/",
+        user_views.PreferredSessionView.as_view(),
+        name="preferred-sessions",
+    ),
+    path(
+        "user-sessions/<int:user_id>/",
+        user_views.UserSessionsView.as_view(),
+        name="user-sessions",
+    ),
+    path(
+        "instructor-sessions/",
+        user_views.InstructorSessionsView.as_view(),
+        name="instructor-sessions",
+    ),
+    path(
+        "user-process/<int:filteration_id>/",
+        user_views.ApplicationUserView.as_view(),
+        name="application-user",
+    ),
+    path(
+        "user-details/<int:user_id>/",
+        user_views.UserDetailsView.as_view(),
+        name="user-details",
+    ),
     # path("student/<int:course_id>/<int:instructor_id>/<int:session_id>/",
     #     user_views.ListStudentsByCourseAndInstructor.as_view(),
     #     name="list_students_by_course_and_instructor"),
-    path('sessions/<int:session_id>/students/', SessionsAPIViewAttendance.as_view(), name='session-students'),
+    path(
+        "sessions/<int:session_id>/students/",
+        SessionsAPIViewAttendance.as_view(),
+        name="session-students",
+    ),
+    path(
+        "users/filter-by-batch/<str:batch_id>/",
+        FilterUsersByBatchView.as_view(),
+        name="filter-users-by-batch",
+    ),
     # path('sessions/<int:session_id>/instructors/', SessionsAPIViewInstructor.as_view(), name='session-instructors'),
-    path('instructors/course/<int:course_id>/', InstructorsByCourseAPIView.as_view(), name='instructors-by-course'),
-    path('attendance/student/<int:course_id>/', StudentAttendanceListView.as_view(), name='student-attendance'),
-    path('attendance/instructor/<int:session_id>/<int:course_id>/', InstructorAttendanceView.as_view(), name='instructor-attendance'),
-    path('admin/attendance/<int:session_id>/', AdminAttendanceView.as_view(), name='admin-attendance'),
-
+    path(
+        "instructors/course/<int:course_id>/",
+        InstructorsByCourseAPIView.as_view(),
+        name="instructors-by-course",
+    ),
+    path(
+        "attendance/student/<int:course_id>/",
+        StudentAttendanceListView.as_view(),
+        name="student-attendance",
+    ),
+    path(
+        "attendance/instructor/<int:session_id>/<int:course_id>/",
+        InstructorAttendanceView.as_view(),
+        name="instructor-attendance",
+    ),
+    path(
+        "admin/attendance/<int:session_id>/",
+        AdminAttendanceView.as_view(),
+        name="admin-attendance",
+    ),
+    path("batch-student/", user_views.BatchStudentView.as_view(), name="batch-student"),
 ]
