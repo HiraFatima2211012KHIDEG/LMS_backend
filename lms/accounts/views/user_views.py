@@ -1334,7 +1334,7 @@ class PreferredSessionView(views.APIView, CustomResponseMixin):
             session_details.append(
                 f"Course: {session.course.name}\n"
                 f"Location: {session.location.name} Center\n"
-                f"Timings: {session.start_time} - {session.end_time}\n"  # Adjust field names as per your model
+               # f"Timings: {session.start_time} - {session.end_time}\n"  # Adjust field names as per your model
             )
 
         # Serialize created or updated StudentSession objects
@@ -1839,7 +1839,7 @@ class InstructorSessionsView(views.APIView, CustomResponseMixin):
             session_details.append(
                 f"Course: {course.name}\n"
                 f"Location: {session.location.name} Center\n"
-                f"Timings: {session.start_time} - {session.end_time}\n"
+               # f"Timings: {session.start_time} - {session.end_time}\n"
             )
 
         # Serialize created or updated InstructorSession objects with detailed session data

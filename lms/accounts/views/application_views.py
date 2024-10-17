@@ -564,7 +564,7 @@ class VerifyEmailandSetPasswordView(views.APIView, CustomResponseMixin):
                 # user_email = token.get('user_email')
                 # print(user_email)
                 # Check if user already exists
-                unsigned_data = signer.unsign(token, max_age=3600)
+                unsigned_data = signer.unsign(token, max_age=259200)
                 decoded_data = base64.urlsafe_b64decode(unsigned_data).decode()
                 print(decoded_data)
                 user_id, email = decoded_data.split(":")
