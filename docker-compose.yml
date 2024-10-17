@@ -14,3 +14,7 @@ services:
 
 volumes:
   dev-db-data:
+
+
+
+  /home/ubuntu/LMS_backend/lms

@@ -7,8 +7,6 @@ import datetime
 
 from dotenv import load_dotenv
 
-from dotenv import load_dotenv
-
 # Load environment variables from .env file
 load_dotenv()
 
@@ -25,9 +23,11 @@ SECRET_KEY = "django-insecure-y$aw0745t@#7s@v8c&^_fr&sh$snyd^32*jn_8p2436#acbql(
 # SECURITY WARNING: don't run with debug turned on in production!
 # DEBUG = True
 
-ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS = ["*", "13.201.48.79", "lms-api-xloopdigital.com", "www.lms-api-xloopdigital.com"]
 # settings.py
 DEBUG = True
+
+CSRF_TRUSTED_ORIGINS = ['https://lms-api-xloopdigital.com']
 
 
 # Application definition
@@ -134,6 +134,11 @@ CORS_ORIGIN_WHITELIST = ["http://localhost:3000", "http://localhost:3001"]
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "https://lms-blond-six.vercel.app",
+    "https://lms-rosy-seven.vercel.app",
+    "https://lms-xloopdigital.com",
+    "http://13.201.48.79:8000",
+    "http://lms-api-xloopdigital.com"
 ]
 
 
@@ -148,7 +153,9 @@ USE_I18N = True
 
 USE_L10N = True
 
-USE_TZ = True
+# USE_TZ = True
+USE_TZ = False
+
 TIME_ZONE = 'Asia/Karachi'
 
 AUTH_USER_MODEL = "accounts.User"
@@ -181,11 +188,9 @@ MAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = "smtp.gmail.com"
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = "maazjavaidsiddique10@gmail.com"
-EMAIL_HOST_PASSWORD = "hmsp qgbw pvvo twrc"
-# EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER")
-# EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD")
-EMAIL_FROM_ADDRESS = "maazjavaidsiddique10@gmail.com"
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD")
+EMAIL_FROM_ADDRESS = os.environ.get("EMAIL_FROM_ADDRESS")
 EMAIL_DEBUG = True
 
 
@@ -194,8 +199,15 @@ PASSWORD_RESET_TIMEOUT = 600  # 600Sec = 10 Min
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/3.2/howto/static-files/
+#STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
+#STATIC_URL = "/static/"
 
-STATIC_URL = "/static/"
+STATIC_URL = 'static/'
+STATIC_ROOT = "/var/www/LMS_backend/static/"
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = "/var/www/LMS_backend/media/"
+
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/3.2/ref/settings/#default-auto-field

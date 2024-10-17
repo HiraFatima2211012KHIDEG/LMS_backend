@@ -42,6 +42,7 @@ class ProgramSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "name",
+            "program_abb",
             "short_description",
             "about",
             "created_at",
@@ -81,6 +82,7 @@ class ModuleSerializer(serializers.ModelSerializer):
             "id",
             "name",
             "course",
+            "session",
             "description",
             "created_by",
             "created_at",
@@ -92,12 +94,17 @@ class ModuleSerializer(serializers.ModelSerializer):
         course = validated_data.pop("course")
         return Module.objects.create(course=course, **validated_data)
 
+    # def validate(self, data):
+    #     course = data.get("course")
+    #     if not Course.objects.filter(id=course.id).exists():
+    #         raise serializers.ValidationError({"course": "Invalid course ID."})
+    #     return data
     def validate(self, data):
         course = data.get("course")
-        if not Course.objects.filter(id=course.id).exists():
-            raise serializers.ValidationError({"course": "Invalid course ID."})
+        if course is not None:
+            if not Course.objects.filter(id=course.id).exists():
+                raise serializers.ValidationError({"course": "Invalid course ID."})
         return data
-
 
 class AssignmentSerializer(serializers.ModelSerializer):
     class Meta:
@@ -108,8 +115,10 @@ class AssignmentSerializer(serializers.ModelSerializer):
             "created_at",
             "created_by",
             "total_grade",
+            "session",
             "question",
             "description",
+            "late_submission",
             "content",
             "due_date",
             "no_of_resubmissions_allowed",
@@ -223,12 +232,24 @@ class GradingSerializer(serializers.ModelSerializer):
             "id",
             "submission",
             "grade",
-           
             "feedback",
             "graded_by",
             "graded_at",
         ]
-   
+    def validate_grade(self, value):
+        submission = self.initial_data.get('submission')
+        
+        if submission:
+            submission_instance = AssignmentSubmission.objects.get(id=submission)
+            total_grade = submission_instance.assignment.total_grade
+            
+            # Check if the entered grade exceeds the total grade
+            if value > total_grade:
+                raise serializers.ValidationError(
+                    f"The grade cannot exceed the total grade of {total_grade}."
+                )
+        
+        return value
 
 class QuizzesSerializer(serializers.ModelSerializer):
     class Meta:
@@ -237,9 +258,12 @@ class QuizzesSerializer(serializers.ModelSerializer):
             "id",
             "course",
             "created_at",
+            "total_grade",
+            "session",
             "created_by",
             "question",
             "description",
+            "late_submission",
             "content",
             "due_date",
             "no_of_resubmissions_allowed",
@@ -255,7 +279,7 @@ class QuizSubmissionSerializer(serializers.ModelSerializer):
             "quiz",
             "user",
             "registration_id",
-            "quiz_submitted_file",
+            "submitted_file",
             "quiz_submitted_at",
             "status",
             "remaining_resubmissions",
@@ -272,11 +296,24 @@ class QuizGradingSerializer(serializers.ModelSerializer):
             "id",
             "quiz_submissions",
             "grade",
-            "total_grade",
+            
             "feedback",
             "graded_by",
             "graded_at",
         ]
+    def validate_grade(self, value):
+        submission = self.initial_data.get('quiz_submissions')
+        
+        if submission:
+            submission_instance = QuizSubmission.objects.get(id=submission)
+            total_grade = submission_instance.quiz.total_grade
+            
+            if value > total_grade:
+                raise serializers.ValidationError(
+                    f"The grade cannot exceed the total grade of {total_grade}."
+                )
+        
+        return value
 
 
 class ProjectSerializer(serializers.ModelSerializer):
@@ -286,9 +323,12 @@ class ProjectSerializer(serializers.ModelSerializer):
             "id",
             "course",
             "created_at",
+            "total_grade",
             "created_by",
+            "session",
             "title",
             "description",
+            "late_submission",
             "content",
             "due_date",
             "status",
@@ -303,8 +343,8 @@ class ProjectSubmissionSerializer(serializers.ModelSerializer):
             "project",
             "user",
             "registration_id",
-            "project_submitted_file",
-            "project_submitted_file",
+            "submitted_file",
+            "project_submitted_at",
             "status",
             "remaining_resubmissions",
             "comments",
@@ -320,12 +360,24 @@ class ProjectGradingSerializer(serializers.ModelSerializer):
             "id",
             "project_submissions",
             "grade",
-            "total_grade",
+     
             "feedback",
             "graded_by",
             "graded_at",
         ]
-
+    def validate_grade(self, value):
+        submission = self.initial_data.get('project_submissions')
+        
+        if submission:
+            submission_instance = ProjectSubmission.objects.get(id=submission)
+            total_grade = submission_instance.project.total_grade
+            
+            if value > total_grade:
+                raise serializers.ValidationError(
+                    f"The grade cannot exceed the total grade of {total_grade}."
+                )
+        
+        return value
 
 class ExamSerializer(serializers.ModelSerializer):
     class Meta:
@@ -343,7 +395,19 @@ class ExamGradingSerializer(serializers.ModelSerializer):
     class Meta:
         model = ExamGrading
         fields = "__all__"
-
+    def validate_grade(self, value):
+        submission = self.initial_data.get('exam_submission')
+        
+        if submission:
+            submission_instance = ExamSubmission.objects.get(id=submission)
+            total_grade = submission_instance.exam.total_grade
+            
+            if value > total_grade:
+                raise serializers.ValidationError(
+                    f"The grade cannot exceed the total grade of {total_grade}."
+                )
+        
+        return value
 
 class AssignmentProgressSerializer(serializers.Serializer):
     user_id = serializers.IntegerField()

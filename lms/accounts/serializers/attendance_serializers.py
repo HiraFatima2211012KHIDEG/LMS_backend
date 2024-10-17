@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from ..models.attendance_models import Attendance
-
+from ..models.user_models import StudentSession
 
 # class AttendanceSerializer(serializers.ModelSerializer):
 #     class Meta:
@@ -44,3 +44,16 @@ class AttendanceSerializer(serializers.ModelSerializer):
 
 #     def get_student_name(self, obj):
 #         return f"{obj.student.user.first_name} {obj.student.user.last_name}"
+
+
+class StudentDetailAttendanceSerializer(serializers.ModelSerializer):
+    registration_id = serializers.CharField(source='student.registration_id')
+    user = serializers.SerializerMethodField()  # To combine first name and last name
+    class Meta:
+        model = StudentSession
+        fields = ['registration_id', 'user']
+    def get_user(self, obj):
+        # Combine first name and last name
+        first_name = obj.student.user.first_name
+        last_name = obj.student.user.last_name
+        return f"{first_name} {last_name}".strip()
