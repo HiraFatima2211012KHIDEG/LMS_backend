@@ -106,21 +106,7 @@ class ExamSubmissionListCreateAPIView(CustomResponseMixin, APIView):
         serializer = ExamSubmissionSerializer(submissions, many=True)
         return self.custom_response(status.HTTP_200_OK, 'Exam submissions retrieved successfully', serializer.data)
 
-    # def post(self, request, format=None):
-    #     data = {key: value for key, value in request.data.items()}
-    #     data['user'] = request.user.id
-    #     try:
-    #         student_instructor = Student.objects.get(user=request.user)
-    #         data['registration_id'] = student_instructor.registration_id
-    #     except Student.DoesNotExist:
-    #         logger.error("StudentInstructor not found for user: %s", request.user)
-    #         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'StudentInstructor not found for user', {})
-    #     data['status'] = 1
-    #     serializer = ExamSubmissionSerializer(data=data)
-    #     if serializer.is_valid():
-    #         serializer.save()
-    #         return self.custom_response(status.HTTP_201_CREATED, 'Exam submission created successfully', serializer.data)
-    #     return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error creating exam submission', serializer.errors)
+
 
     @custom_extend_schema(ExamSubmissionSerializer)
     def post(self, request, format=None):
@@ -279,7 +265,7 @@ class ExamsByCourseIDAPIView(CustomResponseMixin, APIView):
                 'total_grade':exam.total_grade,
                 'start_time':exam.start_time,
                 'end_time':exam.end_time,
-                'content': exam.content.url if exam.content else None, 
+                'content': exam.content if exam.content else None, 
                 'question': exam.title,
                 'description': exam.description,
                 'late_submission':exam.late_submission,
@@ -290,7 +276,7 @@ class ExamsByCourseIDAPIView(CustomResponseMixin, APIView):
                 'submission_id':  submission.id if submission else None,
                 'submission_status': submission_status,
                 'submitted_at': submission.exam_submitted_at if submission else None,
-                'submitted_file': submission.submitted_file.url if submission and submission.submitted_file else None,
+                'submitted_file': submission.submitted_file if submission and submission.submitted_file else None,
                 'resubmission': submission.resubmission if submission else False,
             }
             exams_data.append(exam_data)
@@ -298,77 +284,6 @@ class ExamsByCourseIDAPIView(CustomResponseMixin, APIView):
         return self.custom_response(status.HTTP_200_OK, 'Exams retrieved successfully', exams_data)
 
 
-
-
-# class ExamStudentListView(CustomResponseMixin, APIView):
-#     def get(self, request, exam_id,course_id, *args, **kwargs):
-#         try:
-#             exam = Exam.objects.get(id=exam_id, course__id=course_id)
-#         except Exam.DoesNotExist:
-#             return Response({"detail": "Exam not found for the course."}, status=status.HTTP_404_NOT_FOUND)
-
-#         sessions = Sessions.objects.filter(course__id=course_id)
-   
-   
-#         session = sessions.first()        
-#         # Filter students who are enrolled in this session
-#         enrolled_students = Student.objects.filter(
-#             studentsession__session=session
-#         )
-
-#         student_list = []
-#         total_grade = exam.total_grade 
-#         for student in enrolled_students:
-#             user = student.user
-#             try:
-#                 submission = ExamSubmission.objects.get(exam=exam, user=user)
-#             except ExamSubmission.DoesNotExist:
-#                 submission = None
-
-#             if submission:
-#                 if submission.status == 1:  
-#                     submission_status = "Submitted"
-#                 else:
-#                     submission_status = "Pending"  
-#             else:
-#                 if timezone.now() > exam.due_date:
-#                     submission_status = "Not Submitted" 
-#                 else:
-#                     submission_status = "Pending"  
-
-#             student_data = {
-#                 'exam':exam.id,
-#                 'student_name': f"{user.first_name} {user.last_name}",
-#                 'registration_id': student.registration_id,
-#                 'submission_id': submission.id if submission else None,
-#                 'submitted_file': submission.exam_submitted_file.url if submission and submission.exam_submitted_file else None,
-#                 'submitted_at': submission.exam_submitted_at if submission else None,
-#                 'status': submission_status,
-#                 'grade': 0,
-#                 'remarks': None
-#             }
-
-#             if submission:
-#                 grading = ExamGrading.objects.filter(exam_submission=submission).first()
-#                 if grading:
-#                     student_data['grade'] = grading.grade
-#                     student_data['remarks'] = grading.feedback
-                     
-#                 else:
-#                     student_data['grade'] = 0
-#                     student_data['remarks'] = None
-
-#             student_list.append(student_data)
-
-#         response_data = {
-#             'due_date': exam.due_date,
-#             'total_grade': total_grade,
-#             'students': student_list
-#         }
-
-#         return self.custom_response(
-#             status.HTTP_200_OK, "Students retrieved successfully", response_data
-#         )
 
 
 class ExamStudentListView(CustomResponseMixin, APIView):
@@ -423,13 +338,12 @@ class ExamStudentListView(CustomResponseMixin, APIView):
                         "Pending"  # Due date has not passed, and not yet submitted
                     )
 
-            # Collect student data
             student_data = {
                 'exam': exam.id,
                 'student_name': f"{user.first_name} {user.last_name}",
                 'registration_id': student.registration_id,
                 'submission_id': submission.id if submission else None,
-                'submitted_file': submission.submitted_file.url if submission and submission.submitted_file else None,
+                'submitted_file': submission.submitted_file if submission and submission.submitted_file else None,
                 'submitted_at': submission.exam_submitted_at if submission else None,
                 'comments':submission.comments if submission else None,
                 'status': submission_status,

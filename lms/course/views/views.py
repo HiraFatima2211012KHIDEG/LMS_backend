@@ -14,17 +14,6 @@ from django.db.models import Q
 logger = logging.getLogger(__name__)
 
 
-
-# class CourseModulesAPIView(CustomResponseMixin, APIView):
-#     permission_classes = (permissions.IsAuthenticated,)
-
-#     def get(self, request, course_id,session_id, format=None):
-#         course = get_object_or_404(Course, id=course_id)
-#         modules = Module.objects.filter(course=course,session_id=session_id).order_by('-created_at')
-#         serializer = ModuleSerializer(modules, many=True)
-#         return self.custom_response(status.HTTP_200_OK, 'Modules retrieved successfully', serializer.data)
-
-
 class CourseModulesAPIView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
 

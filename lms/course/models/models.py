@@ -41,7 +41,7 @@ class Module(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name="modules")
     name = models.CharField(max_length=100)
     description = models.TextField()
-    session = models.ForeignKey(Sessions, on_delete=models.CASCADE, null=True)
+    session = models.ForeignKey(Sessions, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
@@ -55,14 +55,7 @@ class ContentFile(models.Model):
     module = models.ForeignKey(
         Module, related_name="files", on_delete=models.CASCADE, null=True, blank=True
     )
-    file = models.FileField(
-        upload_to="material/content/",
-        validators=[
-            FileExtensionValidator(
-                allowed_extensions=["pdf", "docx", "ppt", "xls", "zip"]
-            )
-        ],
-    )
+    file = models.TextField()
 
     def __str__(self):
         return f"{self.module} - {self.file}"
@@ -72,7 +65,7 @@ class Assignment(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    session = models.ForeignKey(Sessions, on_delete=models.CASCADE, null=True)
+    session = models.ForeignKey(Sessions, on_delete=models.CASCADE)
     total_grade = models.DecimalField(max_digits=10, decimal_places=2, null=True)
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=1)
     question = models.TextField(null=True, blank=True)
@@ -80,16 +73,7 @@ class Assignment(models.Model):
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True
     )
-    content = models.FileField(
-        upload_to="material/assignments/",
-        validators=[
-            FileExtensionValidator(
-                allowed_extensions=["pdf", "doc", "docx", "ppt", "pptx", "txt", "zip"]
-            )
-        ],
-        null=True,
-        blank=True,
-    )
+    content = models.TextField()
     no_of_resubmissions_allowed = models.IntegerField(default=0)
     due_date = models.DateTimeField()
     late_submission = models.BooleanField(default=False)
@@ -116,16 +100,7 @@ class AssignmentSubmission(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
 
     registration_id = models.CharField(max_length=50, null=True, blank=True)
-    submitted_file = models.FileField(
-        upload_to="material/submissions/",
-        validators=[
-            FileExtensionValidator(
-                allowed_extensions=["pdf", "doc", "docx", "ppt", "pptx", "txt", "zip"]
-            )
-        ],
-        null=True,
-        blank=True,
-    )
+    submitted_file =models.TextField()
     status = models.PositiveSmallIntegerField(
         choices=ASSESMENT_STATUS_CHOICES, default=0
     )
@@ -183,16 +158,7 @@ class Quizzes(models.Model):
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=1)
     question = models.TextField(null=True, blank=True)
     description = models.TextField(null=True, blank=True)
-    content = models.FileField(
-        upload_to="material/quizzes/",
-        validators=[
-            FileExtensionValidator(
-                allowed_extensions=["pdf", "doc", "docx", "ppt", "pptx", "txt", "zip"]
-            )
-        ],
-        null=True,
-        blank=True,
-    )
+    content = models.TextField()
     no_of_resubmissions_allowed = models.IntegerField(default=0)
     due_date = models.DateTimeField()
     late_submission = models.BooleanField(default=False)
@@ -207,16 +173,7 @@ class QuizSubmission(models.Model):
     )
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     registration_id = models.CharField(max_length=50, null=True, blank=True)
-    submitted_file = models.FileField(
-        upload_to="material/quiz_submissions/",
-        validators=[
-            FileExtensionValidator(
-                allowed_extensions=["pdf", "doc", "docx", "ppt", "pptx", "txt", "zip"]
-            )
-        ],
-        null=True,
-        blank=True,
-    )
+    submitted_file = models.TextField()
     status = models.PositiveSmallIntegerField(
         choices=ASSESMENT_STATUS_CHOICES, default=0
     )
@@ -263,16 +220,7 @@ class Project(models.Model):
     )
     title = models.CharField(max_length=255)
     description = models.TextField()
-    content = models.FileField(
-        upload_to="material/project/",
-        validators=[
-            FileExtensionValidator(
-                allowed_extensions=["pdf", "doc", "docx", "ppt", "pptx", "txt", "zip"]
-            )
-        ],
-        null=True,
-        blank=True,
-    )
+    content = models.TextField()
     due_date = models.DateTimeField()
     total_grade = models.DecimalField(max_digits=10, decimal_places=2, null=True)
 
@@ -296,16 +244,7 @@ class ProjectSubmission(models.Model):
     )
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     registration_id = models.CharField(max_length=50, null=True, blank=True)
-    submitted_file = models.FileField(
-        upload_to="material/project_submissions/",
-        validators=[
-            FileExtensionValidator(
-                allowed_extensions=["pdf", "doc", "docx", "ppt", "pptx", "txt", "zip"]
-            )
-        ],
-        null=True,
-        blank=True,
-    )
+    submitted_file =models.TextField()
     status = models.PositiveSmallIntegerField(
         choices=ASSESMENT_STATUS_CHOICES, default=0
     )
@@ -351,17 +290,8 @@ class Exam(models.Model):
     course = models.ForeignKey(Course, related_name="exams", on_delete=models.CASCADE)
     title = models.CharField(max_length=255)
     description = models.TextField()
-    content = models.FileField(
-        upload_to="material/exam/",
-        validators=[
-            FileExtensionValidator(
-                allowed_extensions=["pdf", "doc", "docx", "ppt", "pptx", "txt", "zip"]
-            )
-        ],
-        null=True,
-        blank=True,
-    )
-    due_date = models.DateField()
+    content = models.TextField()
+    due_date =  models.DateField()
     total_grade = models.DecimalField(max_digits=10, decimal_places=2, null=True)
     session = models.ForeignKey(
         Sessions, on_delete=models.CASCADE, null=True, blank=True
@@ -384,16 +314,7 @@ class ExamSubmission(models.Model):
     )
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     registration_id = models.CharField(max_length=50, null=True, blank=True)
-    submitted_file = models.FileField(
-        upload_to="material/exam_submissions/",
-        validators=[
-            FileExtensionValidator(
-                allowed_extensions=["pdf", "doc", "docx", "ppt", "pptx", "txt", "zip"]
-            )
-        ],
-        # null=True,
-        # blank=True,
-    )
+    submitted_file =models.TextField()
     status = models.PositiveSmallIntegerField(
         choices=ASSESMENT_STATUS_CHOICES, default=0
     )
