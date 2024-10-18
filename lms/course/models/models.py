@@ -31,7 +31,7 @@ class Course(models.Model):
     lab_credit_hours = models.IntegerField(blank=True, default=0)
     skills = models.ManyToManyField("Skill", blank=True)
     instructors = models.ManyToManyField("accounts.Instructor", blank=True)
-    picture = models.TextField()
+    picture = models.TextField(null=True, blank=True)
 
     def __str__(self):
         return f"{self.name}"

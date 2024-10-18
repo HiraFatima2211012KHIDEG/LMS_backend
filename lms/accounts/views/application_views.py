@@ -480,7 +480,7 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
                             "body": body,
                             "to_email": application_obj.email,
                         }
-                        send_email(email_data)
+                        send_email.delay(email_data)
 
                         serializer.save()
                         return self.custom_response(

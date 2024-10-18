@@ -179,6 +179,13 @@ SIMPLE_JWT = {
     "SIGNING_KEY": SECRET_KEY,
 }
 
+
+CELERY_BROKER_URL = "redis://localhost:6379/0"
+CELERY_CACHE_BACKEND = "default"
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+
+
+
 MAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = "smtp.gmail.com"
 EMAIL_PORT = 587

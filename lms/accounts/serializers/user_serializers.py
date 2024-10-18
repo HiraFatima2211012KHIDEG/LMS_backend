@@ -328,7 +328,7 @@ class ResetPasswordSerializer(serializers.Serializer):
         user = User.objects.get(email=value)
         uid = urlsafe_base64_encode(force_bytes(user.id))
         token = PasswordResetTokenGenerator().make_token(user)
-        link=f"https://lms-phi-two.vercel.app/auth/set-password/{uid}/{token}"
+        link=f"https://localhost:8000/auth/set-password/{uid}/{token}"
         print("Password reset link:", link)
 
         # Email sending logic can be included here or in a separate function/task
@@ -339,7 +339,7 @@ class ResetPasswordSerializer(serializers.Serializer):
              "body": body,
              "to_email": user.email,
         }
-        send_email(data)
+        send_email.delay(data)
 
         return value
 

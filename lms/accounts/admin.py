@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth import get_user_model
 from .models.user_models import *
-from .models.location_models import City,Location, Sessions, Batch
+from .models.location_models import City,Location, Sessions, Batch,SessionSchedule
 from .models.attendance_models import *
 
 
@@ -23,3 +23,4 @@ admin.site.register(Attendance)
 admin.site.register(TechSkill)
 admin.site.register(StudentSession)
 admin.site.register(InstructorSession)
+admin.site.register(SessionSchedule)

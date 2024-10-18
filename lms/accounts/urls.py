@@ -14,8 +14,8 @@ from .views.location_views import (
     AssignSessionsView,
     FilterBatchByCityView,
     FilterLocationByCityView,
-    # FilterSessionsByLocationView,
-    # FilterSessionsView,
+    InstructorSessionUnassignView,
+    StudentSessionUnassignView,
     CityStatsView,
     SessionCalendarAPIView
 
@@ -121,12 +121,9 @@ urlpatterns = [
         FilterLocationByCityView.as_view(),
         name="filter-locations-by-city",
     ),
-    # path(
-    #     "filter-sessions-by-location/",
-    #     FilterSessionsByLocationView.as_view(),
-    #     name="filter-sessions-by-location",
-    # ),
-    # path("filter-sessions/", FilterSessionsView.as_view(), name="filter-sessions"),
+
+    path('unassign/student/<int:student_id>/session/<int:session_id>/', StudentSessionUnassignView.as_view(), name='unassign_student_session'),
+    path('unassign/instructor/<int:instructor_id>/session/<int:session_id>/', InstructorSessionUnassignView.as_view(), name='unassign_instructor_session'),
     path(
         "assign-session/<int:user_id>/<int:session_id>/",
         user_views.AssignSessionView.as_view(),
