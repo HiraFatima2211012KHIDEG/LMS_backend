@@ -34,7 +34,7 @@ class AssignmentListCreateAPIView(CustomResponseMixin, APIView):
         data = {key: value for key, value in request.data.items()}
         data["created_by"] = request.user.id
 
-        file_content = request.FILES.get("content", None)
+        file_content = request.data.get("content", None)
         if file_content is not None:
             data["content"] = file_content
         else:
@@ -69,7 +69,7 @@ class AssignmentDetailAPIView(CustomResponseMixin, APIView):
         data["created_by"] = request.user.id
 
         assignment = get_object_or_404(Assignment, pk=pk)
-        file_content = request.FILES.get("content", None)
+        file_content = request.data.get("content", None)
         if file_content is not None:
             data["content"] = file_content
         else:
@@ -154,6 +154,38 @@ class AssignmentSubmissionCreateAPIView(CustomResponseMixin, APIView):
             serializer.errors,
         )
 
+    # def post(self, request, format=None):
+    #     data = {key: value for key, value in request.data.items()}
+    #     data['user'] = request.user.id
+
+    #     try:
+    #         student_instructor = Student.objects.get(user=request.user)
+    #         data['registration_id'] = student_instructor.registration_id
+    #     except Student.DoesNotExist:
+    #         logger.error("Student not found for user: %s", request.user)
+    #         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Student not found for user', {})
+
+    #     assignment_id = data.get('assignment')
+    #     if not assignment_id:
+    #         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Assignment ID is required', {})
+
+    #     # Check if the student has already submitted this assignment
+    #     existing_submission = AssignmentSubmission.objects.filter(
+    #         user=request.user,
+    #         assignment_id=assignment_id
+    #     ).first()
+
+    #     if existing_submission:
+    #         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'You have already submitted this assignment', {})
+
+    #     data['status'] = 1
+    #     print("Data to be saved:", data)
+    #     serializer = AssignmentSubmissionSerializer(data=data)
+    #     if serializer.is_valid():
+    #         serializer.save()
+    #         return self.custom_response(status.HTTP_201_CREATED, 'Assignment submission created successfully', serializer.data)
+
+    #     return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error creating assignment submission', serializer.errors)
 
 
 class AssignmentSubmissionDetailAPIView(CustomResponseMixin, APIView):
@@ -229,6 +261,21 @@ class AssignmentGradingListCreateAPIView(CustomResponseMixin, APIView):
             serializer.data,
         )
 
+    # @custom_extend_schema(GradingSerializer)
+    # def post(self, request, format=None):
+    #     data = {key: value for key, value in request.data.items()}
+    #     data["graded_by"] = request.user.id
+
+    #     serializer = GradingSerializer(data=data)
+    #     if serializer.is_valid():
+    #         serializer.save()
+    #         return self.custom_response(
+    #             status.HTTP_201_CREATED, "Grading created successfully", serializer.data
+    #         )
+
+    #     return self.custom_response(
+    #         status.HTTP_400_BAD_REQUEST, "Error creating grading", serializer.errors
+    #     )
 
     @custom_extend_schema(GradingSerializer)
     def post(self, request, format=None):
@@ -259,6 +306,27 @@ class AssignmentGradingDetailAPIView(CustomResponseMixin, APIView):
             serializer.data,
         )
 
+    # @custom_extend_schema(GradingSerializer)
+    # def put(self, request, pk, format=None):
+    #     data = {key: value for key, value in request.data.items()}
+    #     data["graded_by"] = request.user.id
+
+    #     grading = get_object_or_404(Grading, pk=pk)
+    #     serializer = GradingSerializer(grading, data=data, partial=True)
+    #     if serializer.is_valid():
+    #         serializer.save(graded_by=request.user)
+    #         return self.custom_response(
+    #             status.HTTP_200_OK,
+    #             "Assignment grading updated successfully",
+    #             serializer.data,
+    #         )
+
+    #     return self.custom_response(
+    #         status.HTTP_400_BAD_REQUEST,
+    #         "Error updating assignment grading",
+    #         serializer.errors,
+    #     )
+
 
     @custom_extend_schema(GradingSerializer)
     def put(self, request, pk, format=None):
@@ -288,6 +356,19 @@ class AssignmentGradingDetailAPIView(CustomResponseMixin, APIView):
         return self.custom_response(
             status.HTTP_204_NO_CONTENT, "Project grading deleted successfully", {}
         )
+
+
+# class AssignmentsByCourseIDAPIView(CustomResponseMixin, APIView):
+#     permission_classes = (permissions.IsAuthenticated,)
+
+#     def get(self, request, course_id, format=None):
+#         assignments = Assignment.objects.filter(course_id=course_id)
+
+
+#         if not assignments.exists():
+#             return self.custom_response(status.HTTP_200_OK, 'No quizzes found', {})
+#         serializer = AssignmentSerializer(assignments, many=True)
+#         return self.custom_response(status.HTTP_200_OK, 'Assignments retrieved successfully', serializer.data)
 
 
 
@@ -451,6 +532,90 @@ class AssignmentStudentListView(CustomResponseMixin, APIView):
         return self.custom_response(
             status.HTTP_200_OK, "Students retrieved successfully", response_data
         )
+
+# class AssignmentStudentListView(CustomResponseMixin, APIView):
+#     def get(self, request, assignment_id, course_id, *args, **kwargs):
+#         try:
+#             assignment = Assignment.objects.get(id=assignment_id, course__id=course_id)
+#         except Assignment.DoesNotExist:
+#             return Response({"detail": "Assignment not found for the course."}, status=status.HTTP_404_NOT_FOUND)
+
+     
+#         # Retrieve the session associated with the course
+#         sessions = Sessions.objects.filter(course__id=course_id)
+#         if not sessions:
+#             return Response(
+#                 {"detail": "Session not found for the course."}, 
+#                 status=status.HTTP_404_NOT_FOUND
+#             )
+
+#         # Assuming you want to work with the first session in the list
+#         session = sessions.first()
+#         print(session)
+#         # Filter students who are enrolled in this session
+#         enrolled_students = Student.objects.filter(
+#             studentsession__session=session
+#         )
+#         student_list = []
+#         total_grade = assignment.total_grade 
+
+#         for student in enrolled_students:
+#             user = student.user
+#             print(user)
+#             # Check if the student has submitted the assignment
+#             try:
+#                 submission = AssignmentSubmission.objects.get(assignment=assignment, user=user)
+#             except AssignmentSubmission.DoesNotExist:
+#                 submission = None
+
+#             if submission:
+#                 if submission.status == 1:  # Submitted
+#                     submission_status = "Submitted"
+#                 else:
+#                     submission_status = "Pending" 
+#             else:
+#                 if timezone.now() > assignment.due_date:
+#                     submission_status = "Not Submitted" 
+#                 else:
+#                     submission_status = "Pending"  
+
+#             student_data = {
+#                 'assignment':assignment.id,
+#                 'student_name': f"{user.first_name} {user.last_name}",
+#                 'registration_id': student.registration_id,
+#                 'submission_id': submission.id if submission else None,
+#                 'submitted_file': (
+#                     submission.submitted_file.url
+#                     if submission and submission.submitted_file
+#                     else None
+#                 ),
+#                 'submitted_at': submission.submitted_at if submission else None,
+#                 'status': submission_status,
+#                 'grade': 0,
+#                 'remarks': None
+#             }
+#             if submission:
+#                 grading = Grading.objects.filter(submission=submission).first()
+#                 if grading:
+#                     student_data['grade'] = grading.grade
+#                     student_data['remarks'] = grading.feedback
+                   
+#                 else:
+#                     student_data['grade'] = 0
+#                     student_data['remarks'] = None
+
+#             student_list.append(student_data)
+
+#         # Prepare the response data including the due date and total_grade
+#         response_data = {
+#             'due_date': assignment.due_date,
+#             'total_grade': total_grade,
+#             'students': student_list
+#         }
+
+#         return self.custom_response(
+#             status.HTTP_200_OK, "Students retrieved successfully", response_data
+#         )      
 
 
     

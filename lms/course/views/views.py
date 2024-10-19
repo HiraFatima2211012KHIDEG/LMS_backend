@@ -145,8 +145,8 @@ class ModuleListCreateAPIView(CustomResponseMixin, APIView):
         data = {key: value for key, value in request.data.items()}
         data['created_by'] = request.user.id
 
-        # Validate the number of files
-        files = request.FILES.getlist('files')
+        
+        files = request.data.getlist('files')
         if len(files) > 5:
             return self.custom_response(status.HTTP_400_BAD_REQUEST, 'You can upload a maximum of 5 files per module.', {})
 
@@ -179,7 +179,7 @@ class ModuleDetailAPIView(CustomResponseMixin, APIView):
             module = serializer.save()
 
             # Validate the number of files
-            files = request.FILES.getlist('files')
+            files = request.data.getlist('files')
             if len(files) > 5:
                 return self.custom_response(status.HTTP_400_BAD_REQUEST, 'You can upload a maximum of 5 files per module.', {})
 
@@ -198,6 +198,8 @@ class ModuleDetailAPIView(CustomResponseMixin, APIView):
             return self.custom_response(status.HTTP_200_OK, 'Module updated successfully', serializer.data)
 
         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error updating module', serializer.errors)
+
+
 
 
 

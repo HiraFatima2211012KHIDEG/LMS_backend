@@ -28,7 +28,7 @@ class QuizListCreateAPIView(CustomResponseMixin, APIView):
         data = {key: value for key, value in request.data.items()}
         data['created_by'] = request.user.id
 
-        file_content = request.FILES.get('content', None)
+        file_content = request.data.get('content', None)
         if file_content is not None:
             data['content'] = file_content
         else:
@@ -55,7 +55,7 @@ class QuizDetailAPIView(CustomResponseMixin, APIView):
 
 
         quiz = get_object_or_404(Quizzes, pk=pk)
-        file_content = request.FILES.get('content', None)
+        file_content = request.data.get('content', None)
         if file_content is not None:
             data['content'] = file_content
         else:
@@ -121,6 +121,39 @@ class QuizSubmissionCreateAPIView(CustomResponseMixin, APIView):
         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error creating quiz submission', serializer.errors)
 
 
+    # def post(self, request, format=None):
+    #     data = {key: value for key, value in request.data.items()}
+    #     data['user'] = request.user.id
+
+    #     try:
+    #         student_instructor = Student.objects.get(user=request.user)
+    #         data['registration_id'] = student_instructor.registration_id
+    #     except Student.DoesNotExist:
+    #         logger.error("Student not found for user: %s", request.user)
+    #         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Student not found for user', {})
+
+    #     quiz_id = data.get('quiz')
+    #     if not quiz_id:
+    #         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Quiz ID is required', {})
+
+    #     # Check if the student has already submitted this quiz
+    #     existing_submission = QuizSubmission.objects.filter(
+    #         user=request.user,
+    #         quiz_id=quiz_id
+    #     ).first()
+
+    #     if existing_submission:
+    #         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'You have already submitted this quiz', {})
+
+    #     data['status'] = 1
+    #     print(data)
+    #     serializer = QuizSubmissionSerializer(data=data)
+    #     if serializer.is_valid():
+    #         serializer.save()
+    #         return self.custom_response(status.HTTP_201_CREATED, 'Quiz submission created successfully', serializer.data)
+
+    #     return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error creating quiz submission', serializer.errors)
+
 
 class QuizSubmissionDetailAPIView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
@@ -130,7 +163,22 @@ class QuizSubmissionDetailAPIView(CustomResponseMixin, APIView):
         serializer = QuizSubmissionSerializer(quiz_submission)
         return self.custom_response(status.HTTP_200_OK, 'Quiz submission retrieved successfully', serializer.data)
 
+    # def put(self, request, pk, format=None):
+    #     data = {key: value for key, value in request.data.items()}
+    #     data['user'] = request.user.id
+    #     try:
+    #         student_instructor = Student.objects.get(user=request.user)
+    #         data['registration_id'] = student_instructor.registration_id
+    #     except Student.DoesNotExist:
+    #         logger.error("Student not found for user: %s", request.user)
+    #         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Student not found for user', {})
 
+    #     quiz_submission = get_object_or_404(QuizSubmission, pk=pk)
+    #     serializer = QuizSubmissionSerializer(quiz_submission, data=data)
+    #     if serializer.is_valid():
+    #         serializer.save()
+    #         return self.custom_response(status.HTTP_200_OK, 'Quiz submission updated successfully', serializer.data)
+    #     return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error updating quiz submission', serializer.errors)
 
     @custom_extend_schema(QuizSubmissionSerializer)
     def put(self, request, pk, format=None):
@@ -256,6 +304,7 @@ class QuizzesByCourseIDAPIView(CustomResponseMixin, APIView):
             quiz_data = {
                 'id': quiz.id,
                 'total_grade':quiz.total_grade,
+                # 'content_url': quiz.content.url if quiz.content else None, 
                 "content": quiz.content if quiz.content else None,
                 'question': quiz.question,
                 'description': quiz.description,
@@ -338,6 +387,79 @@ class QuizDetailView(APIView):
 
 
 
+# class QuizStudentListView(CustomResponseMixin, APIView):
+#     permission_classes = (permissions.IsAuthenticated,)
+
+#     def get(self, request, quiz_id, course_id, *args, **kwargs):
+#         try:
+#             # Retrieve the quiz based on quiz ID and course ID
+#             quiz = Quizzes.objects.get(id=quiz_id, course__id=course_id)
+#         except Quizzes.DoesNotExist:
+#             return Response(
+#                 {"detail": "Quiz not found for the course."}, 
+#                 status=status.HTTP_404_NOT_FOUND
+#             )
+
+#         # Retrieve the session associated with the course
+#         sessions = Sessions.objects.filter(course__id=course_id)
+#         print(sessions)
+   
+#         session = sessions.first()
+#         print(session)  
+#         # Filter students who are enrolled in this session
+#         enrolled_students = Student.objects.filter(
+#             studentsession__session=session
+#         )
+#         print(enrolled_students)  
+#         student_list = []
+#         total_grade = quiz.total_grade 
+
+#         # Process each student's quiz submission
+#         for student in enrolled_students:
+#             user = student.user
+#             try:
+#                 submission = QuizSubmission.objects.get(quiz=quiz, user=user)
+#             except QuizSubmission.DoesNotExist:
+#                 submission = None
+
+#             if submission:
+#                 submission_status = "Submitted" if submission.status == 1 else "Pending"
+#             else:
+#                 submission_status = (
+#                     "Not Submitted" if timezone.now() > quiz.due_date else "Pending"
+#                 )
+
+#             # Collect student data
+#             student_data = {
+#                 'quiz':quiz.id,
+#                 'student_name': f"{user.first_name} {user.last_name}",
+#                 'registration_id': student.registration_id,
+#                 'submission_id': submission.id if submission else None,
+#                 'submitted_file': submission.quiz_submitted_file.url if submission and submission.quiz_submitted_file else None,
+#                 'submitted_at': submission.quiz_submitted_at if submission else None,
+#                 'status': submission_status,
+#                 'grade': 0,
+#                 'remarks': None
+#             }
+
+#             if submission:
+#                 grading = QuizGrading.objects.filter(quiz_submissions=submission).first()
+#                 if grading:
+#                     student_data['grade'] = grading.grade
+#                     student_data['remarks'] = grading.feedback
+                   
+
+#             student_list.append(student_data)
+
+#         response_data = {
+#             'due_date': quiz.due_date,
+#             'total_grade': total_grade,
+#             'students': student_list
+#         }
+
+#         return self.custom_response(
+#             status.HTTP_200_OK, "Students retrieved successfully", response_data
+#         )
 
 
 class QuizStudentListView(CustomResponseMixin, APIView):
