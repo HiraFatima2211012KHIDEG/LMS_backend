@@ -1317,16 +1317,6 @@ class InstructorSessionsView(views.APIView, CustomResponseMixin):
                     None,
                 )
 
-            # Create or update InstructorSession if it's not assigned to any active instructor
-            instructor_session, created = InstructorSession.objects.get_or_create(
-                instructor=instructor,
-                session=session,
-                defaults={
-                    "status": 1,  # Default status or modify based on your needs
-                },
-            )
-            created_sessions.append(instructor_session)
-
             # Check for date overlap
             overlapping_sessions = InstructorSession.objects.filter(
                 instructor=instructor,
@@ -1341,7 +1331,11 @@ class InstructorSessionsView(views.APIView, CustomResponseMixin):
                     session__start_time__lt=session.end_time,
                     session__end_time__gt=session.start_time,
                 )
-                if overlapping_times.exists():
+                exact_start_match = overlapping_sessions.filter(
+                    session__start_time__gte=session.start_time, status=1
+                )
+
+                if overlapping_times.exists() or exact_start_match.exists():
                     return self.custom_response(
                         status.HTTP_400_BAD_REQUEST,
                         f"Session timings overlap with existing sessions for this instructor.",
@@ -1659,7 +1653,7 @@ class UserDetailsView(views.APIView, CustomResponseMixin):
 
 
 class BatchStudentView(views.APIView, CustomResponseMixin):
-    
+
     def get(self, request):
         batch_name = request.GET.get("batch_name")
         if not batch_name:
