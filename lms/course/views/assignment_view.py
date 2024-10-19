@@ -880,7 +880,6 @@ class QuizProgressAPIView(CustomResponseMixin, APIView):
             status.HTTP_200_OK, "Quiz progress retrieved successfully", serializer.data
         )
 
-
 class CourseProgressAPIView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
@@ -897,17 +896,14 @@ class CourseProgressAPIView(CustomResponseMixin, APIView):
                 status.HTTP_400_BAD_REQUEST, "Student not found for user", {}
             )
 
-        total_modules = Module.objects.filter(course=course).exclude(Q(status=2) | Q(status=0)).count()
+        # Fetch all attendance records for the student in the course
+        attendance_records = Attendance.objects.filter(course=course, student=registration_id)
 
-        
-        attendance_records = Attendance.objects.filter(
-            course=course, student=registration_id, status=0  
-        )
         total_attendance = attendance_records.count()
+        present_attendance = attendance_records.filter(status=0).count()
 
-        if total_modules > 0:
-            # progress_percentage = (total_attendance / total_modules) * 100
-            progress_percentage =  min((total_attendance / total_modules) * 100, 100)
+        if total_attendance > 0:
+            progress_percentage = min((present_attendance / total_attendance) * 100, 100)
         else:
             progress_percentage = 0
 
@@ -915,8 +911,8 @@ class CourseProgressAPIView(CustomResponseMixin, APIView):
             "course_id": course_id,
             "user_id": user.id,
             "student_id": registration_id,
-            "total_modules": total_modules,
-            "total_attendance": total_attendance,
+            "total_modules": total_attendance,
+            "total_attendance": present_attendance,
             "progress_percentage": progress_percentage,
         }
 
@@ -926,6 +922,58 @@ class CourseProgressAPIView(CustomResponseMixin, APIView):
             "Course progress retrieved successfully",
             serializer.data,
         )
+
+#             "course_id": course_id,
+#             "user_id": user.id,
+#             "student_id": registration_id,
+#             "total_modules": total_modules,
+#             "total_attendance": total_attendance,
+#             "progress_percentage": progress_percentage,
+# class CourseProgressAPIView(CustomResponseMixin, APIView):
+#     permission_classes = (permissions.IsAuthenticated,)
+
+#     def get(self, request, course_id, format=None):
+#         user = request.user
+#         course = get_object_or_404(Course, pk=course_id)
+
+#         try:
+#             student_instructor = Student.objects.get(user=user)
+#             registration_id = student_instructor.registration_id
+#         except Student.DoesNotExist:
+#             logger.error("Student not found for user: %s", user)
+#             return self.custom_response(
+#                 status.HTTP_400_BAD_REQUEST, "Student not found for user", {}
+#             )
+
+#         total_modules = Module.objects.filter(course=course).exclude(Q(status=2) | Q(status=0)).count()
+
+        
+#         attendance_records = Attendance.objects.filter(
+#             course=course, student=registration_id, status=0  
+#         )
+#         total_attendance = attendance_records.count()
+
+#         if total_modules > 0:
+#             # progress_percentage = (total_attendance / total_modules) * 100
+#             progress_percentage =  min((total_attendance / total_modules) * 100, 100)
+#         else:
+#             progress_percentage = 0
+
+#         progress_data = {
+#             "course_id": course_id,
+#             "user_id": user.id,
+#             "student_id": registration_id,
+#             "total_modules": total_modules,
+#             "total_attendance": total_attendance,
+#             "progress_percentage": progress_percentage,
+#         }
+
+#         serializer = CourseProgressSerializer(progress_data)
+#         return self.custom_response(
+#             status.HTTP_200_OK,
+#             "Course progress retrieved successfully",
+#             serializer.data,
+#         )
 
 def get_pending_assignments_for_student(program_id, registration_id):
     courses = Course.objects.filter(program__id=program_id)
