@@ -27,7 +27,6 @@ class AttendanceSerializer(serializers.ModelSerializer):
         ]
         list_serializer_class = BulkAttendanceSerializer
     def get_day(self, obj):
-        # Check if obj.date is a string and convert it to a date object
         if isinstance(obj.date, str):
             try:
                 obj_date = datetime.strptime(obj.date, "%Y-%m-%d").date()
