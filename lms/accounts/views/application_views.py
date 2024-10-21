@@ -584,7 +584,7 @@ class VerifyEmailandSetPasswordView(views.APIView, CustomResponseMixin):
                     year = application.year
                     month = application.created_at
                     batch_instance = Batch.objects.filter(
-                        city_abb=city_abb.lower(),
+                        city_abb=city_abb,
                         year=year,
                         application_start_date__lte=month,
                         start_date__gte=month,
