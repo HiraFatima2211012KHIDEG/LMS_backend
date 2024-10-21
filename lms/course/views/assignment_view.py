@@ -821,7 +821,7 @@ class AssignmentProgressAPIView(CustomResponseMixin, APIView):
         if total_assignments == 0:
             progress_percentage = 0
         else:
-            progress_percentage = (submitted_assignments / total_assignments) * 100
+            progress_percentage = min((submitted_assignments / total_assignments) * 100, 100)
 
         progress_data = {
             "user_id": user.id,
@@ -864,7 +864,7 @@ class QuizProgressAPIView(CustomResponseMixin, APIView):
         if total_quiz == 0:
             progress_percentage = 0
         else:
-            progress_percentage = (submitted_quiz / total_quiz) * 100
+            progress_percentage = min((submitted_quiz / total_quiz) * 100, 100)
 
         progress_data = {
             "user_id": user.id,
