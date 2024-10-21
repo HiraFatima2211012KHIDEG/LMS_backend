@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from ..models.attendance_models import Attendance
 from ..models.user_models import StudentSession
+from datetime import datetime
 
 
 class BulkAttendanceSerializer(serializers.ListSerializer):
@@ -26,7 +27,16 @@ class AttendanceSerializer(serializers.ModelSerializer):
         ]
         list_serializer_class = BulkAttendanceSerializer
     def get_day(self, obj):
-        return obj.date.strftime("%A")
+        # Check if obj.date is a string and convert it to a date object
+        if isinstance(obj.date, str):
+            try:
+                obj_date = datetime.strptime(obj.date, "%Y-%m-%d").date()
+            except ValueError:
+                return None  
+        else:
+            obj_date = obj.date
+
+        return obj_date.strftime("%A")
     def get_student_name(self, obj):
         return f"{obj.student.user.first_name} {obj.student.user.last_name}"
 

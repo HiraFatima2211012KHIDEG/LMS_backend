@@ -135,7 +135,7 @@ class ModuleListCreateAPIView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
     parser_classes = (MultiPartParser, FormParser)
     def get(self, request, format=None):
-        modules = Module.objects.all().order_by('-created_at')
+        modules = Module.objects.all().order_by('created_at')
         serializer = ModuleSerializer(modules, many=True)
         return self.custom_response(status.HTTP_200_OK, 'Modules retrieved successfully', serializer.data)
 

@@ -923,12 +923,7 @@ class CourseProgressAPIView(CustomResponseMixin, APIView):
             serializer.data,
         )
 
-#             "course_id": course_id,
-#             "user_id": user.id,
-#             "student_id": registration_id,
-#             "total_modules": total_modules,
-#             "total_attendance": total_attendance,
-#             "progress_percentage": progress_percentage,
+
 # class CourseProgressAPIView(CustomResponseMixin, APIView):
 #     permission_classes = (permissions.IsAuthenticated,)
 
