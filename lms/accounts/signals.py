@@ -1,7 +1,7 @@
 """
 signals for accounts app.
 """
-from django.db.models.signals import m2m_changed
+from django.db.models.signals import m2m_changed, post_save
 from django.dispatch import receiver
 from django.contrib.auth.models import Group, Permission
 from .models import AccessControl
@@ -40,3 +40,50 @@ def update_access_control(sender, instance, action, reverse, pk_set, **kwargs):
                 print(f"Permission with id {permission_id} does not exist.")
 
 m2m_changed.connect(update_access_control, sender=Group.permissions.through)
+
+
+
+from accounts.utils import send_email
+from django.core.signing import TimestampSigner
+import base64
+from django.core.signing import TimestampSigner, SignatureExpired, BadSignature
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+# from django.contrib.auth.models import User
+from .models import User
+from django.db import transaction
+
+from django.contrib.auth.models import Group
+
+@receiver(m2m_changed, sender=User.groups.through)
+def send_verification_email(sender, instance, action, **kwargs):
+    # Check if the action is 'post_add' which means the group has been added
+    if action == "post_add":
+        if instance.groups.filter(name="admin").exists():
+            print(f"Signal triggered for admin user: {instance.email}")
+            token = create_signed_token(instance.id, instance.email)
+            print("Generated token:", token)
+            verification_link = f"http://localhost:3000/auth/account-verify/{token}"
+            body = (
+                f"Congratulations {instance.first_name} {instance.last_name}!\n"
+                f"Please click the following link to verify your account:\n{verification_link}"
+            )
+            email_data = {
+                "email_subject": "Verify your account",
+                "body": body,
+                "to_email": instance.email,
+            }
+            send_email(email_data)
+            print("Verification email sent to:", instance.email)
+
+def create_signed_token(user_id, email):
+    signer = TimestampSigner()
+    # Combine the user_id and email into a single string
+    data = f"{user_id}:{email}"
+    # Encode the data with base64
+    encoded_data = base64.urlsafe_b64encode(data.encode()).decode()
+    # Sign the encoded data
+    signed_token = signer.sign(encoded_data)
+    return signed_token
+
+m2m_changed.connect(send_verification_email, sender=User.groups.through)

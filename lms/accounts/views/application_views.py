@@ -527,125 +527,99 @@ class VerifyEmailandSetPasswordView(views.APIView, CustomResponseMixin):
         token = request.data.get("token")
         password = request.data.get("password")
         password2 = request.data.get("password2")
+
+        # Validate request data
         if not token:
-            return self.custom_response(
-                status.HTTP_400_BAD_REQUEST, "Token is required.", None
-            )
+            return self.custom_response(status.HTTP_400_BAD_REQUEST, "Token is required.", None)
         if not password:
-            return self.custom_response(
-                status.HTTP_400_BAD_REQUEST, "password is required.", None
-            )
+            return self.custom_response(status.HTTP_400_BAD_REQUEST, "Password is required.", None)
         if not password2:
-            return self.custom_response(
-                status.HTTP_400_BAD_REQUEST, "Confirm password is required.", None
-            )
+            return self.custom_response(status.HTTP_400_BAD_REQUEST, "Confirm password is required.", None)
 
         signer = TimestampSigner()
         try:
             with transaction.atomic():
                 unsigned_data = signer.unsign(token, max_age=3600)
                 decoded_data = base64.urlsafe_b64decode(unsigned_data).decode()
-                print(decoded_data)
                 user_id, email = decoded_data.split(":")
+                
+                # Check if the user already exists
                 existing_user = get_user_model().objects.filter(email=email).first()
+                
                 if existing_user:
-                    return self.custom_response(
-                        status.HTTP_400_BAD_REQUEST, "User already verified", None
-                    )
+                    if existing_user.is_verified:
+                        return self.custom_response(status.HTTP_400_BAD_REQUEST, "User already verified.", None)
 
-                # Retrieve the application and create a user
-                application = Applications.objects.get(id=user_id)
-                user_data = {
-                    "email": application.email,
-                    "first_name": application.first_name,
-                    "last_name": application.last_name,
-                    "contact": application.contact,
-                    "city": application.city,
-                    "is_verified": True,
-                }
-                user = get_user_model().objects.create_user(**user_data)
-
-                # Create StudentInstructor record based on group_name
-                if application.group_name == "student":
-                    try:
-                        selected_student_program = (
-                            StudentApplicationSelection.objects.get(
-                                application=application
-                            ).selected_program
-                        )
-                    except StudentApplicationSelection.DoesNotExist:
-                        return self.custom_response(
-                            status.HTTP_400_BAD_REQUEST,
-                            "Program selection not found for the application.",
-                            None,
-                        )
-                    program_name = selected_student_program.program_abb
-                    city_abb = application.city_abb
-                    year = application.year
-                    month = application.created_at
-                    batch_instance = Batch.objects.filter(
-                        city_abb=city_abb,
-                        year=year,
-                        application_start_date__lte=month,
-                        start_date__gte=month,
-                    ).first()
-                    print(batch_instance)
-                    if not batch_instance:
-                        return self.custom_response(
-                            status.HTTP_400_BAD_REQUEST,
-                            "No matching batch found for the provided city and year.",
-                            None,
-                        )
-                    registration_id = f"{batch_instance.batch}-{program_name}-{user.id}"
-                    Student.objects.create(user=user, registration_id=registration_id)
-
-                elif application.group_name == "instructor":
-                    # Handle instructor logic if needed
-                    Instructor.objects.create(id=user)
+                    # Admin user-specific verification
+                    if existing_user.groups.filter(name='admin').exists():
+                        existing_user.is_verified = True
+                        existing_user.save()  # Save verification status for admin
+                    else:
+                        return self.custom_response(status.HTTP_400_BAD_REQUEST, "Admin user already verified.", None)
                 else:
-                    return self.custom_response(
-                        status.HTTP_400_BAD_REQUEST, "Invalid group_name.", None
-                    )
+                    # Handle new user creation
+                    application = Applications.objects.get(id=user_id)
+                    user_data = {
+                        "email": application.email,
+                        "first_name": application.first_name,
+                        "last_name": application.last_name,
+                        "contact": application.contact,
+                        "city": application.city,
+                        "is_verified": True,
+                    }
+                    existing_user = get_user_model().objects.create_user(**user_data)
+
+                    # Handle student-specific logic
+                    if application.group_name == "student":
+                        try:
+                            selected_student_program = StudentApplicationSelection.objects.get(
+                                application=application).selected_program
+                        except StudentApplicationSelection.DoesNotExist:
+                            return self.custom_response(status.HTTP_400_BAD_REQUEST, 
+                                                        "Program selection not found for the application.", None)
+
+                        # Fetch batch instance
+                        batch_instance = Batch.objects.filter(
+                            city_abb=application.city_abb,
+                            year=application.year,
+                            application_start_date__lte=application.created_at,
+                            start_date__gte=application.created_at,
+                        ).first()
+
+                        if not batch_instance:
+                            return self.custom_response(status.HTTP_400_BAD_REQUEST, 
+                                                        "No matching batch found for the provided city and year.", None)
+
+                        # Create student record
+                        registration_id = f"{batch_instance.batch}-{selected_student_program.program_abb}-{existing_user.id}"
+                        Student.objects.create(user=existing_user, registration_id=registration_id)
+
+                    elif application.group_name == "instructor":
+                        Instructor.objects.create(id=existing_user)
 
                 # Set the password using SetPasswordSerializer
                 password_data = {"password": password, "password2": password2}
-                serializer = SetPasswordSerializer(
-                    data=password_data, context={"user": user}
-                )
+                serializer = SetPasswordSerializer(data=password_data, context={"user": existing_user})
+                
                 if serializer.is_valid(raise_exception=True):
                     serializer.save()
-                else:
-                    return self.custom_response(
-                        status.HTTP_400_BAD_REQUEST,
-                        "Verification failed.",
-                        serializer.errors,
-                    )
-
+                
                 response_data = serializer.data
-                response_data["email"] = user.email
+                response_data["email"] = existing_user.email
 
                 return self.custom_response(
                     status.HTTP_200_OK,
-                    "Email verified and user created successfully.",
-                    # serializer.data,
+                    "Email verified and user created/verified successfully.",
                     response_data,
                 )
 
         except SignatureExpired:
-            return self.custom_response(
-                status.HTTP_400_BAD_REQUEST, "The reset link has expired.", None
-            )
+            return self.custom_response(status.HTTP_400_BAD_REQUEST, "The reset link has expired.", None)
         except BadSignature:
-            return self.custom_response(
-                status.HTTP_400_BAD_REQUEST,
-                "Invalid token or data tampering detected.",
-                None,
-            )
-
+            return self.custom_response(status.HTTP_400_BAD_REQUEST, "Invalid token or data tampering detected.", None)
         except Applications.DoesNotExist:
-            return self.custom_response(
-                status.HTTP_400_BAD_REQUEST, "User not found.", None
-            )
+            return self.custom_response(status.HTTP_400_BAD_REQUEST, "Application not found.", None)
+
 
 
 class ResendVerificationEmail(views.APIView, CustomResponseMixin):
