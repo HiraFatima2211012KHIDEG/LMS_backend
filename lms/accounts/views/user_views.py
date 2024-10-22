@@ -1101,7 +1101,7 @@ class UserSessionsView(views.APIView, CustomResponseMixin):
         elif group_name == "instructor":
             try:
                 # Fetch the instructor based on the user_id
-                instructor = Instructor.objects.get(user__id=user_id)
+                instructor = Instructor.objects.get(id=user_id)
             except Instructor.DoesNotExist:
                 return self.custom_response(
                     status.HTTP_404_NOT_FOUND,
