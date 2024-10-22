@@ -959,14 +959,15 @@ class PreferredSessionView(views.APIView, CustomResponseMixin):
                 "No valid sessions found for the provided session_ids.",
                 None,
             )
+
         student_application = StudentApplicationSelection.objects.get(
             application=application
         )
         selected_location = student_application.selected_location
         created_sessions = []
-
         session_details = []
         date_time_slots = {}
+
         for session in sessions:
             if session.location != selected_location:
                 return self.custom_response(
@@ -974,66 +975,52 @@ class PreferredSessionView(views.APIView, CustomResponseMixin):
                     f"Selected location does not match session location for session {session.id}.",
                     None,
                 )
+
+            # Validate if the student is already assigned to this session's course
             if StudentSession.objects.filter(
-                student=student,
-                session__course=session.course,
-                session__start_time=session.start_time,
-                session__end_time=session.end_time,
-                status=1,
+                student=student, session__course=session.course, status=1
             ).exists():
                 return self.custom_response(
                     status.HTTP_400_BAD_REQUEST,
-                    f"Session with course {session.course.name} and timings {session.start_time} - {session.end_time} is already assigned to this student.",
-                    None,
-                )
-            if StudentSession.objects.filter(
-                student=student,
-                session__start_time=session.start_time,
-                session__end_time=session.end_time,
-                status=1,
-            ).exists():
-                return self.custom_response(
-                    status.HTTP_400_BAD_REQUEST,
-                    f"Session with course {session.course.name} same timings {session.start_time} - {session.end_time} is already assigned to this student.",
+                    f"Session with course {session.course.name} is already assigned to this student.",
                     None,
                 )
 
-            # Check for overlapping session timings for the student
-            overlapping_sessions = StudentSession.objects.filter(
-                student=student,
-                session__location=session.location,
-                session__start_time__lt=session.end_time,
-                session__end_time__gt=session.start_time,
-                status=1,
-            )
+            # Check for overlapping schedules (based on day and time)
+            for schedule in session.schedules.all():
+                overlapping_sessions = StudentSession.objects.filter(
+                    student=student,
+                    session__location=session.location,
+                    session__schedules__day_of_week=schedule.day_of_week,
+                    session__schedules__start_time__lt=schedule.end_time,
+                    session__schedules__end_time__gt=schedule.start_time,
+                    session__status=1
+                ).exclude(session=session)
 
-            if overlapping_sessions.exists():
-                return self.custom_response(
-                    status.HTTP_400_BAD_REQUEST,
-                    f"Session timings overlap with existing sessions for this student.",
-                    None,
-                )
-            # Collect start and end times for each day of the week (using `days_of_week` integer mapping)
-            for day_int in session.days_of_week:
-                if day_int not in WEEKDAYS:
-                    return self.custom_response(
-                        status.HTTP_400_BAD_REQUEST,
-                        f"Invalid day of week: {day_int}.",
-                        None,
-                    )
-                day_name = WEEKDAYS[day_int][0]
+                # Check if overlapping sessions have overlapping date ranges
+                for overlapping_session in overlapping_sessions:
+                    if not (
+                        session.end_date < overlapping_session.session.start_date
+                        or session.start_date > overlapping_session.session.end_date
+                    ):
+                        return self.custom_response(
+                            status.HTTP_400_BAD_REQUEST,
+                            f"Session timings overlap with existing sessions for this student on {schedule.day_of_week}.",
+                            None,
+                        )
+
+            # Collect start and end times for each day of the week (using schedules)
+            for schedule in session.schedules.all():
+                day_name = schedule.day_of_week
                 if day_name not in date_time_slots:
                     date_time_slots[day_name] = []
-
-                date_time_slots[day_name].append((session.start_time, session.end_time))
+                date_time_slots[day_name].append((schedule.start_time, schedule.end_time))
 
             # Create or update StudentSession entries for each session
             student_session, created = StudentSession.objects.get_or_create(
                 student=student,
                 session=session,
-                defaults={
-                    "status": 1,
-                },
+                defaults={"status": 1},
             )
             created_sessions.append(student_session)
 
@@ -1041,7 +1028,13 @@ class PreferredSessionView(views.APIView, CustomResponseMixin):
             session_details.append(
                 f"Course: {session.course.name}\n"
                 f"Location: {session.location.name} Center\n"
-                f"Timings: {session.start_time} - {session.end_time}\n"
+                f"Timings:\n"
+                + "\n".join(
+                    [
+                        f"{schedule.day_of_week}: {schedule.start_time} - {schedule.end_time}"
+                        for schedule in session.schedules.all()
+                    ]
+                )
             )
 
         # Serialize created or updated StudentSession objects
@@ -1076,14 +1069,13 @@ class PreferredSessionView(views.APIView, CustomResponseMixin):
             response_data,
         )
 
-
 class UserSessionsView(views.APIView, CustomResponseMixin):
     """View to get all sessions assigned to a specific user."""
 
     def get(self, request, user_id):
         # Determine whether the user is a student or instructor
         group_name = request.query_params.get("group_name")
-        course_id = request.query_params.get()
+        course_id = request.query_params.get("course_id")
 
         if group_name not in ["student", "instructor"]:
             return self.custom_response(
@@ -1109,7 +1101,7 @@ class UserSessionsView(views.APIView, CustomResponseMixin):
         elif group_name == "instructor":
             try:
                 # Fetch the instructor based on the user_id
-                instructor = Instructor.objects.get(id__id=user_id)
+                instructor = Instructor.objects.get(user__id=user_id)
             except Instructor.DoesNotExist:
                 return self.custom_response(
                     status.HTTP_404_NOT_FOUND,
@@ -1141,21 +1133,26 @@ class UserSessionsView(views.APIView, CustomResponseMixin):
         session_data = []
         for user_session in user_sessions:
             session = user_session.session  # Access the related session object
+            # Fetch schedules for the session
+            session_schedules = session.schedules.all()
+
+            # Gather schedule info for each session (day-wise start and end times)
+            schedule_info = [
+                {
+                    "day_of_week": schedule.day_of_week,
+                    "start_time": schedule.start_time.strftime("%H:%M:%S"),
+                    "end_time": schedule.end_time.strftime("%H:%M:%S"),
+                }
+                for schedule in session_schedules
+            ]
+
             session_info = {
                 "session_id": session.id,
                 "status": user_session.status,  # Session-specific status
-                "start_time": (
-                    session.start_time.strftime("%H:%M:%S")
-                    if session.start_time
-                    else None
-                ),
-                "end_time": (
-                    session.end_time.strftime("%H:%M:%S") if session.end_time else None
-                ),
-                "no_of_student": session.no_of_students,
                 "course": session.course.name if session.course else None,
                 "location": session.location.name if session.location else None,
-                "days_of_week": session.days_of_week,
+                "schedules": schedule_info,  # Include schedules in the response
+                "no_of_students": session.no_of_students,
             }
             session_data.append(session_info)
 
@@ -1167,9 +1164,7 @@ class UserSessionsView(views.APIView, CustomResponseMixin):
 
     def delete(self, request, *args, user_id, **kwargs):
         session_id = request.query_params.get("pk", None)
-        print(session_id)
         group_name = request.query_params.get("group_name")
-        user_id = user_id  # Get the user_id from URL or query params
 
         if not group_name:
             return self.custom_response(
@@ -1206,10 +1201,9 @@ class UserSessionsView(views.APIView, CustomResponseMixin):
             student_session.save()
 
         elif group_name == "instructor":
-
             try:
                 # Get the instructor session based on the user_id and session_id
-                instructor = Instructor.objects.get(id__id=user_id)
+                instructor = Instructor.objects.get(user__id=user_id)
                 instructor_session = InstructorSession.objects.get(
                     instructor=instructor, session=instance
                 )
@@ -1249,15 +1243,15 @@ class InstructorSessionsView(views.APIView, CustomResponseMixin):
                 None,
             )
         try:
-            # Get the Instructor object based on the provided user_id
+            # Correctly fetching the instructor using the ID field
             instructor = Instructor.objects.get(id__id=user_id)
+            print("jbcec",instructor)
         except Instructor.DoesNotExist:
             return self.custom_response(
                 status.HTTP_404_NOT_FOUND,
                 "Instructor does not exist for the provided user_id.",
                 None,
             )
-
         # Fetch sessions based on provided session_ids
         sessions = Sessions.objects.filter(id__in=session_ids)
         if not sessions.exists():
@@ -1281,99 +1275,65 @@ class InstructorSessionsView(views.APIView, CustomResponseMixin):
             ).first()
 
             if instructor_session:
-                # Before changing the status from 2 to 1, check if the session is assigned to another instructor with status 1
-                existing_instructor_sessions = InstructorSession.objects.filter(
-                    session=session
-                ).exclude(instructor=instructor)
-
-                # Check if any instructor has this session with status 1 (active)
-                if existing_instructor_sessions.filter(status=1).exists():
+                # Check if the session is already assigned to another instructor with status 1
+                if InstructorSession.objects.filter(
+                    session=session, status=1
+                ).exclude(instructor=instructor).exists():
                     return self.custom_response(
                         status.HTTP_400_BAD_REQUEST,
-                        f"Session with course {session.course.name} is already assigned to another active instructor.",
+                        f"Session with course {session.course.name} is already assigned to another instructor.",
                         None,
                     )
 
-                # If session is already assigned to this instructor and the status is 2, change it to 1
+                # If session is already assigned to this instructor but inactive (status=2), activate it
                 if instructor_session.status == 2:
                     instructor_session.status = 1
                     instructor_session.save()
                     created_sessions.append(instructor_session)
-                    continue  # Skip further checks, continue with the next session
+                    continue
 
-                # Skip this session as it's already assigned and status is not 2
+                # Skip this session if it's already assigned with the correct status
                 continue
 
-            # Check if the session is assigned to another instructor
-            existing_instructor_sessions = InstructorSession.objects.filter(
-                session=session
-            ).exclude(instructor=instructor)
+            # Check for schedule conflicts with the instructor's existing sessions
+            session_schedules = session.schedules.all()
 
-            # If the session is already assigned to another instructor with status 1, raise an error
-            if existing_instructor_sessions.filter(status=1).exists():
-                return self.custom_response(
-                    status.HTTP_400_BAD_REQUEST,
-                    f"Session with course {session.course.name} is already assigned to another instructor.",
-                    None,
-                )
+            for schedule in session_schedules:
+                # Check for overlapping schedules
+                overlapping_sessions = InstructorSession.objects.filter(
+                    instructor=instructor,
+                    session__schedules__day_of_week=schedule.day_of_week,
+                    # session__start_date__lte=session.end_date,
+                    # session__end_date__gte=session.start_date,
+                    session__schedules__start_time__lt=schedule.end_time,
+                    session__schedules__end_time__gt=schedule.start_time,
+                ).exclude(session=session)
 
-            # Check for date overlap
-            overlapping_sessions = InstructorSession.objects.filter(
-                instructor=instructor,
-                session__location=session.location,
-                session__start_date__lte=session.end_date,
-                session__end_date__gte=session.start_date,
-            )
-
-            if overlapping_sessions.exists():
-                # If dates overlap, check for time overlap
-                overlapping_times = overlapping_sessions.filter(
-                    session__start_time__lt=session.end_time,
-                    session__end_time__gt=session.start_time,
-                )
-                exact_start_match = overlapping_sessions.filter(
-                    session__start_time__gte=session.start_time, status=1
-                )
-
-                if overlapping_times.exists() or exact_start_match.exists():
+                if overlapping_sessions.exists():
                     return self.custom_response(
                         status.HTTP_400_BAD_REQUEST,
-                        f"Session timings overlap with existing sessions for this instructor.",
+                        f"Session timings for {course.name} overlap with existing sessions for this instructor.",
                         None,
                     )
-
-            # Collect start and end times for each day of the week using the day integers
-            for day_int in session.days_of_week:
-                if day_int not in WEEKDAYS:
-                    return self.custom_response(
-                        status.HTTP_400_BAD_REQUEST,
-                        f"Invalid day of week: {day_int}.",
-                        None,
-                    )
-
-                day_name = WEEKDAYS[day_int][0]  # Full weekday name
-                if day_name not in date_time_slots:
-                    date_time_slots[day_name] = []
-                date_time_slots[day_name].append((session.start_time, session.end_time))
 
             # Create or update InstructorSession entries for each session
             instructor_session, created = InstructorSession.objects.get_or_create(
                 instructor=instructor,
                 session=session,
                 defaults={
-                    "status": 1,  # Default status or modify based on your needs
+                    "status": 1,  # Default status
                 },
             )
             created_sessions.append(instructor_session)
 
             if session.course:
                 session.course.instructors.add(instructor)
-
+            print("ecneicneo",session_schedules)
             # Collect session details for email
             session_details.append(
                 f"Course: {course.name}\n"
                 f"Location: {session.location.name} Center\n"
-                f"Timings: {session.start_time} - {session.end_time}\n"
+                f"Timings: {', '.join([f'{sch.start_time} - {sch.end_time} on {sch.day_of_week}' for sch in session_schedules])}\n"
             )
 
         # Serialize created or updated InstructorSession objects with detailed session data
@@ -1415,6 +1375,7 @@ class InstructorSessionsView(views.APIView, CustomResponseMixin):
             "Sessions assigned successfully and email sent.",
             response_data,
         )
+
 
 
 class ApplicationUserView(views.APIView, CustomResponseMixin):

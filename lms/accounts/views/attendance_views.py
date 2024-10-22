@@ -336,25 +336,22 @@ class InstructorAttendanceView(CustomResponseMixin, APIView):
 
         for attendance_entry in request.data:
             student_id = attendance_entry.get("student")
-            student_status = attendance_entry.get("status", 0)  # Default to "Present"
+            student_status = attendance_entry.get("status", 0) 
             marked_by = attendance_entry.get("marked_by", marked_by_name)
-            date = attendance_entry.get("date", timezone.now().date())  # Allow custom date or default to today
+            date = attendance_entry.get("date", timezone.now().date()) 
 
-            # Restrict marking attendance for future dates
-            if isinstance(date, str):  # Convert date if it's coming in as a string
+            if isinstance(date, str):  
                 date = datetime.strptime(date, '%Y-%m-%d').date()
             if date > timezone.now().date():
                 return self.custom_response(
                     status.HTTP_400_BAD_REQUEST, f"Cannot mark attendance for future dates: {date}", {}
                 )
 
-            # Ensure the student exists in the session and course
             try:
                 student = enrolled_students.get(registration_id=student_id)
             except Student.DoesNotExist:
-                continue  # Skip if the student is not enrolled in this session and course
+                continue  
 
-            # Create attendance record
             attendance_data.append(
                 Attendance(
                     student=student,
@@ -365,15 +362,12 @@ class InstructorAttendanceView(CustomResponseMixin, APIView):
                 )
             )
 
-        # Bulk create attendance records
         created_attendance = Attendance.objects.bulk_create(attendance_data)
 
         if not created_attendance:
             return self.custom_response(
                 status.HTTP_400_BAD_REQUEST, "No attendance records were created", {}
             )
-
-        # Serialize the created attendance records
         serialized_data = AttendanceSerializer(created_attendance, many=True).data
 
         return self.custom_response(
@@ -381,6 +375,57 @@ class InstructorAttendanceView(CustomResponseMixin, APIView):
         )
 
 
+    def patch(self, request, session_id, course_id, *args, **kwargs):
+        try:
+            session = Sessions.objects.get(id=session_id, course__id=course_id)
+        except Sessions.DoesNotExist:
+            return self.custom_response(
+                status.HTTP_404_NOT_FOUND, "Session not found for the given course", {}
+            )
+
+        enrolled_students = Student.objects.filter(studentsession__session=session_id)
+
+        if not enrolled_students.exists():
+            return self.custom_response(
+                status.HTTP_404_NOT_FOUND, "No students found for this session and course", {}
+            )
+
+        attendance_updates = []
+
+        for attendance_entry in request.data:
+            student_id = attendance_entry.get("student")
+            student_status = attendance_entry.get("status") 
+            date = attendance_entry.get("date", timezone.now().date())  
+
+            if isinstance(date, str):
+                date = datetime.strptime(date, '%Y-%m-%d').date()
+            if date > timezone.now().date():
+                return self.custom_response(
+                    status.HTTP_400_BAD_REQUEST, f"Cannot mark attendance for future dates: {date}", {}
+                )
+
+            try:
+                student = enrolled_students.get(registration_id=student_id)
+            except Student.DoesNotExist:
+                continue  
+
+
+            try:
+                attendance = Attendance.objects.get(student=student, course_id=course_id, date=date)
+                attendance.status = student_status 
+                attendance_updates.append(attendance)
+            except Attendance.DoesNotExist:
+                return self.custom_response(
+                    status.HTTP_404_NOT_FOUND, f"Attendance record not found for student {student_id} on {date}", {}
+                )
+
+        Attendance.objects.bulk_update(attendance_updates, ['status'])
+
+        serialized_data = AttendanceSerializer(attendance_updates, many=True).data
+
+        return self.custom_response(
+            status.HTTP_200_OK, "Attendance status updated successfully", serialized_data
+        )
 
 class AdminAttendanceView(CustomResponseMixin, APIView):
     permission_classes = [permissions.IsAuthenticated]

@@ -224,11 +224,11 @@ urlpatterns = [
         CityStatsView.as_view(),
         name="city-capacity-and-users",
     ),
-    # path(
-    #     "user-process/<int:filteration_id>/",
-    #     user_views.UserProcessView.as_view(),
-    #     name="users-count",
-    # ),
+    path(
+        "instructor-preferred-sessions/",
+        user_views.PreferredInstructorSessionView.as_view(),
+        name="instructor-preferred-sessions",
+    ),
     path(
         "preferred-sessions/",
         user_views.PreferredSessionView.as_view(),
