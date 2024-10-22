@@ -1109,11 +1109,10 @@ class UserSessionsView(views.APIView, CustomResponseMixin):
                     None,
                 )
 
-            # If course_id is provided, filter instructor sessions by course
             if course_id:
                 user_sessions = InstructorSession.objects.filter(
                     instructor=instructor,
-                    session__course__id=course_id,  # Filter sessions based on course_id
+                    session__course__id=course_id,  
                     status=1,
                 )
             else:

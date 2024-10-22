@@ -56,16 +56,22 @@ class UserSerializer(serializers.ModelSerializer):
         return serializer.save()
 
 
-class AdminUserSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True)
+# class AdminUserSerializer(serializers.ModelSerializer):
+#     password = serializers.CharField(write_only=True)
 
+#     class Meta:
+#         model = User
+#         fields = ["email", "password", "first_name", "last_name"]
+
+#     def create(self, validated_data):
+#         return User.objects.create_admin(**validated_data)
+    
+class AdminUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ["email", "password", "first_name", "last_name"]
-
+        fields = ["email", "first_name", "last_name"]  # No password field here
     def create(self, validated_data):
         return User.objects.create_admin(**validated_data)
-
 
 class UserLoginSerializer(serializers.Serializer):
     """Serializer for user login"""
@@ -347,3 +353,4 @@ class InstructorSessionSerializer(serializers.ModelSerializer):
 
     def get_instructor_email(self, obj):
         return obj.instructor.id.email if obj.instructor and obj.instructor.id else None
+

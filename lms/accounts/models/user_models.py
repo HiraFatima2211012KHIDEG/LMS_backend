@@ -71,34 +71,31 @@ class InstructorApplicationSelection(models.Model):
     selected_at = models.DateTimeField(auto_now_add=True)
     selected_locations = models.ManyToManyField(Location, blank=True)
 
-
 class UserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
         if not email:
             raise ValueError("The Email field must be set")
         email = self.normalize_email(email)
         user = self.model(email=email, **extra_fields)
-        user.set_password(password)
+        if password:
+            user.set_password(password)  # Set the password if provided
+        else:
+            user.set_unusable_password()  # Set an unusable password if not provided
         user.save(using=self._db)
         return user
-
     def create_superuser(self, email, password=None, **extra_fields):
         extra_fields.setdefault("is_staff", True)
         extra_fields.setdefault("is_verified", True)
         extra_fields.setdefault("is_superuser", True)
         return self.create_user(email, password, **extra_fields)
-
     def create_admin(self, email, password=None, **extra_fields):
         extra_fields.setdefault("is_staff", True)
-        extra_fields.setdefault("is_verified", True)
+        # extra_fields.setdefault("is_verified", True)
         if extra_fields.get("is_staff") is not True:
             raise ValueError("Admin user must have is_staff=True.")
-
         user = self.create_user(email, password, **extra_fields)
-
         admin_group, created = Group.objects.get_or_create(name="admin")
         user.groups.add(admin_group)
-
         return user
 
 
