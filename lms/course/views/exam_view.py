@@ -200,7 +200,8 @@ class ExamGradingListCreateAPIView(CustomResponseMixin, APIView):
         data = {key: value for key, value in request.data.items()}
         data['graded_by'] = request.user.id
 
-
+        if ExamGrading.objects.filter(exam_submissions=data['exam_submissions'], graded_by=request.user).exists():
+            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Quiz grading already exists for this submission', None)
         serializer = ExamGradingSerializer(data=data)
         if serializer.is_valid():
             serializer.save()

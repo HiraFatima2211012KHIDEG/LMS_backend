@@ -282,7 +282,9 @@ class AssignmentGradingListCreateAPIView(CustomResponseMixin, APIView):
         data = {key: value for key, value in request.data.items()}
         data["graded_by"] = request.user.id
 
-
+        if Grading.objects.filter(submission=data['submission'], graded_by=request.user).exists():
+            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Quiz grading already exists for this submission', None)
+        
         serializer = GradingSerializer(data=data)
         if serializer.is_valid():
             serializer.save()
@@ -306,26 +308,7 @@ class AssignmentGradingDetailAPIView(CustomResponseMixin, APIView):
             serializer.data,
         )
 
-    # @custom_extend_schema(GradingSerializer)
-    # def put(self, request, pk, format=None):
-    #     data = {key: value for key, value in request.data.items()}
-    #     data["graded_by"] = request.user.id
 
-    #     grading = get_object_or_404(Grading, pk=pk)
-    #     serializer = GradingSerializer(grading, data=data, partial=True)
-    #     if serializer.is_valid():
-    #         serializer.save(graded_by=request.user)
-    #         return self.custom_response(
-    #             status.HTTP_200_OK,
-    #             "Assignment grading updated successfully",
-    #             serializer.data,
-    #         )
-
-    #     return self.custom_response(
-    #         status.HTTP_400_BAD_REQUEST,
-    #         "Error updating assignment grading",
-    #         serializer.errors,
-    #     )
 
 
     @custom_extend_schema(GradingSerializer)
