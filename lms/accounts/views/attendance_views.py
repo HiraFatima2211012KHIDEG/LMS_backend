@@ -157,31 +157,28 @@ class AttendanceFilterViewSet(CustomResponseMixin, viewsets.ModelViewSet):
 class SessionsAPIViewAttendance(APIView):
     def get(self, request, session_id):
         try:
-            # Fetch the session to ensure it exists
+            # Get the session by ID
             session = Sessions.objects.get(id=session_id)
 
-            # Get all students linked to this session via StudentSession
+            # Fetch all student sessions for this session
             student_sessions = StudentSession.objects.filter(session=session)
-
-            # Serialize the student session data
             student_serializer = StudentDetailAttendanceSerializer(student_sessions, many=True)
 
-            # Get the instructor associated with this session from InstructorSession
-            try:
-                instructor_session = InstructorSession.objects.get(session=session)
-                instructor = instructor_session.instructor
+            # Fetch all instructor sessions for this session (there could be multiple)
+            instructor_sessions = InstructorSession.objects.filter(session=session)
 
-                # Get the instructor's user details and construct full name
+            # Assuming you want to return all instructors, or handle the first one
+            if instructor_sessions.exists():
+                # Fetching the first instructor
+                instructor = instructor_sessions.first().instructor
+
                 if instructor and instructor.id:
                     full_name = f"{instructor.id.first_name} {instructor.id.last_name}".strip()
                 else:
                     full_name = None
-            except InstructorSession.DoesNotExist:
-                full_name = None
-            except User.DoesNotExist:
+            else:
                 full_name = None
 
-            # Return the response with student and instructor data
             return Response({
                 "status_code": status.HTTP_200_OK,
                 "message": "Students and instructor fetched successfully.",
@@ -226,9 +223,9 @@ class StudentAttendanceListView(CustomResponseMixin, APIView):
 
     def get(self, request, course_id,*args, **kwargs):
         student = request.user.student
-        print(student)
+
         attendances = Attendance.objects.filter(student=student,course_id=course_id)
-        print(attendances)
+
         serialized_attendance = AttendanceSerializer(attendances, many=True)
         
         response_data = {

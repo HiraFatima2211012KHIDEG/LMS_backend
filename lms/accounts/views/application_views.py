@@ -589,7 +589,6 @@ class VerifyEmailandSetPasswordView(views.APIView, CustomResponseMixin):
                             return self.custom_response(status.HTTP_400_BAD_REQUEST, 
                                                         "No matching batch found for the provided city and year.", None)
 
-                        # Create student record
                         registration_id = f"{batch_instance.batch}-{selected_student_program.program_abb}-{existing_user.id}"
                         Student.objects.create(user=existing_user, registration_id=registration_id)
 

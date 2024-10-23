@@ -186,7 +186,6 @@ class UserLoginView(views.APIView):
             }
         )
 
-
 class UserSessionAPIView(views.APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
@@ -206,18 +205,25 @@ class UserSessionAPIView(views.APIView):
                 )
                 for student_session in student_sessions:
                     session_info = SessionsSerializer(student_session.session).data
-                    try:
-                        instructor_session = InstructorSession.objects.get(
-                            session=student_session.session, status=1
-                        )
+                    
+                    # Use filter instead of get to handle multiple instructor sessions
+                    instructor_sessions = InstructorSession.objects.filter(
+                        session=student_session.session, status=1
+                    )
+                    
+                    if instructor_sessions.exists():
+                        # Assuming you only need the first instructor session
+                        instructor_session = instructor_sessions.first()
                         instructor_data = {
                             "instructor_id": instructor_session.instructor.id.id,
                             "instructor_name": f"{instructor_session.instructor.id.first_name} {instructor_session.instructor.id.last_name}",
                         }
                         session_info["instructor"] = instructor_data
-                    except InstructorSession.DoesNotExist:
+                    else:
                         session_info["instructor"] = None
+
                     session_data.append(session_info)
+
             except StudentSession.DoesNotExist:
                 session_data = []
 
@@ -241,6 +247,7 @@ class UserSessionAPIView(views.APIView):
                 "session": session_data if session_data else None,
             }
         )
+
 
 
 class UserProfileView(views.APIView):
