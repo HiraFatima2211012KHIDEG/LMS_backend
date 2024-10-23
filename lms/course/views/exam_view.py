@@ -200,13 +200,29 @@ class ExamGradingListCreateAPIView(CustomResponseMixin, APIView):
         data = {key: value for key, value in request.data.items()}
         data['graded_by'] = request.user.id
 
+        # Check if grading already exists
         if ExamGrading.objects.filter(exam_submissions=data['exam_submissions'], graded_by=request.user).exists():
-            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Quiz grading already exists for this submission', None)
+            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Exam grading already exists for this submission', None)
+
+        # Retrieve the exam submission associated with the grading
+        exam_submission = get_object_or_404(ExamSubmission, pk=data['exam_submissions'])
+        total_grade = exam_submission.exam.total_grade  # Get the total grade for the associated exam
+
+        # Validate the grade
+        if 'grade' in data and float(data['grade']) > float(total_grade):
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST,
+                f"Grade cannot exceed the total grade of {total_grade}",
+                None
+            )
+
         serializer = ExamGradingSerializer(data=data)
         if serializer.is_valid():
-            serializer.save()
+            serializer.save(graded_by=request.user)
             return self.custom_response(status.HTTP_201_CREATED, 'Exam grading created successfully', serializer.data)
+
         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error creating exam grading', serializer.errors)
+
 
 class ExamGradingDetailAPIView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
@@ -221,13 +237,27 @@ class ExamGradingDetailAPIView(CustomResponseMixin, APIView):
         data = {key: value for key, value in request.data.items()}
         data['graded_by'] = request.user.id
 
-
         grading = get_object_or_404(ExamGrading, pk=pk)
-        serializer = ExamGradingSerializer(grading, data=data)
+
+        # Retrieve the associated exam submission
+        exam_submission = grading.exam_submissions
+        total_grade = exam_submission.exam.total_grade  # Get the total grade for the associated exam
+
+        # Validate the grade
+        if 'grade' in data and float(data['grade']) > float(total_grade):
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST,
+                f"Grade cannot exceed the total grade of {total_grade}",
+                None
+            )
+
+        serializer = ExamGradingSerializer(grading, data=data, partial=True)
         if serializer.is_valid():
-            serializer.save()
+            serializer.save(graded_by=request.user)
             return self.custom_response(status.HTTP_200_OK, 'Exam grading updated successfully', serializer.data)
+
         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error updating exam grading', serializer.errors)
+
 
     def delete(self, request, pk, format=None):
         grading = get_object_or_404(ExamGrading, pk=pk)

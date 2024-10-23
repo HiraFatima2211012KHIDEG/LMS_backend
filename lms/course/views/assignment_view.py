@@ -277,14 +277,32 @@ class AssignmentGradingListCreateAPIView(CustomResponseMixin, APIView):
     #         status.HTTP_400_BAD_REQUEST, "Error creating grading", serializer.errors
     #     )
 
-    @custom_extend_schema(GradingSerializer)
     def post(self, request, format=None):
         data = {key: value for key, value in request.data.items()}
         data["graded_by"] = request.user.id
 
+        # Ensure that grading does not already exist for this submission
         if Grading.objects.filter(submission=data['submission'], graded_by=request.user).exists():
-            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Quiz grading already exists for this submission', None)
-        
+            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Grading already exists for this submission', None)
+
+        # Get the submission object to retrieve the associated assignment or quiz
+        try:
+            submission = AssignmentSubmission.objects.get(id=data['submission'])
+        except AssignmentSubmission.DoesNotExist:
+            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Submission not found', None)
+
+        # Retrieve the total grade for the assignment associated with the submission
+        total_grade = submission.assignment.total_grade
+
+        # Check if the provided grade exceeds the total grade
+        if 'grade' in data and float(data['grade']) > float(total_grade):
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST, 
+                f"Grade cannot exceed the total grade of {total_grade}", 
+                None
+            )
+
+        # Proceed with the grading if validation passes
         serializer = GradingSerializer(data=data)
         if serializer.is_valid():
             serializer.save()
@@ -313,13 +331,31 @@ class AssignmentGradingDetailAPIView(CustomResponseMixin, APIView):
 
     @custom_extend_schema(GradingSerializer)
     def put(self, request, pk, format=None):
+        # Fetch the grading object using the primary key
+        grading = get_object_or_404(Grading, pk=pk)
+
+        # Prepare data for the serializer
         data = {key: value for key, value in request.data.items()}
         data["graded_by"] = request.user.id
 
-        grading = get_object_or_404(Grading, pk=pk)
+        # Get the submission associated with the grading
+        submission = grading.submission
+
+        # Retrieve the total grade for the assignment associated with the submission
+        total_grade = submission.assignment.total_grade
+
+        # Validate if the new grade exceeds the total grade
+        if 'grade' in data and float(data['grade']) > float(total_grade):
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST,
+                f"Grade cannot exceed the total grade of {total_grade}",
+                None
+            )
+
+        # Update the grading object using the serializer
         serializer = GradingSerializer(grading, data=data, partial=True)
         if serializer.is_valid():
-            serializer.save(graded_by=request.user)
+            serializer.save()  # No need to pass graded_by again since it's in data
             return self.custom_response(
                 status.HTTP_200_OK,
                 "Assignment grading updated successfully",
@@ -331,6 +367,7 @@ class AssignmentGradingDetailAPIView(CustomResponseMixin, APIView):
             "Error updating assignment grading",
             serializer.errors,
         )
+
 
 
     def delete(self, request, pk, format=None):
@@ -953,78 +990,196 @@ class CourseProgressAPIView(CustomResponseMixin, APIView):
 #             serializer.data,
 #         )
 
-def get_pending_assignments_for_student(program_id, registration_id):
-    courses = Course.objects.filter(program__id=program_id)
-    all_assignments = Assignment.objects.filter(course__in=courses).exclude(Q(status=2) | Q(status=0)) 
+# def get_pending_assignments_for_student(program_id, registration_id):
+#     courses = Course.objects.filter(program__id=program_id)
+#     all_assignments = Assignment.objects.filter(course__in=courses).exclude(Q(status=2) | Q(status=0)) 
+#     submitted_assignments = AssignmentSubmission.objects.filter(
+#         assignment__course__in=courses, registration_id=registration_id
+#     ).values_list("assignment_id", flat=True)
+#     pending_assignments = (
+#         all_assignments.exclude(id__in=submitted_assignments)
+#         .filter(due_date__gte=timezone.now())
+#         .order_by("due_date")
+#     )
+#     return pending_assignments
+
+
+# def get_pending_quizzes_for_student(program_id, registration_id):
+#     courses = Course.objects.filter(program__id=program_id)
+#     all_quizzes = Quizzes.objects.filter(course__in=courses).exclude(Q(status=2) | Q(status=0)) 
+#     submitted_quizzes = QuizSubmission.objects.filter(
+#         quiz__course__in=courses, registration_id=registration_id
+#     ).values_list("quiz_id", flat=True)
+#     pending_quizzes = (
+#         all_quizzes.exclude(id__in=submitted_quizzes)
+#         .filter(due_date__gte=timezone.now())
+#         .order_by("due_date")
+#     )
+#     return pending_quizzes
+
+
+# def get_pending_exams_for_student(program_id, registration_id):
+#     courses = Course.objects.filter(program__id=program_id)
+#     all_exams = Exam.objects.filter(course__in=courses).exclude(Q(status=2) | Q(status=0)) 
+#     submitted_exams = ExamSubmission.objects.filter(
+#         exam__course__in=courses, registration_id=registration_id
+#     ).values_list("exam_id", flat=True)
+#     pending_exams = (
+#         all_exams.exclude(id__in=submitted_exams)
+#         .filter(due_date__gte=timezone.now())
+#         .order_by("due_date")
+#     )
+#     return pending_exams
+
+
+# def get_pending_projects_for_student(program_id, registration_id):
+#     courses = Course.objects.filter(program__id=program_id)
+#     all_projects = Project.objects.filter(course__in=courses).exclude(Q(status=2) | Q(status=0)) 
+#     submitted_projects = ProjectSubmission.objects.filter(
+#         project__course__in=courses, registration_id=registration_id
+#     ).values_list("project_id", flat=True)
+#     pending_projects = (
+#         all_projects.exclude(id__in=submitted_projects)
+#         .filter(due_date__gte=timezone.now())
+#         .order_by("due_date")
+#     )
+#     return pending_projects
+
+
+# class UnifiedPendingItemsView(CustomResponseMixin, APIView):
+#     permission_classes = (permissions.IsAuthenticated,)
+
+#     def get(self, request, program_id, registration_id):
+#         # Fetch pending items
+#         pending_assignments = get_pending_assignments_for_student(
+#             program_id, registration_id
+#         )
+#         pending_quizzes = get_pending_quizzes_for_student(program_id, registration_id)
+#         pending_exams = get_pending_exams_for_student(program_id, registration_id)
+#         pending_projects = get_pending_projects_for_student(program_id, registration_id)
+
+#         # Serialize the data
+#         assignment_serializer = AssignmentPendingSerializer(
+#             pending_assignments, many=True
+#         )
+#         quiz_serializer = QuizPendingSerializer(pending_quizzes, many=True)
+#         exam_serializer = ExamPendingSerializer(pending_exams, many=True)
+#         project_serializer = ProjectPendingSerializer(pending_projects, many=True)
+
+#         # Combine and sort the results
+#         combined_results = []
+#         combined_results.extend(assignment_serializer.data)
+#         combined_results.extend(quiz_serializer.data)
+#         combined_results.extend(exam_serializer.data)
+#         combined_results.extend(project_serializer.data)
+
+#         # Sort combined results by due_date
+#         sorted_results = sorted(combined_results, key=lambda x: x.get("due_date"))
+
+#         # Return the response
+#         if not sorted_results:
+#             return self.custom_response(
+#                 status.HTTP_200_OK,
+#                 "All items have been submitted or there are no pending items.",
+#                 data=[],
+#             )
+
+#         return self.custom_response(
+#             status.HTTP_200_OK,
+#             "Pending items retrieved successfully.",
+#             data={"items": sorted_results},
+#         )
+
+
+
+
+def get_pending_assignments_for_student(session_ids, registration_id):
+    # Filter courses by the provided session IDs
+    courses = Course.objects.filter(sessions__id__in=session_ids)
+    all_assignments = Assignment.objects.filter(course__in=courses).exclude(Q(status=2) | Q(status=0))
+
     submitted_assignments = AssignmentSubmission.objects.filter(
         assignment__course__in=courses, registration_id=registration_id
     ).values_list("assignment_id", flat=True)
+
     pending_assignments = (
         all_assignments.exclude(id__in=submitted_assignments)
         .filter(due_date__gte=timezone.now())
         .order_by("due_date")
     )
+    
     return pending_assignments
 
 
-def get_pending_quizzes_for_student(program_id, registration_id):
-    courses = Course.objects.filter(program__id=program_id)
-    all_quizzes = Quizzes.objects.filter(course__in=courses).exclude(Q(status=2) | Q(status=0)) 
+def get_pending_quizzes_for_student(session_ids, registration_id):
+    # Filter courses by the provided session IDs
+    courses = Course.objects.filter(sessions__id__in=session_ids)
+    all_quizzes = Quizzes.objects.filter(course__in=courses).exclude(Q(status=2) | Q(status=0))
+
     submitted_quizzes = QuizSubmission.objects.filter(
         quiz__course__in=courses, registration_id=registration_id
     ).values_list("quiz_id", flat=True)
+
     pending_quizzes = (
         all_quizzes.exclude(id__in=submitted_quizzes)
         .filter(due_date__gte=timezone.now())
         .order_by("due_date")
     )
+    
     return pending_quizzes
 
 
-def get_pending_exams_for_student(program_id, registration_id):
-    courses = Course.objects.filter(program__id=program_id)
-    all_exams = Exam.objects.filter(course__in=courses).exclude(Q(status=2) | Q(status=0)) 
+def get_pending_exams_for_student(session_ids, registration_id):
+    # Filter courses by the provided session IDs
+    courses = Course.objects.filter(sessions__id__in=session_ids)
+    all_exams = Exam.objects.filter(course__in=courses).exclude(Q(status=2) | Q(status=0))
+
     submitted_exams = ExamSubmission.objects.filter(
         exam__course__in=courses, registration_id=registration_id
     ).values_list("exam_id", flat=True)
+
     pending_exams = (
         all_exams.exclude(id__in=submitted_exams)
         .filter(due_date__gte=timezone.now())
         .order_by("due_date")
     )
+    
     return pending_exams
 
 
-def get_pending_projects_for_student(program_id, registration_id):
-    courses = Course.objects.filter(program__id=program_id)
-    all_projects = Project.objects.filter(course__in=courses).exclude(Q(status=2) | Q(status=0)) 
+def get_pending_projects_for_student(session_ids, registration_id):
+    # Filter courses by the provided session IDs
+    courses = Course.objects.filter(sessions__id__in=session_ids)
+    all_projects = Project.objects.filter(course__in=courses).exclude(Q(status=2) | Q(status=0))
+
     submitted_projects = ProjectSubmission.objects.filter(
         project__course__in=courses, registration_id=registration_id
     ).values_list("project_id", flat=True)
+
     pending_projects = (
         all_projects.exclude(id__in=submitted_projects)
         .filter(due_date__gte=timezone.now())
         .order_by("due_date")
     )
+    
     return pending_projects
 
 
 class UnifiedPendingItemsView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
-    def get(self, request, program_id, registration_id):
-        # Fetch pending items
-        pending_assignments = get_pending_assignments_for_student(
-            program_id, registration_id
-        )
-        pending_quizzes = get_pending_quizzes_for_student(program_id, registration_id)
-        pending_exams = get_pending_exams_for_student(program_id, registration_id)
-        pending_projects = get_pending_projects_for_student(program_id, registration_id)
+    def get(self, request, registration_id, session_ids):
+        # Split the session_ids string into a list of integers
+        session_id_list = list(map(int, session_ids.split(',')))
+
+        # Fetch pending items based on the list of session IDs
+        pending_assignments = get_pending_assignments_for_student(session_id_list, registration_id)
+        pending_quizzes = get_pending_quizzes_for_student(session_id_list, registration_id)
+        pending_exams = get_pending_exams_for_student(session_id_list, registration_id)
+        pending_projects = get_pending_projects_for_student(session_id_list, registration_id)
 
         # Serialize the data
-        assignment_serializer = AssignmentPendingSerializer(
-            pending_assignments, many=True
-        )
+        assignment_serializer = AssignmentPendingSerializer(pending_assignments, many=True)
         quiz_serializer = QuizPendingSerializer(pending_quizzes, many=True)
         exam_serializer = ExamPendingSerializer(pending_exams, many=True)
         project_serializer = ProjectPendingSerializer(pending_projects, many=True)
@@ -1044,18 +1199,14 @@ class UnifiedPendingItemsView(CustomResponseMixin, APIView):
             return self.custom_response(
                 status.HTTP_200_OK,
                 "All items have been submitted or there are no pending items.",
-                data=[],
+                data=[]
             )
 
         return self.custom_response(
             status.HTTP_200_OK,
             "Pending items retrieved successfully.",
-            data={"items": sorted_results},
+            data={"items": sorted_results}
         )
-
-
-
-
 
 
 
