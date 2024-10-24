@@ -26,3 +26,5 @@ STATUS_CHOICES = (
     (1, "Active"),
     (2, "Deleted"),
 )
+
+ROOMS = {1: "Magnitude", 2: "Meteorite", 3: "Twilight"}

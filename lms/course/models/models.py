@@ -73,7 +73,7 @@ class Assignment(models.Model):
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True
     )
-    content = models.TextField()
+    content = models.TextField(null=True)
     no_of_resubmissions_allowed = models.IntegerField(default=0)
     due_date = models.DateTimeField()
     late_submission = models.BooleanField(default=False)

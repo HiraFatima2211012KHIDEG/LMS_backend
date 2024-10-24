@@ -18,6 +18,10 @@ from ..models.user_models import *
 from course.models.models import Course
 from course.serializers import CourseSerializer
 from utils.custom import validate_password
+import os
+
+
+FRONTEND_URL = os.getenv("FRONTEND_URL")
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -32,7 +36,7 @@ class UserSerializer(serializers.ModelSerializer):
             "last_name",
             "password",
             "contact",
-            "city",
+            # "city",
         ]
         extra_kwargs = {"password": {"write_only": True, "max_length": 50}}
 
@@ -65,13 +69,16 @@ class UserSerializer(serializers.ModelSerializer):
 
 #     def create(self, validated_data):
 #         return User.objects.create_admin(**validated_data)
-    
+
+
 class AdminUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ["email", "first_name", "last_name"]  # No password field here
+
     def create(self, validated_data):
         return User.objects.create_admin(**validated_data)
+
 
 class UserLoginSerializer(serializers.Serializer):
     """Serializer for user login"""
@@ -96,7 +103,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "first_name",
             "last_name",
             "contact",
-            "city",
+            # "city",
             "registration_id",
             "email",
             "program",
@@ -228,7 +235,7 @@ class ResetPasswordSerializer(serializers.Serializer):
         user = User.objects.get(email=value)
         uid = urlsafe_base64_encode(force_bytes(user.id))
         token = PasswordResetTokenGenerator().make_token(user)
-        link = f"https://lms-phi-two.vercel.app/auth/set-password/{uid}/{token}"
+        link = f"{FRONTEND_URL}/auth/set-password/{uid}/{token}"
         print("Password reset link:", link)
 
         body = f"Hey {user.first_name} {user.last_name},\nPlease click the following link to reset your password. {link}\nThe link will expire in 10 minutes."
@@ -295,7 +302,7 @@ class StudentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Student
-        fields = ["registration_id", "user"]
+        fields = ["registration_id", "program", "user"]
 
 
 class StudentDetailSerializer(serializers.ModelSerializer):
@@ -319,31 +326,6 @@ class InstructorSerializer(serializers.ModelSerializer):
         fields = ["id", "email", "first_name", "last_name"]
 
 
-class InstructorCoursesSerializer(serializers.ModelSerializer):
-    courses = serializers.SerializerMethodField()
-
-    class Meta:
-        model = Instructor
-        fields = ["id", "courses"]
-
-    def get_courses(self, obj):
-        sessions = InstructorSession.objects.filter(instructor=obj)
-        courses = Sessions.objects.filter(
-            id__in=sessions.values_list("session", flat=True)
-        ).values_list("course", flat=True)
-        courses = Course.objects.filter(id__in=courses)
-        return CourseSerializer(courses, many=True).data
-
-
-class AssignCoursesSerializer(serializers.Serializer):
-    course_ids = serializers.ListField(child=serializers.IntegerField())
-
-    def validate_course_ids(self, value):
-        if not Course.objects.filter(id__in=value).exists():
-            raise serializers.ValidationError("Some course IDs are invalid.")
-        return value
-
-
 class InstructorSessionSerializer(serializers.ModelSerializer):
     instructor_email = serializers.SerializerMethodField()
 
@@ -353,4 +335,3 @@ class InstructorSessionSerializer(serializers.ModelSerializer):
 
     def get_instructor_email(self, obj):
         return obj.instructor.id.email if obj.instructor and obj.instructor.id else None
-

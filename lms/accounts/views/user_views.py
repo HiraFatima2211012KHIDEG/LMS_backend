@@ -5,7 +5,7 @@ from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 from accounts.models import User
 from django.contrib.auth.models import Group
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
 from ..serializers.user_serializers import *
 from ..models.user_models import Student
 import constants
@@ -15,32 +15,10 @@ from ..serializers.location_serializers import *
 from django.shortcuts import get_object_or_404
 from ..serializers.application_serializers import *
 from course.serializers import *
+import os
 
 
-class CreateUserView(generics.CreateAPIView):
-    """Create a new user in the system."""
-
-    serializer_class = UserSerializer
-    permission_classes = (permissions.AllowAny,)
-
-    def perform_create(self, serializer):
-        return serializer.save()
-
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        user = self.perform_create(serializer)
-
-        if "instructor" in user.groups.values_list("name", flat=True):
-            Instructor.objects.get_or_create(id=user)
-
-        return Response(
-            {
-                "status_code": status.HTTP_200_OK,
-                "message": "User created successfully",
-                "response": serializer.data,
-            }
-        )
+FRONTEND_URL = os.getenv("FRONTEND_URL")
 
 
 class CreateAdminUserView(generics.CreateAPIView):
@@ -186,6 +164,7 @@ class UserLoginView(views.APIView):
             }
         )
 
+
 class UserSessionAPIView(views.APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
@@ -205,12 +184,12 @@ class UserSessionAPIView(views.APIView):
                 )
                 for student_session in student_sessions:
                     session_info = SessionsSerializer(student_session.session).data
-                    
+
                     # Use filter instead of get to handle multiple instructor sessions
                     instructor_sessions = InstructorSession.objects.filter(
                         session=student_session.session, status=1
                     )
-                    
+
                     if instructor_sessions.exists():
                         # Assuming you only need the first instructor session
                         instructor_session = instructor_sessions.first()
@@ -247,7 +226,6 @@ class UserSessionAPIView(views.APIView):
                 "session": session_data if session_data else None,
             }
         )
-
 
 
 class UserProfileView(views.APIView):
@@ -654,18 +632,6 @@ class StudentDetailView(generics.RetrieveAPIView):
     lookup_field = "registration_id"
 
 
-class StudentListView(CustomResponseMixin, generics.ListAPIView):
-    queryset = Student.objects.all()
-    serializer_class = StudentSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-    def list(self, request, *args, **kwargs):
-        response = super().list(request, *args, **kwargs)
-        return self.custom_response(
-            status.HTTP_200_OK, "Students retrieved successfully", response.data
-        )
-
-
 class InstructorListView(CustomResponseMixin, generics.ListAPIView):
     queryset = Instructor.objects.all()
     serializer_class = InstructorSerializer
@@ -675,50 +641,6 @@ class InstructorListView(CustomResponseMixin, generics.ListAPIView):
         response = super().list(request, *args, **kwargs)
         return self.custom_response(
             status.HTTP_200_OK, "Instructors retrieved successfully", response.data
-        )
-
-
-class InstructorCoursesViewSet(CustomResponseMixin, viewsets.ViewSet):
-    """
-    A viewset for retrieving all courses of an instructor based on the instructor's ID (email).
-    """
-
-    def list(self, request, *args, **kwargs):
-        instructor_id = request.query_params.get("instructor_id")
-        if not instructor_id:
-            return self.custom_response(
-                status.HTTP_400_BAD_REQUEST, "Instructor ID is required.", None
-            )
-
-        instructor = get_object_or_404(Instructor, id=instructor_id)
-        serializer = InstructorCoursesSerializer(instructor)
-        return self.custom_response(
-            status.HTTP_200_OK, "Courses fetched successfully.", serializer.data
-        )
-
-
-class AssignCoursesView(CustomResponseMixin, views.APIView):
-    """Assign courses to an instructor by providing a list of course IDs."""
-
-    # permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
-
-    @custom_extend_schema(AssignCoursesSerializer)
-    def post(self, request, instructor_id):
-        serializer = AssignCoursesSerializer(data=request.data)
-        if serializer.is_valid():
-            course_ids = serializer.validated_data["course_ids"]
-            instructor = Instructor.objects.get(id=instructor_id)
-            courses = Course.objects.filter(id__in=course_ids)
-            instructor.courses.set(courses)
-
-            for course in courses:
-                course.instructors.add(instructor)
-                course.save()
-            return self.custom_response(
-                status.HTTP_200_OK, "Courses assigned successfully.", {}
-            )
-        return self.custom_response(
-            status.HTTP_400_BAD_REQUEST, "Invalid course IDs.", serializer.errors
         )
 
 
@@ -813,55 +735,10 @@ class PreferredInstructorSessionView(views.APIView, CustomResponseMixin):
     """
     View to fetch sessions based on the instructor's city from the Applications table.
     """
-
     def get(self, request):
-        instructor_id = request.query_params.get("instructor_id")
-
-        if not instructor_id:
-            return self.custom_response(
-                status.HTTP_400_BAD_REQUEST,
-                "Instructor ID is required.",
-                None,
-            )
-        try:
-            instructor = Instructor.objects.get(id=instructor_id)
-        except Instructor.DoesNotExist:
-            return self.custom_response(
-                status.HTTP_404_NOT_FOUND,
-                "The specified instructor does not exist.",
-                None,
-            )
-
-        instructor_email = instructor.id.email
-
-        try:
-            application = Applications.objects.get(email=instructor_email)
-        except Applications.DoesNotExist:
-            return self.custom_response(
-                status.HTTP_404_NOT_FOUND,
-                "No application found for the instructor's email.",
-                None,
-            )
-
-        city = application.city
-
-        queryset = Sessions.objects.filter(location__city=city, status=1)
-
-        if not queryset.exists():
-            return self.custom_response(
-                status.HTTP_404_NOT_FOUND,
-                "No sessions found for the instructor's city.",
-                None,
-            )
+        queryset = Sessions.objects.filter(status=1)
         session_data = SessionsSerializer(queryset, many=True).data
         response_data = {
-            "instructor": {
-                "id": instructor.id.id,
-                "email": instructor_email,
-            },
-            "city": {
-                "name": city,
-            },
             "sessions": session_data,
         }
 
@@ -877,6 +754,23 @@ class PreferredSessionView(views.APIView, CustomResponseMixin):
     View to fetch sessions based on program and location filters.
     """
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="program_id",
+                description="Filter by program id of student.",
+                required=False,
+                type=str,
+            ),
+            OpenApiParameter(
+                name="location_id",
+                description="Filter by location id of student.",
+                required=False,
+                type=str,
+            ),
+        ],
+        responses={200: "application/json"},
+    )
     def get(self, request):
         program_id = request.query_params.get("program_id")
         location_id = request.query_params.get("location_id")
@@ -896,8 +790,9 @@ class PreferredSessionView(views.APIView, CustomResponseMixin):
                 None,
             )
         try:
-            location = Location.objects.get(id=location_id)
-        except Location.DoesNotExist:
+            location = ROOMS[int(location_id)]
+            print("Location found:", location)
+        except KeyError:
             return self.custom_response(
                 status.HTTP_404_NOT_FOUND,
                 "The specified location does not exist.",
@@ -906,7 +801,7 @@ class PreferredSessionView(views.APIView, CustomResponseMixin):
         courses = program.courses.all()
         print("a", courses)
         sessions = Sessions.objects.filter(
-            course__in=courses, location=location, status=1
+            course__in=courses, location=location_id, status=1
         )
         print("b", sessions)
         if not sessions.exists():
@@ -922,8 +817,8 @@ class PreferredSessionView(views.APIView, CustomResponseMixin):
                 "name": program.name,
             },
             "location": {
-                "id": location.id,
-                "name": location.name,
+                "id": location_id,
+                "name": ROOMS[int(location_id)],
             },
             "sessions": session_data,
         }
@@ -932,6 +827,29 @@ class PreferredSessionView(views.APIView, CustomResponseMixin):
             status.HTTP_200_OK, "Sessions fetched successfully.", response_data
         )
 
+    @extend_schema(
+        request={
+            "application/json": {
+                "type": "object",
+                "properties": {
+                    "user_id": {
+                        "type": "integer",
+                        "description": "User id to assign session",
+                    },
+                    "session_ids": {
+                        "type": "integer",
+                        "description": "Sessions to assign to the student",
+                    },
+                },
+                "required": ["user_id", "session_ids"],
+            }
+        },
+        responses={
+            200: OpenApiTypes.OBJECT,
+            400: OpenApiTypes.OBJECT,
+        },
+        description="Assign sessions to student",
+    )
     def post(self, request):
         user_id = request.data.get("user_id")
         session_ids = request.data.get("session_ids", [])
@@ -970,20 +888,11 @@ class PreferredSessionView(views.APIView, CustomResponseMixin):
         student_application = StudentApplicationSelection.objects.get(
             application=application
         )
-        selected_location = student_application.selected_location
         created_sessions = []
         session_details = []
         date_time_slots = {}
 
         for session in sessions:
-            if session.location != selected_location:
-                return self.custom_response(
-                    status.HTTP_400_BAD_REQUEST,
-                    f"Selected location does not match session location for session {session.id}.",
-                    None,
-                )
-
-            # Validate if the student is already assigned to this session's course
             if StudentSession.objects.filter(
                 student=student, session__course=session.course, status=1
             ).exists():
@@ -1001,7 +910,7 @@ class PreferredSessionView(views.APIView, CustomResponseMixin):
                     session__schedules__day_of_week=schedule.day_of_week,
                     session__schedules__start_time__lt=schedule.end_time,
                     session__schedules__end_time__gt=schedule.start_time,
-                    session__status=1
+                    session__status=1,
                 ).exclude(session=session)
 
                 # Check if overlapping sessions have overlapping date ranges
@@ -1021,7 +930,9 @@ class PreferredSessionView(views.APIView, CustomResponseMixin):
                 day_name = schedule.day_of_week
                 if day_name not in date_time_slots:
                     date_time_slots[day_name] = []
-                date_time_slots[day_name].append((schedule.start_time, schedule.end_time))
+                date_time_slots[day_name].append(
+                    (schedule.start_time, schedule.end_time)
+                )
 
             # Create or update StudentSession entries for each session
             student_session, created = StudentSession.objects.get_or_create(
@@ -1034,7 +945,7 @@ class PreferredSessionView(views.APIView, CustomResponseMixin):
             # Collect session details for email
             session_details.append(
                 f"Course: {session.course.name}\n"
-                f"Location: {session.location.name} Center\n"
+                f"Location: {ROOMS[int(session.location)]} Center\n"
                 f"Timings:\n"
                 + "\n".join(
                     [
@@ -1058,7 +969,7 @@ class PreferredSessionView(views.APIView, CustomResponseMixin):
             + "\n\n".join(session_details)
             + "\n\nPlease make sure to attend these sessions on time.\n"
             f"Login to the portal from the link below, and start your learning journey.\n"
-            f"https://lms-phi-two.vercel.app/auth/login"
+            f"{FRONTEND_URL}/auth/login"
         )
 
         email_data = {
@@ -1076,9 +987,28 @@ class PreferredSessionView(views.APIView, CustomResponseMixin):
             response_data,
         )
 
+
 class UserSessionsView(views.APIView, CustomResponseMixin):
     """View to get all sessions assigned to a specific user."""
 
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="group_name",
+                description="Filter by program id of studentgroup name.",
+                required=False,
+                type=str,
+            ),
+            OpenApiParameter(
+                name="course_id",
+                description="Filter by course_id.",
+                required=False,
+                type=str,
+            ),
+        ],
+        responses={200: "application/json"},
+    )
     def get(self, request, user_id):
         # Determine whether the user is a student or instructor
         group_name = request.query_params.get("group_name")
@@ -1119,7 +1049,7 @@ class UserSessionsView(views.APIView, CustomResponseMixin):
             if course_id:
                 user_sessions = InstructorSession.objects.filter(
                     instructor=instructor,
-                    session__course__id=course_id,  
+                    session__course__id=course_id,
                     status=1,
                 )
             else:
@@ -1156,7 +1086,7 @@ class UserSessionsView(views.APIView, CustomResponseMixin):
                 "session_id": session.id,
                 "status": user_session.status,  # Session-specific status
                 "course": session.course.name if session.course else None,
-                "location": session.location.name if session.location else None,
+                "location": ROOMS[int(session.location)] if session.location else None,
                 "schedules": schedule_info,  # Include schedules in the response
                 "no_of_students": session.no_of_students,
             }
@@ -1237,6 +1167,29 @@ class InstructorSessionsView(views.APIView, CustomResponseMixin):
     View to assign sessions to an instructor.
     """
 
+    @extend_schema(
+        request={
+            "application/json": {
+                "type": "object",
+                "properties": {
+                    "user_id": {
+                        "type": "integer",
+                        "description": "User id to assign session",
+                    },
+                    "session_ids": {
+                        "type": "integer",
+                        "description": "Sessions to assign to the student",
+                    },
+                },
+                "required": ["user_id", "session_ids"],
+            }
+        },
+        responses={
+            200: OpenApiTypes.OBJECT,
+            400: OpenApiTypes.OBJECT,
+        },
+        description="Assign sessions to student",
+    )
     def post(self, request):
         user_id = request.data.get("user_id")
         session_ids = request.data.get("session_ids", [])
@@ -1251,7 +1204,6 @@ class InstructorSessionsView(views.APIView, CustomResponseMixin):
         try:
             # Correctly fetching the instructor using the ID field
             instructor = Instructor.objects.get(id__id=user_id)
-            print("jbcec",instructor)
         except Instructor.DoesNotExist:
             return self.custom_response(
                 status.HTTP_404_NOT_FOUND,
@@ -1282,9 +1234,11 @@ class InstructorSessionsView(views.APIView, CustomResponseMixin):
 
             if instructor_session:
                 # Check if the session is already assigned to another instructor with status 1
-                if InstructorSession.objects.filter(
-                    session=session, status=1
-                ).exclude(instructor=instructor).exists():
+                if (
+                    InstructorSession.objects.filter(session=session, status=1)
+                    .exclude(instructor=instructor)
+                    .exists()
+                ):
                     return self.custom_response(
                         status.HTTP_400_BAD_REQUEST,
                         f"Session with course {session.course.name} is already assigned to another instructor.",
@@ -1334,11 +1288,11 @@ class InstructorSessionsView(views.APIView, CustomResponseMixin):
 
             if session.course:
                 session.course.instructors.add(instructor)
-            print("ecneicneo",session_schedules)
+            print("ecneicneo", session_schedules)
             # Collect session details for email
             session_details.append(
                 f"Course: {course.name}\n"
-                f"Location: {session.location.name} Center\n"
+                f"Location: {ROOMS[int(session.location)]} Center\n"
                 f"Timings: {', '.join([f'{sch.start_time} - {sch.end_time} on {sch.day_of_week}' for sch in session_schedules])}\n"
             )
 
@@ -1363,7 +1317,7 @@ class InstructorSessionsView(views.APIView, CustomResponseMixin):
             + "\n\n".join(session_details)
             + "\n\nPlease review your schedule and be prepared for your upcoming sessions.\n"
             f"Login to the portal from the link below to view details and manage your sessions.\n"
-            f"https://lms-phi-two.vercel.app/auth/login"
+            f"{FRONTEND_URL}/auth/login"
         )
 
         # Email configuration
@@ -1381,7 +1335,6 @@ class InstructorSessionsView(views.APIView, CustomResponseMixin):
             "Sessions assigned successfully and email sent.",
             response_data,
         )
-
 
 
 class ApplicationUserView(views.APIView, CustomResponseMixin):
@@ -1548,10 +1501,6 @@ class UserDetailsView(views.APIView, CustomResponseMixin):
                     ProgramSerializer(selection.selected_program).data
                     for selection in student_selection
                 ]
-                response_data["locations"] = [
-                    LocationSerializer(selection.selected_location).data
-                    for selection in student_selection
-                ]
 
             elif group_name == "instructor":
                 # Retrieve the instructor object using user_id
@@ -1596,14 +1545,14 @@ class UserDetailsView(views.APIView, CustomResponseMixin):
                     ],
                     many=True,
                 ).data
-                response_data["locations"] = LocationSerializer(
-                    [
-                        location
-                        for selection in instructor_selection
-                        for location in selection.selected_locations.all()
-                    ],
-                    many=True,
-                ).data
+                # response_data["locations"] = LocationSerializer(
+                #     [
+                #         location
+                #         for selection in instructor_selection
+                #         for location in selection.selected_locations.all()
+                #     ],
+                #     many=True,
+                # ).data
 
             return self.custom_response(
                 status.HTTP_200_OK,
@@ -1651,3 +1600,22 @@ class BatchStudentView(views.APIView, CustomResponseMixin):
                 f"An error occurred: {str(e)}",
                 "None",
             )
+
+
+# @extend_schema(
+#         parameters=[
+#             OpenApiParameter(
+#                 name="program_id",
+#                 description="Filter by program id of student.",
+#                 required=False,
+#                 type=str,
+#             ),
+#             OpenApiParameter(
+#                 name="location_id",
+#                 description="Filter by location id of student.",
+#                 required=False,
+#                 type=str,
+#             ),
+#         ],
+#         responses={200: "application/json"},
+#     )

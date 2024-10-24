@@ -1,17 +1,11 @@
 from rest_framework import serializers
 from ..models.user_models import StudentSession, InstructorSession
-from ..models.location_models import City, Batch, Location, Sessions, SessionSchedule
+from ..models.location_models import Batch, Sessions, SessionSchedule
 from course.serializers import CourseSerializer
 from course.models.models import Course, Assignment, Quizzes, Exam, Project
 from constants import WEEKDAYS
 from datetime import timedelta
 from utils.custom import get_assessment
-
-
-class CitySerializer(serializers.ModelSerializer):
-    class Meta:
-        model = City
-        fields = ["city", "shortname"]
 
 
 class BatchSerializer(serializers.ModelSerializer):
@@ -21,8 +15,8 @@ class BatchSerializer(serializers.ModelSerializer):
         model = Batch
         fields = [
             "batch",
-            "city",
-            "city_abb",
+            "name",
+            "short_name",
             "year",
             "no_of_students",
             "application_start_date",
@@ -30,30 +24,12 @@ class BatchSerializer(serializers.ModelSerializer):
             "start_date",
             "end_date",
             "status",
-            "term",
             "created_at",
         ]
-
-
-class LocationSerializer(serializers.ModelSerializer):
-    remaining_spots_for_location = serializers.SerializerMethodField()
-
-    class Meta:
-        model = Location
-        fields = [
-            "id",
-            "name",
-            "shortname",
-            "capacity",
-            "city",
-            "status",
-            "remaining_spots_for_location",
-            "created_at",
-        ]
-
-    def get_remaining_spots_for_location(self, obj):
+    def get_remaining_slots_for_batch(self, obj):
+        session = Sessions.objects.filter(Batch=obj)
         total_students_assigned = StudentSession.objects.filter(
-            session__location=obj
+            session=session
         ).count()
         remaining_spots = obj.capacity - total_students_assigned
         return max(remaining_spots, 0)
@@ -86,7 +62,6 @@ class SessionScheduleSerializer(serializers.ModelSerializer):
 
 
 class SessionsSerializer(serializers.ModelSerializer):
-    location_name = serializers.CharField(source="location.name", read_only=True)
     course = CourseSerializer(read_only=True)
     course_id = serializers.PrimaryKeyRelatedField(
         queryset=Course.objects.all(), source="course", write_only=True
@@ -99,8 +74,8 @@ class SessionsSerializer(serializers.ModelSerializer):
         model = Sessions
         fields = [
             "id",
+            "batch",
             "location",
-            "location_name",
             "no_of_students",
             "remaining_spots",
             "start_date",
@@ -167,15 +142,6 @@ class StudentSessionsSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
-class AssignSessionsSerializer(serializers.Serializer):
-    session_ids = serializers.ListField(child=serializers.IntegerField())
-
-    def validate_session_ids(self, value):
-        if not Sessions.objects.filter(id__in=value).exists():
-            raise serializers.ValidationError("Some session IDs are invalid.")
-        return value
-
-
 class InstructorSessionSerializer(serializers.ModelSerializer):
     class Meta:
         model = InstructorSession
@@ -203,7 +169,6 @@ class InstructorSessionSerializer(serializers.ModelSerializer):
 
 
 class SessionsCalendarSerializer(serializers.ModelSerializer):
-    location_name = serializers.CharField(source="location.name", read_only=True)
     day_names = serializers.SerializerMethodField()
     course_id = serializers.IntegerField(source="course.id", read_only=True)
     course_name = serializers.CharField(source="course.name", read_only=True)
@@ -221,7 +186,6 @@ class SessionsCalendarSerializer(serializers.ModelSerializer):
             "start_date",
             "end_date",
             "location",
-            "location_name",
             "no_of_students",
             "course_id",
             "course_name",

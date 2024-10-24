@@ -1,10 +1,6 @@
 from pathlib import Path
 import os
 import datetime
-
-# Load environment variables from .env file
-
-
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -26,21 +22,6 @@ SECRET_KEY = "django-insecure-y$aw0745t@#7s@v8c&^_fr&sh$snyd^32*jn_8p2436#acbql(
 ALLOWED_HOSTS = ["*", "192.168.53.83", "www.lms-api-xloopdigital.com"]
 # settings.py
 DEBUG = True
-
-# server {
-#     listen 80;
-#     server_name lms-api-xloopdigital.com;
-
-#     location = /favicon.ico { access_log off; log_not_found off; }
-#     location /static/ {
-#         root /home/hirafatima/learning/Django/lms_backend/version_5/LMS_backend/lms;
-#     }
-
-#     location / {
-#         include proxy_params;
-#         proxy_pass http://unix:/run/gunicorn.sock;
-#     }
-# }
 
 # Application definition
 
@@ -100,10 +81,10 @@ WSGI_APPLICATION = "lms.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        'HOST': os.getenv('DB_HOST'),
-        'NAME': os.getenv('DB_NAME'),
-        'USER': os.getenv('DB_USER'),
-        'PASSWORD': os.getenv('DB_PASSWORD'),
+        "HOST": os.getenv("DB_HOST"),
+        "NAME": os.getenv("DB_NAME"),
+        "USER": os.getenv("DB_USER"),
+        "PASSWORD": os.getenv("DB_PASSWORD"),
         # "HOST": "localhost",
         # "NAME": "newdb",
         # "USER": "postgres",
@@ -190,16 +171,16 @@ SIMPLE_JWT = {
     "SIGNING_KEY": SECRET_KEY,
 }
 
-MAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-EMAIL_HOST = "smtp.gmail.com"
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = "maazjavaidsiddique10@gmail.com"
-EMAIL_HOST_PASSWORD = "hmsp qgbw pvvo twrc"
-# EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER")
-# EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD")
-EMAIL_FROM_ADDRESS = "maazjavaidsiddique10@gmail.com"
-EMAIL_DEBUG = True
+MAIL_BACKEND = os.getenv("MAIL_BACKEND")
+EMAIL_HOST = os.getenv("EMAIL_HOST")
+EMAIL_PORT = os.getenv("EMAIL_PORT")
+EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS")
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
+EMAIL_FROM_ADDRESS = os.getenv("EMAIL_FROM_ADDRESS")
+EMAIL_DEBUG = os.getenv("EMAIL_DEBUG")
 
 
 PASSWORD_RESET_TIMEOUT = 600  # 600Sec = 10 Min

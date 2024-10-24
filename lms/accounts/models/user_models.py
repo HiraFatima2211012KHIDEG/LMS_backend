@@ -26,9 +26,9 @@ class Applications(models.Model):
     first_name = models.CharField(max_length=50)
     last_name = models.CharField(max_length=50)
     contact = models.CharField(max_length=12, null=True, blank=True)
-    city = models.CharField(max_length=50)
-    location = models.ManyToManyField(Location)
-    city_abb = models.CharField(max_length=10, null=True)
+    # city = models.CharField(max_length=50)
+    # location = models.ManyToManyField(Location)
+    # city_abb = models.CharField(max_length=10, null=True)
     program = models.ManyToManyField("course.Program", blank=True)
     group_name = models.CharField(max_length=20)
     created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
@@ -50,7 +50,7 @@ class Applications(models.Model):
     resume = models.TextField(null=True, blank=True)
 
     def __str__(self):
-        return f"{self.email} - {self.city} - {self.program}"
+        return f"{self.email} - {self.program}"
 
 
 class StudentApplicationSelection(models.Model):
@@ -61,7 +61,7 @@ class StudentApplicationSelection(models.Model):
     )
     status = models.CharField(max_length=15, default="selected")
     selected_at = models.DateTimeField(auto_now_add=True)
-    selected_location = models.ForeignKey(Location, on_delete=models.CASCADE)
+    # selected_location = models.ForeignKey(Location, on_delete=models.CASCADE)
 
 
 class InstructorApplicationSelection(models.Model):
@@ -69,7 +69,8 @@ class InstructorApplicationSelection(models.Model):
     selected_skills = models.ManyToManyField(TechSkill)
     status = models.CharField(max_length=15, default="selected")
     selected_at = models.DateTimeField(auto_now_add=True)
-    selected_locations = models.ManyToManyField(Location, blank=True)
+    # selected_locations = models.ManyToManyField(Location, blank=True)
+
 
 class UserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
@@ -83,11 +84,13 @@ class UserManager(BaseUserManager):
             user.set_unusable_password()  # Set an unusable password if not provided
         user.save(using=self._db)
         return user
+
     def create_superuser(self, email, password=None, **extra_fields):
         extra_fields.setdefault("is_staff", True)
         extra_fields.setdefault("is_verified", True)
         extra_fields.setdefault("is_superuser", True)
         return self.create_user(email, password, **extra_fields)
+
     def create_admin(self, email, password=None, **extra_fields):
         extra_fields.setdefault("is_staff", True)
         # extra_fields.setdefault("is_verified", True)
@@ -104,7 +107,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     first_name = models.CharField(max_length=20, null=True, blank=True)
     last_name = models.CharField(max_length=20, null=True, blank=True)
     contact = models.CharField(max_length=12, null=True, blank=True)
-    city = models.CharField(max_length=50, null=True, blank=True)
+    # city = models.CharField(max_length=50, null=True, blank=True)
     is_staff = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now=True, null=True, blank=True)

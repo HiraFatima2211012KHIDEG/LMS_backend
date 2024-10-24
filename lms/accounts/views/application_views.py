@@ -24,6 +24,10 @@ from course.serializers import *
 from django.db.models import Q
 from utils.custom import custom_extend_schema
 from ..models.location_models import *
+import os
+
+
+FRONTEND_URL = os.getenv("FRONTEND_URL")
 
 
 class CreateApplicationView(generics.CreateAPIView):
@@ -33,30 +37,17 @@ class CreateApplicationView(generics.CreateAPIView):
 
     def perform_create(self, serializer):
         email = serializer.validated_data.get("email").lower()
-        city = serializer.validated_data.get("city").title()
-        city_abb = serializer.validated_data.get("city_abb").upper()
         first_name = serializer.validated_data.get("first_name").title()
         last_name = serializer.validated_data.get("last_name").title()
         group_name = serializer.validated_data.get("group_name").lower()
         serializer.save(
             email=email,
-            city=city,
-            city_abb=city_abb,
+            # city=city,
+            # city_abb=city_abb,
             first_name=first_name,
             last_name=last_name,
             group_name=group_name,
         )
-
-
-# class EmailVerificationToken(AccessToken):
-#     lifetime = timedelta(minutes=10)
-
-#     @classmethod
-#     def for_application(cls, application):
-#         token = cls()
-#         token['user_id'] = application.id  # Store application ID
-#         token['user_email'] = application.email  # Store application email
-#         return token
 
 
 class ApplicationProcessView(views.APIView, CustomResponseMixin):
@@ -184,8 +175,6 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
         """Handle processing of student applications based on their status."""
         for application in serialized_data:
             programs = application.pop("program", [])
-            locations = application.pop("location", [])
-
             if application_status == "approved":
                 try:
                     selected_user = StudentApplicationSelection.objects.get(
@@ -194,9 +183,6 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
                     selected_program = Program.objects.get(
                         id=selected_user.selected_program.id
                     )
-                    selected_location = Location.objects.get(
-                        id=selected_user.selected_location.id
-                    )
                     try:
                         user = User.objects.get(email=application.get("email"))
                         application["account_status"] = "verified"
@@ -204,12 +190,9 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
                         application["account_status"] = "unverified"
 
                     application["program"] = [ProgramSerializer(selected_program).data]
-                    application["location"] = [
-                        LocationSerializer(selected_location).data
-                    ]
+
                 except StudentApplicationSelection.DoesNotExist:
-                    application["program"] = None  # or handle the case appropriately
-                    application["location"] = None
+                    application["program"] = None
             else:
                 complete_related_programs = Program.objects.filter(id__in=programs)
                 application["program"] = [
@@ -218,20 +201,11 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
                         complete_related_programs, many=True
                     ).data
                 ]
-                complete_related_locations = Location.objects.filter(id__in=locations)
-                # application["location"] = application.get("location", None)
-                application["location"] = [
-                    {"id": location["id"], "name": location["name"]}
-                    for location in LocationSerializer(
-                        complete_related_locations, many=True
-                    ).data
-                ]
 
     def handle_instructor_applications(self, serialized_data, application_status):
         """Handle processing of instructor applications based on their status."""
         for application in serialized_data:
             related_skills = application.pop("required_skills", [])
-            related_locations = application.pop("location", [])
 
             if application_status == "approved":
                 try:
@@ -242,10 +216,6 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
                     application["skill"] = TechSkillSerializer(
                         selected_skills, many=True
                     ).data
-                    selected_locations = selected_user.selected_locations.all()
-                    application["location"] = LocationSerializer(
-                        selected_locations, many=True
-                    ).data
 
                     try:
                         user = User.objects.get(email=application.get("email"))
@@ -254,34 +224,22 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
                         application["account_status"] = "unverified"
 
                 except InstructorApplicationSelection.DoesNotExist:
-                    application["skill"] = []  # or handle the case appropriately
-                    application["location"] = []
+                    application["skill"] = []
             else:
                 # Check if related_skills is a list of integers or dictionaries
-                if (related_skills and isinstance(related_skills[0], dict)) and (
-                    related_locations and isinstance(related_locations[0], dict)
-                ):
+                if related_skills and isinstance(related_skills[0], dict):
                     # related_skills is a list of dictionaries
                     related_skills_objects = TechSkill.objects.filter(
                         id__in=[skill["id"] for skill in related_skills]
-                    )
-                    related_locations_objects = Location.objects.filter(
-                        id__in=[location["id"] for location in related_locations]
                     )
                 else:
                     # related_skills is a list of integers
                     related_skills_objects = TechSkill.objects.filter(
                         id__in=related_skills
                     )
-                    related_locations_objects = Location.objects.filter(
-                        id__in=related_locations
-                    )
 
                 application["skill"] = TechSkillSerializer(
                     related_skills_objects, many=True
-                ).data
-                application["location"] = LocationSerializer(
-                    related_locations_objects, many=True
                 ).data
 
     @extend_schema(
@@ -345,32 +303,18 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
                         email_content = ""
                         if application_obj.group_name == "student":
                             program_id = data.get("program_id")
-                            location_id = data.get("location_id")
                             if program_id is None:
                                 return self.custom_response(
                                     status.HTTP_400_BAD_REQUEST,
                                     "Selected program_id is not provided.",
                                     None,
                                 )
-                            if location_id is None:
-                                return self.custom_response(
-                                    status.HTTP_400_BAD_REQUEST,
-                                    "Selected location_id is not provided.",
-                                    None,
-                                )
                             try:
                                 program = Program.objects.get(id=program_id)
-                                location = Location.objects.get(id=location_id)
                             except Program.DoesNotExist:
                                 return self.custom_response(
                                     status.HTTP_404_NOT_FOUND,
                                     "No program object found for this ID.",
-                                    None,
-                                )
-                            except Location.DoesNotExist:
-                                return self.custom_response(
-                                    status.HTTP_404_NOT_FOUND,
-                                    "No location object found for this ID.",
                                     None,
                                 )
 
@@ -382,30 +326,20 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
                                     f"Invalid program_id.",
                                     None,
                                 )
-                            related_locations = application_obj.location.all()
-                            if location not in related_locations:
-                                return self.custom_response(
-                                    status.HTTP_400_BAD_REQUEST,
-                                    f"Invalid location_id.",
-                                    None,
-                                )
 
                             StudentApplicationSelection.objects.create(
                                 application=application_obj,
                                 selected_program=program,
-                                selected_location=location,
                             )
 
                             email_content = (
                                 f"Congratulations {application_obj.first_name} {application_obj.last_name}!\n\n"
                                 f"You have been selected for the program '{program.name}' "
-                                f"at the location '{location.name} Center'.\n\n"
                                 f"Please complete your selection process by verifying your account using the link below."
                             )
 
                         elif application_obj.group_name == "instructor":
                             skills_ids = data.get("skills_id", [])
-                            location_ids = data.get("locations_id", [])
                             if not skills_ids or not set(skills_ids).issubset(
                                 application_obj.required_skills.values_list(
                                     "id", flat=True
@@ -417,17 +351,7 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
                                     None,
                                 )
 
-                            if not location_ids or not set(location_ids).issubset(
-                                application_obj.location.values_list("id", flat=True)
-                            ):
-                                return self.custom_response(
-                                    status.HTTP_400_BAD_REQUEST,
-                                    "Selected location_id is not provided or Invalid location_id found.",
-                                    None,
-                                )
-
                             skills = TechSkill.objects.filter(id__in=skills_ids)
-                            locations = Location.objects.filter(id__in=location_ids)
                             instructor_selection = (
                                 InstructorApplicationSelection.objects.create(
                                     application=application_obj
@@ -435,20 +359,15 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
                             )
 
                             instructor_selection.selected_skills.set(skills)
-                            instructor_selection.selected_locations.set(locations)
 
                             # Customize email body for instructors
                             selected_skills_list = ", ".join(
                                 [skill.name for skill in skills]
                             )
-                            selected_locations_list = ", ".join(
-                                [f"{location.name} Center" for location in locations]
-                            )
                             email_content = (
                                 f"Congratulations {application_obj.first_name} {application_obj.last_name}!\n\n"
                                 f"You have been selected as an instructor for the following skills:\n"
                                 f"- Skills: {selected_skills_list}\n"
-                                f"- Locations: {selected_locations_list}\n\n"
                                 f"Please complete your selection process by verifying your account using the link below."
                             )
 
@@ -458,7 +377,7 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
                         )
                         print("Token", token)
                         verification_link = (
-                            f"http://localhost:3000/auth/account-verify/{str(token)}"
+                            f"{FRONTEND_URL}/auth/account-verify/{str(token)}"
                         )
                         body = f"{email_content}\n\nVerification Link:\n{verification_link}\n\nThis link will expire in 3 days."
 
@@ -491,6 +410,7 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
         # Sign the encoded data
         signed_token = signer.sign(encoded_data)
         return signed_token
+
 
 class VerifyEmailandSetPasswordView(views.APIView, CustomResponseMixin):
     permission_classes = [permissions.AllowAny]
@@ -529,11 +449,17 @@ class VerifyEmailandSetPasswordView(views.APIView, CustomResponseMixin):
 
         # Validate request data
         if not token:
-            return self.custom_response(status.HTTP_400_BAD_REQUEST, "Token is required.", None)
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST, "Token is required.", None
+            )
         if not password:
-            return self.custom_response(status.HTTP_400_BAD_REQUEST, "Password is required.", None)
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST, "Password is required.", None
+            )
         if not password2:
-            return self.custom_response(status.HTTP_400_BAD_REQUEST, "Confirm password is required.", None)
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST, "Confirm password is required.", None
+            )
 
         signer = TimestampSigner()
         try:
@@ -541,29 +467,36 @@ class VerifyEmailandSetPasswordView(views.APIView, CustomResponseMixin):
                 unsigned_data = signer.unsign(token, max_age=259200)
                 decoded_data = base64.urlsafe_b64decode(unsigned_data).decode()
                 user_id, email = decoded_data.split(":")
-                
+
                 # Check if the user already exists
                 existing_user = get_user_model().objects.filter(email=email).first()
-                
+
                 if existing_user:
                     if existing_user.is_verified:
-                        return self.custom_response(status.HTTP_400_BAD_REQUEST, "User already verified.", None)
+                        return self.custom_response(
+                            status.HTTP_400_BAD_REQUEST, "User already verified.", None
+                        )
 
                     # Admin user-specific verification
-                    if existing_user.groups.filter(name='admin').exists():
+                    if existing_user.groups.filter(name="admin").exists():
                         existing_user.is_verified = True
                         existing_user.save()  # Save verification status for admin
                     else:
-                        return self.custom_response(status.HTTP_400_BAD_REQUEST, "Admin user already verified.", None)
+                        return self.custom_response(
+                            status.HTTP_400_BAD_REQUEST,
+                            "Admin user already verified.",
+                            None,
+                        )
                 else:
                     # Handle new user creation
                     application = Applications.objects.get(id=user_id)
+                    print("application", application)
                     user_data = {
                         "email": application.email,
                         "first_name": application.first_name,
                         "last_name": application.last_name,
                         "contact": application.contact,
-                        "city": application.city,
+                        # "city": application.city,
                         "is_verified": True,
                     }
                     existing_user = get_user_model().objects.create_user(**user_data)
@@ -571,37 +504,53 @@ class VerifyEmailandSetPasswordView(views.APIView, CustomResponseMixin):
                     # Handle student-specific logic
                     if application.group_name == "student":
                         try:
-                            selected_student_program = StudentApplicationSelection.objects.get(
-                                application=application).selected_program
+                            selected_student_program = (
+                                StudentApplicationSelection.objects.get(
+                                    application=application
+                                ).selected_program
+                            )
                         except StudentApplicationSelection.DoesNotExist:
-                            return self.custom_response(status.HTTP_400_BAD_REQUEST, 
-                                                        "Program selection not found for the application.", None)
+                            return self.custom_response(
+                                status.HTTP_400_BAD_REQUEST,
+                                "Program selection not found for the application.",
+                                None,
+                            )
 
                         # Fetch batch instance
                         batch_instance = Batch.objects.filter(
-                            city_abb=application.city_abb,
+                            # city_abb=application.city_abb,
                             year=application.year,
                             application_start_date__lte=application.created_at,
                             start_date__gte=application.created_at,
                         ).first()
+                        print(batch_instance)
 
                         if not batch_instance:
-                            return self.custom_response(status.HTTP_400_BAD_REQUEST, 
-                                                        "No matching batch found for the provided city and year.", None)
+                            return self.custom_response(
+                                status.HTTP_400_BAD_REQUEST,
+                                "No matching batch found for the provided city and year.",
+                                None,
+                            )
 
                         registration_id = f"{batch_instance.batch}-{selected_student_program.program_abb}-{existing_user.id}"
-                        Student.objects.create(user=existing_user, registration_id=registration_id)
+                        Student.objects.create(
+                            user=existing_user,
+                            registration_id=registration_id,
+                            program=selected_student_program,
+                        )
 
                     elif application.group_name == "instructor":
                         Instructor.objects.create(id=existing_user)
 
                 # Set the password using SetPasswordSerializer
                 password_data = {"password": password, "password2": password2}
-                serializer = SetPasswordSerializer(data=password_data, context={"user": existing_user})
-                
+                serializer = SetPasswordSerializer(
+                    data=password_data, context={"user": existing_user}
+                )
+
                 if serializer.is_valid(raise_exception=True):
                     serializer.save()
-                
+
                 response_data = serializer.data
                 response_data["email"] = existing_user.email
 
@@ -612,14 +561,33 @@ class VerifyEmailandSetPasswordView(views.APIView, CustomResponseMixin):
                 )
 
         except SignatureExpired:
-            return self.custom_response(status.HTTP_400_BAD_REQUEST, "The reset link has expired.", None)
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST, "The reset link has expired.", None
+            )
         except BadSignature:
-            return self.custom_response(status.HTTP_400_BAD_REQUEST, "Invalid token or data tampering detected.", None)
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST,
+                "Invalid token or data tampering detected.",
+                None,
+            )
         except Applications.DoesNotExist:
-            return self.custom_response(status.HTTP_400_BAD_REQUEST, "Application not found.", None)
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST, "Application not found.", None
+            )
+
 
 class ResendVerificationEmail(views.APIView, CustomResponseMixin):
-
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="email",
+                description="Enter Email for resend verification Email",
+                required=False,
+                type=str,
+            ),
+        ],
+        responses={200: "application/json"},
+    )
     def post(self, request):
         email = request.data.get("email")
         try:
@@ -638,9 +606,7 @@ class ResendVerificationEmail(views.APIView, CustomResponseMixin):
 
             token = self.create_signed_token(applicant.id, applicant.email)
             print("Resend", token)
-            verification_link = (
-                f"http://localhost:3000/auth/account-verify/{str(token)}"
-            )
+            verification_link = f"{FRONTEND_URL}/auth/account-verify/{str(token)}"
             print(token)
             body = (
                 f"Congratulations {applicant.first_name} {applicant.last_name}!\n"

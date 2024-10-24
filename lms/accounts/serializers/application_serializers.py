@@ -31,13 +31,8 @@ class ApplicationSerializer(serializers.ModelSerializer):
             if not attrs.get('required_skills'):
                 raise serializers.ValidationError({"required_skills": "This field is required for instructors."})
 
-            # Ensure the program field is empty for instructors
             if attrs.get('program'):
                 raise serializers.ValidationError({"program": "This field should be empty for instructors."})
-
-            # Ensure locations are provided for instructors
-            if not attrs.get('location'):
-                raise serializers.ValidationError({"location": "This field is required for instructors."})
 
         elif group_name == 'student':
             if not attrs.get('program'):
@@ -48,25 +43,17 @@ class ApplicationSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     {"instructor_fields": "years_of_experience, required_skills, and resume should be empty for students."}
                 )
-
-            # Ensure location is provided for students
-            if not attrs.get('location'):
-                raise serializers.ValidationError({"location": "This field is required for students."})
-
         return attrs
 
     def create(self, validated_data):
         """Create and return an application."""
         programs_data = validated_data.pop('program', None)
         required_skills_data = validated_data.pop('required_skills', None)
-        location_data = validated_data.pop('location', None)
         application = Applications.objects.create(**validated_data)
 
         if programs_data:
             application.program.set(programs_data)
         if required_skills_data:
             application.required_skills.set(required_skills_data)
-        if location_data:
-            application.location.set(location_data)
 
         return application

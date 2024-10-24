@@ -18,39 +18,10 @@ from ..serializers import UserSerializer
 from constants import WEEKDAYS
 
 
-class CityViewSet(BaseLocationViewSet):
-    queryset = City.objects.all()
-    serializer_class = CitySerializer
-
 
 class BatchViewSet(BaseLocationViewSet):
     queryset = Batch.objects.all()
     serializer_class = BatchSerializer
-
-
-class LocationViewSet(BaseLocationViewSet):
-    queryset = Location.objects.all()
-    serializer_class = LocationSerializer
-
-    def create(self, request, *args, **kwargs):
-        location = request.data.get("name")
-        short_name = request.data.get("shortname")
-        print("data", location, short_name)
-        # Check if a Location with the same city and shortname already exists
-        if Location.objects.filter(
-            name=location, shortname=short_name, status__in=[0, 1]
-        ).exists():
-            return self.custom_response(
-                status.HTTP_400_BAD_REQUEST,
-                "A location with this name and shortname already exists.",
-                None,
-            )
-
-        # Proceed with the standard create method if no matching record is found
-        response = super().create(request, *args, **kwargs)
-        return self.custom_response(
-            status.HTTP_201_CREATED, "created successfully", response.data
-        )
 
 
 class SessionsAPIView(APIView):
@@ -219,85 +190,6 @@ class SessionsAPIView(APIView):
         )
 
 
-class CreateBatchLocationSessionView(views.APIView):
-    permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
-
-    @extend_schema(
-        request=inline_serializer(
-            name="BatchLocationSession",
-            fields={
-                "batch": BatchSerializer(),
-                "location": LocationSerializer(),
-                "session": SessionsSerializer(),
-            },
-        ),
-        responses={
-            200: "Successful.",
-            400: "Bad Request.",
-            401: "Unauthorized.",
-        },
-        description="Create or get Batch, Location, and Session in a single API call.",
-    )
-    def post(self, request, *args, **kwargs):
-        batch = request.data.get("batch")
-        location = request.data.get("location")
-
-        try:
-            batch = Batch.objects.get(batch=batch)
-        except Batch.DoesNotExist:
-            return Response(
-                {"detail": "Batch not found."}, status=status.HTTP_400_BAD_REQUEST
-            )
-
-        try:
-            location = Location.objects.get(id=location)
-        except Location.DoesNotExist:
-            return Response(
-                {"detail": "Location not found."}, status=status.HTTP_400_BAD_REQUEST
-            )
-
-        session_data = request.data.get("session")
-        session_data["location"] = location.id
-        session_data["batch"] = batch.batch
-        session_serializer = SessionsSerializer(data=session_data)
-        if session_serializer.is_valid():
-            session_serializer.save()
-        else:
-            return Response(
-                session_serializer.errors, status=status.HTTP_400_BAD_REQUEST
-            )
-
-        return Response(
-            {
-                "batch": BatchSerializer(batch).data,
-                "location": LocationSerializer(location).data,
-                "session": session_serializer.data,
-            },
-            status=status.HTTP_201_CREATED,
-        )
-
-
-class AssignSessionsView(CustomResponseMixin, views.APIView):
-    """Assign sessions to an instructor by providing a list of session IDs."""
-
-    permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
-
-    @custom_extend_schema(AssignSessionsSerializer)
-    def post(self, request, instructor_id):
-        serializer = AssignSessionsSerializer(data=request.data)
-        if serializer.is_valid():
-            session_ids = serializer.validated_data["session_ids"]
-            instructor = Instructor.objects.get(id=instructor_id)
-            sessions = Sessions.objects.filter(id__in=session_ids)
-            instructor.session.set(sessions)
-            return self.custom_response(
-                status.HTTP_200_OK, "Sessions assigned successfully.", {}
-            )
-        return self.custom_response(
-            status.HTTP_400_BAD_REQUEST, "Invalid session IDs.", serializer.errors
-        )
-
-
 class FilterBatchByCityView(views.APIView):
     """
     API view to filter Batches by city.
@@ -322,71 +214,6 @@ class FilterBatchByCityView(views.APIView):
 
         return Response({"batches": batch_serializer.data})
 
-
-class FilterLocationByCityView(views.APIView):
-    """
-    API view to filter Locations by city.
-    """
-
-    def get(self, request):
-        city_name = request.query_params.get("city", None)
-
-        if not city_name:
-            return Response({"error": "City parameter is required."}, status=400)
-        locations = Location.objects.filter(city__iexact=city_name)
-        location_serializer = LocationSerializer(locations, many=True)
-        return Response({"locations": location_serializer.data})
-
-
-class CityStatsView(views.APIView, CustomResponseMixin):
-    """
-    API view to get count of student and instructor users and total capacity for each city.
-    """
-
-    def get(self, request):
-        try:
-            # Fetch all unique cities from User table, excluding null and empty cities
-            cities = (
-                User.objects.exclude(city__isnull=True)
-                .exclude(city__exact="")
-                .values_list("city", flat=True)
-                .distinct()
-            )
-            data = []
-
-            for city in cities:
-                student_count = User.objects.filter(
-                    city=city, groups__name="student"
-                ).count()
-                instructor_count = User.objects.filter(
-                    city=city, groups__name="instructor"
-                ).count()
-
-                total_capacity = (
-                    Location.objects.filter(city=city).aggregate(
-                        total_capacity=Sum("capacity")
-                    )["total_capacity"]
-                    or 0
-                )
-                data.append(
-                    {
-                        "city": city,
-                        "student_count": student_count,
-                        "instructor_count": instructor_count,
-                        "total_capacity": total_capacity,
-                    }
-                )
-
-            return self.custom_response(
-                status.HTTP_200_OK, "Data fetched successfully.", data
-            )
-
-        except Exception as e:
-            return self.custom_response(
-                status.HTTP_500_INTERNAL_SERVER_ERROR,
-                f"An error occurred: {str(e)}",
-                None,
-            )
 
 
 class SessionCalendarAPIView(APIView, CustomResponseMixin):
