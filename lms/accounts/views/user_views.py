@@ -735,6 +735,7 @@ class PreferredInstructorSessionView(views.APIView, CustomResponseMixin):
     """
     View to fetch sessions based on the instructor's city from the Applications table.
     """
+
     def get(self, request):
         queryset = Sessions.objects.filter(status=1)
         session_data = SessionsSerializer(queryset, many=True).data
@@ -762,25 +763,19 @@ class PreferredSessionView(views.APIView, CustomResponseMixin):
                 required=False,
                 type=str,
             ),
-            OpenApiParameter(
-                name="location_id",
-                description="Filter by location id of student.",
-                required=False,
-                type=str,
-            ),
         ],
         responses={200: "application/json"},
     )
     def get(self, request):
         program_id = request.query_params.get("program_id")
-        location_id = request.query_params.get("location_id")
+        # location_id = request.query_params.get("location_id")
 
-        if not program_id or not location_id:
-            return self.custom_response(
-                status.HTTP_400_BAD_REQUEST,
-                "Both program_id and location_id are required.",
-                None,
-            )
+        # if not program_id or not location_id:
+        #     return self.custom_response(
+        #         status.HTTP_400_BAD_REQUEST,
+        #         "Both program_id and location_id are required.",
+        #         None,
+        #     )
         try:
             program = Program.objects.prefetch_related("courses").get(id=program_id)
         except Program.DoesNotExist:
@@ -789,19 +784,19 @@ class PreferredSessionView(views.APIView, CustomResponseMixin):
                 "The specified program does not exist.",
                 None,
             )
-        try:
-            location = ROOMS[int(location_id)]
-            print("Location found:", location)
-        except KeyError:
-            return self.custom_response(
-                status.HTTP_404_NOT_FOUND,
-                "The specified location does not exist.",
-                None,
-            )
+        # try:
+        #     location = ROOMS[int(location_id)]
+        #     print("Location found:", location)
+        # except KeyError:
+        #     return self.custom_response(
+        #         status.HTTP_404_NOT_FOUND,
+        #         "The specified location does not exist.",
+        #         None,
+        #     )
         courses = program.courses.all()
         print("a", courses)
         sessions = Sessions.objects.filter(
-            course__in=courses, location=location_id, status=1
+            course__in=courses, status=1
         )
         print("b", sessions)
         if not sessions.exists():
@@ -816,10 +811,10 @@ class PreferredSessionView(views.APIView, CustomResponseMixin):
                 "id": program.id,
                 "name": program.name,
             },
-            "location": {
-                "id": location_id,
-                "name": ROOMS[int(location_id)],
-            },
+            # "location": {
+            #     "id": location_id,
+            #     "name": ROOMS[int(location_id)],
+            # },
             "sessions": session_data,
         }
 
@@ -991,7 +986,6 @@ class PreferredSessionView(views.APIView, CustomResponseMixin):
 class UserSessionsView(views.APIView, CustomResponseMixin):
     """View to get all sessions assigned to a specific user."""
 
-
     @extend_schema(
         parameters=[
             OpenApiParameter(
@@ -1139,7 +1133,7 @@ class UserSessionsView(views.APIView, CustomResponseMixin):
         elif group_name == "instructor":
             try:
                 # Get the instructor session based on the user_id and session_id
-                instructor = Instructor.objects.get(user__id=user_id)
+                instructor = Instructor.objects.get(id=user_id)
                 instructor_session = InstructorSession.objects.get(
                     instructor=instructor, session=instance
                 )
@@ -1263,10 +1257,9 @@ class InstructorSessionsView(views.APIView, CustomResponseMixin):
                 overlapping_sessions = InstructorSession.objects.filter(
                     instructor=instructor,
                     session__schedules__day_of_week=schedule.day_of_week,
-                    # session__start_date__lte=session.end_date,
-                    # session__end_date__gte=session.start_date,
                     session__schedules__start_time__lt=schedule.end_time,
                     session__schedules__end_time__gt=schedule.start_time,
+                    status=1
                 ).exclude(session=session)
 
                 if overlapping_sessions.exists():
@@ -1281,7 +1274,7 @@ class InstructorSessionsView(views.APIView, CustomResponseMixin):
                 instructor=instructor,
                 session=session,
                 defaults={
-                    "status": 1,  # Default status
+                    "status": 1,
                 },
             )
             created_sessions.append(instructor_session)
@@ -1381,10 +1374,18 @@ class ApplicationUserView(views.APIView, CustomResponseMixin):
 
                     # Only add the data if both application and user are valid
                     if user:
+                        try:
+                            student = Student.objects.get(user=user)
+                            registration_id = (
+                                student.registration_id
+                            )  # Retrieve the registration ID
+                        except Student.DoesNotExist:
+                            registration_id = None
                         response_data["data"].append(
                             {
                                 "application": ApplicationSerializer(application).data,
                                 "user": UserSerializer(user).data,
+                                "registration_id": registration_id,
                             }
                         )
 

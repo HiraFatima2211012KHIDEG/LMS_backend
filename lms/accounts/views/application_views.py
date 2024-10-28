@@ -212,7 +212,9 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
                     selected_user = InstructorApplicationSelection.objects.get(
                         application_id=application["id"]
                     )
+                    print("selected user", selected_user)
                     selected_skills = selected_user.selected_skills.all()
+                    print("selected skills", selected_skills)
                     application["skill"] = TechSkillSerializer(
                         selected_skills, many=True
                     ).data
@@ -491,15 +493,15 @@ class VerifyEmailandSetPasswordView(views.APIView, CustomResponseMixin):
                     # Handle new user creation
                     application = Applications.objects.get(id=user_id)
                     print("application", application)
-                    user_data = {
-                        "email": application.email,
-                        "first_name": application.first_name,
-                        "last_name": application.last_name,
-                        "contact": application.contact,
-                        # "city": application.city,
-                        "is_verified": True,
-                    }
-                    existing_user = get_user_model().objects.create_user(**user_data)
+                    # user_data = {
+                    #     "email": application.email,
+                    #     "first_name": application.first_name,
+                    #     "last_name": application.last_name,
+                    #     "contact": application.contact,
+                    #     # "city": application.city,
+                    #     "is_verified": True,
+                    # }
+                    # existing_user = get_user_model().objects.create_user(**user_data)
 
                     # Handle student-specific logic
                     if application.group_name == "student":
@@ -531,6 +533,17 @@ class VerifyEmailandSetPasswordView(views.APIView, CustomResponseMixin):
                                 "No matching batch found for the provided city and year.",
                                 None,
                             )
+                        user_data = {
+                            "email": application.email,
+                            "first_name": application.first_name,
+                            "last_name": application.last_name,
+                            "contact": application.contact,
+                            # "city": application.city,
+                            "is_verified": True,
+                        }
+                        existing_user = get_user_model().objects.create_user(
+                            **user_data
+                        )
 
                         registration_id = f"{batch_instance.batch}-{selected_student_program.program_abb}-{existing_user.id}"
                         Student.objects.create(
@@ -540,6 +553,17 @@ class VerifyEmailandSetPasswordView(views.APIView, CustomResponseMixin):
                         )
 
                     elif application.group_name == "instructor":
+                        user_data = {
+                            "email": application.email,
+                            "first_name": application.first_name,
+                            "last_name": application.last_name,
+                            "contact": application.contact,
+                            "is_verified": True,
+                        }
+                        existing_user = get_user_model().objects.create_user(
+                            **user_data
+                        )
+                        print("existing user", existing_user)
                         Instructor.objects.create(id=existing_user)
 
                 # Set the password using SetPasswordSerializer

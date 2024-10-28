@@ -6,6 +6,7 @@ from course.models.models import Course, Assignment, Quizzes, Exam, Project
 from constants import WEEKDAYS
 from datetime import timedelta
 from utils.custom import get_assessment
+from constants import ROOMS
 
 
 class BatchSerializer(serializers.ModelSerializer):
@@ -26,27 +27,25 @@ class BatchSerializer(serializers.ModelSerializer):
             "status",
             "created_at",
         ]
+
     def get_remaining_slots_for_batch(self, obj):
         session = Sessions.objects.filter(Batch=obj)
-        total_students_assigned = StudentSession.objects.filter(
-            session=session
-        ).count()
+        total_students_assigned = StudentSession.objects.filter(session=session).count()
         remaining_spots = obj.capacity - total_students_assigned
         return max(remaining_spots, 0)
 
     def validate(self, data):
-        location = self.instance
-        if location:
-            total_students_assigned = StudentSession.objects.filter(
-                session__location=location
-            ).count()
-            remaining_spots = location.capacity - total_students_assigned
+        session = self.instance  # Current session instance
+
+        if session:
+            total_students_assigned = StudentSession.objects.filter(session=session).count()
+
+            remaining_spots = session.capacity - total_students_assigned
 
             if remaining_spots <= 0:
                 raise serializers.ValidationError(
-                    f"No remaining spots in location {location.name}. Cannot assign more students."
+                    f"No remaining spots in session {session.id}. Cannot assign more students."
                 )
-
         elif "capacity" in data:
             capacity = data["capacity"]
             if capacity <= 0:
@@ -68,6 +67,7 @@ class SessionsSerializer(serializers.ModelSerializer):
     )
     remaining_spots = serializers.SerializerMethodField()
     session_name = serializers.SerializerMethodField()
+    location_name = serializers.SerializerMethodField()
     schedules = SessionScheduleSerializer(many=True, write_only=False)
 
     class Meta:
@@ -76,6 +76,7 @@ class SessionsSerializer(serializers.ModelSerializer):
             "id",
             "batch",
             "location",
+            "location_name",
             "no_of_students",
             "remaining_spots",
             "start_date",
@@ -88,6 +89,10 @@ class SessionsSerializer(serializers.ModelSerializer):
             "created_at",
             "schedules",
         ]
+
+    def get_location_name(self, obj):
+        # Retrieve the name of the location from ROOMS dictionary
+        return ROOMS.get(obj.location, "Unknown")
 
     def get_session_name(self, obj):
         return f"{obj.location}-{obj.course}-{obj.no_of_students}-({obj.start_date}-{obj.end_date})"

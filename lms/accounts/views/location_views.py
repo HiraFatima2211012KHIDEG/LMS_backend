@@ -18,7 +18,6 @@ from ..serializers import UserSerializer
 from constants import WEEKDAYS
 
 
-
 class BatchViewSet(BaseLocationViewSet):
     queryset = Batch.objects.all()
     serializer_class = BatchSerializer
@@ -35,6 +34,7 @@ class SessionsAPIView(APIView):
             # Fetch a single session by id
             session = get_object_or_404(Sessions, id=session_id)
             serializer = SessionsSerializer(session)
+            print(serializer.data["location"])
             return Response(
                 {
                     "status_code": status.HTTP_200_OK,
@@ -213,7 +213,6 @@ class FilterBatchByCityView(views.APIView):
         batch_serializer = BatchSerializer(batches, many=True)
 
         return Response({"batches": batch_serializer.data})
-
 
 
 class SessionCalendarAPIView(APIView, CustomResponseMixin):
