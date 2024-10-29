@@ -34,24 +34,24 @@ class BatchSerializer(serializers.ModelSerializer):
         remaining_spots = obj.capacity - total_students_assigned
         return max(remaining_spots, 0)
 
-    def validate(self, data):
-        session = self.instance  # Current session instance
+    # def validate(self, data):
+    #     session = self.instance  # Current session instance
 
-        if session:
-            total_students_assigned = StudentSession.objects.filter(session=session).count()
+    #     if session:
+    #         total_students_assigned = StudentSession.objects.filter(session=session).count()
 
-            remaining_spots = session.capacity - total_students_assigned
+    #         remaining_spots = session.capacity - total_students_assigned
 
-            if remaining_spots <= 0:
-                raise serializers.ValidationError(
-                    f"No remaining spots in session {session.id}. Cannot assign more students."
-                )
-        elif "capacity" in data:
-            capacity = data["capacity"]
-            if capacity <= 0:
-                raise serializers.ValidationError("Capacity must be greater than 0.")
+    #         if remaining_spots <= 0:
+    #             raise serializers.ValidationError(
+    #                 f"No remaining spots in session {session.id}. Cannot assign more students."
+    #             )
+    #     elif "capacity" in data:
+    #         capacity = data["capacity"]
+    #         if capacity <= 0:
+    #             raise serializers.ValidationError("Capacity must be greater than 0.")
 
-        return data
+    #     return data
 
 
 class SessionScheduleSerializer(serializers.ModelSerializer):
@@ -115,6 +115,12 @@ class SessionsSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     "The session is already full. No more students can be assigned."
                 )
+            elif "capacity" in data:
+                capacity = data["capacity"]
+                if capacity <= 0:
+                    raise serializers.ValidationError(
+                        "Capacity must be greater than 0."
+                    )
         return data
 
     def create(self, validated_data):

@@ -22,6 +22,30 @@ class BatchViewSet(BaseLocationViewSet):
     queryset = Batch.objects.all()
     serializer_class = BatchSerializer
 
+    def update(self, request, *args, **kwargs):
+        # Retrieve the current instance of Batch
+        batch = self.get_object()
+        print(batch)
+        original_status = batch.status
+        new_status = request.data.get("status", original_status)
+
+        response = super().update(request, *args, **kwargs)
+
+        # Check if the status is changing to 0
+        if original_status != 0 and new_status == 0:
+            with transaction.atomic():
+                # Get all students related to this batch and update their users' is_active field
+                students_in_batch = Student.objects.filter(
+                    registration_id__startswith=batch
+                )
+                print('here', students_in_batch)
+                # Update the is_active field in the related User records
+                User.objects.filter(id__in=students_in_batch.values("user_id")).update(is_active=False)
+
+        return self.custom_response(
+            status.HTTP_200_OK, "updated successfully", response.data
+        )
+
 
 class SessionsAPIView(APIView):
     # permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
@@ -217,7 +241,7 @@ class FilterBatchByCityView(views.APIView):
 
 class SessionCalendarAPIView(APIView, CustomResponseMixin):
     def get(self, request, user_id, *args, **kwargs):
-        user = get_object_or_404(User, id=user_id)
+        user = get_object_or_404(User, id=user_id, is_active=True)
         sessions = []
 
         try:
@@ -352,7 +376,7 @@ class FilterUsersByBatchView(generics.ListAPIView):
 
             # Filter users based on created_at date falling within batch's date range
             return User.objects.filter(
-                created_at__range=[batch.application_start_date, batch.start_date]
+                created_at__range=[batch.application_start_date, batch.start_date], is_active=True
             ).filter(city=batch.city)
         except Batch.DoesNotExist:
             return User.objects.none()
