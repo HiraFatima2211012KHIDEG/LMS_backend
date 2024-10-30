@@ -98,7 +98,7 @@ class SessionsSerializer(serializers.ModelSerializer):
         return f"{obj.location}-{obj.course}-{obj.no_of_students}-({obj.start_date}-{obj.end_date})"
 
     def get_remaining_spots(self, obj):
-        assigned_students = StudentSession.objects.filter(session=obj).count()
+        assigned_students = StudentSession.objects.filter(session=obj, status=1).count()
         remaining_spots = obj.no_of_students - assigned_students
         if remaining_spots < 0:
             remaining_spots = 0

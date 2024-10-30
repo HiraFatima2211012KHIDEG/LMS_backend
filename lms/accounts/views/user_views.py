@@ -529,7 +529,7 @@ class AssignSessionView(views.APIView, CustomResponseMixin):
 
     def patch(self, request, user_id=None, session_id=None):
         try:
-            user = get_user_model().objects.get(id=user_id)
+            user = get_user_model().objects.get(id=user_id, is_active=True)
 
             if user.groups.filter(name="student").exists():
                 obj = Student.objects.get(user=user)
@@ -651,7 +651,7 @@ class StudentFilterViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         course_id = self.request.query_params.get("course_id", None)
         if course_id:
-            return Student.objects.filter(program__courses__id=course_id)
+            return Student.objects.filter(program__courses__id=course_id, status=1)
         return Student.objects.none()
 
 
@@ -683,7 +683,7 @@ class UsersCountAdminSectionView(views.APIView, CustomResponseMixin):
 
     def get(self, request):
         try:
-            all_users = User.objects.all()
+            all_users = User.objects.filter(is_active=True)
             all_users_length = max(len(all_users) - 1, 0)
             active_users = User.objects.filter(is_active=True)
             active_users_length = max(len(active_users) - 1, 0)
@@ -768,14 +768,6 @@ class PreferredSessionView(views.APIView, CustomResponseMixin):
     )
     def get(self, request):
         program_id = request.query_params.get("program_id")
-        # location_id = request.query_params.get("location_id")
-
-        # if not program_id or not location_id:
-        #     return self.custom_response(
-        #         status.HTTP_400_BAD_REQUEST,
-        #         "Both program_id and location_id are required.",
-        #         None,
-        #     )
         try:
             program = Program.objects.prefetch_related("courses").get(id=program_id)
         except Program.DoesNotExist:
@@ -784,15 +776,6 @@ class PreferredSessionView(views.APIView, CustomResponseMixin):
                 "The specified program does not exist.",
                 None,
             )
-        # try:
-        #     location = ROOMS[int(location_id)]
-        #     print("Location found:", location)
-        # except KeyError:
-        #     return self.custom_response(
-        #         status.HTTP_404_NOT_FOUND,
-        #         "The specified location does not exist.",
-        #         None,
-        #     )
         courses = program.courses.all()
         print("a", courses)
         sessions = Sessions.objects.filter(
@@ -811,10 +794,6 @@ class PreferredSessionView(views.APIView, CustomResponseMixin):
                 "id": program.id,
                 "name": program.name,
             },
-            # "location": {
-            #     "id": location_id,
-            #     "name": ROOMS[int(location_id)],
-            # },
             "sessions": session_data,
         }
 

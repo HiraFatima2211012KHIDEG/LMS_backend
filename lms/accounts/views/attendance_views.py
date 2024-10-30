@@ -118,7 +118,7 @@ class AttendanceListCreateView(BaseLocationViewSet):
 
 
 
-        
+
 class AttendanceDetailView(BaseLocationViewSet):
     queryset = Attendance.objects.all()
     serializer_class = AttendanceSerializer
@@ -161,7 +161,7 @@ class SessionsAPIViewAttendance(APIView):
             session = Sessions.objects.get(id=session_id)
 
             # Fetch all student sessions for this session
-            student_sessions = StudentSession.objects.filter(session=session)
+            student_sessions = StudentSession.objects.filter(session=session, status=1)
             student_serializer = StudentDetailAttendanceSerializer(student_sessions, many=True)
 
             # Fetch all instructor sessions for this session (there could be multiple)
@@ -227,11 +227,11 @@ class StudentAttendanceListView(CustomResponseMixin, APIView):
         attendances = Attendance.objects.filter(student=student,course_id=course_id)
 
         serialized_attendance = AttendanceSerializer(attendances, many=True)
-        
+
         response_data = {
             "attendance": serialized_attendance.data
         }
-        
+
         return self.custom_response(
             status.HTTP_200_OK, "Student attendance retrieved successfully", response_data
         )
@@ -241,11 +241,11 @@ class InstructorAttendanceView(CustomResponseMixin, APIView):
     permission_classes = [permissions.IsAuthenticated]
     def get(self, request, session_id, course_id=None, *args, **kwargs):
         date_filter = request.query_params.get('date', None)
-        
+
         students = Student.objects.filter(
             studentsession__session=session_id,
         )
-    
+
         attendances = Attendance.objects.filter(student__in=students, course_id=course_id)
 
         if date_filter:
@@ -333,11 +333,11 @@ class InstructorAttendanceView(CustomResponseMixin, APIView):
 
         for attendance_entry in request.data:
             student_id = attendance_entry.get("student")
-            student_status = attendance_entry.get("status", 0) 
+            student_status = attendance_entry.get("status", 0)
             marked_by = attendance_entry.get("marked_by", marked_by_name)
-            date = attendance_entry.get("date", timezone.now().date()) 
+            date = attendance_entry.get("date", timezone.now().date())
 
-            if isinstance(date, str):  
+            if isinstance(date, str):
                 date = datetime.strptime(date, '%Y-%m-%d').date()
             if date > timezone.now().date():
                 return self.custom_response(
@@ -347,7 +347,7 @@ class InstructorAttendanceView(CustomResponseMixin, APIView):
             try:
                 student = enrolled_students.get(registration_id=student_id)
             except Student.DoesNotExist:
-                continue  
+                continue
 
             attendance_data.append(
                 Attendance(
@@ -391,8 +391,8 @@ class InstructorAttendanceView(CustomResponseMixin, APIView):
 
         for attendance_entry in request.data:
             student_id = attendance_entry.get("student")
-            student_status = attendance_entry.get("status") 
-            date = attendance_entry.get("date", timezone.now().date())  
+            student_status = attendance_entry.get("status")
+            date = attendance_entry.get("date", timezone.now().date())
 
             if isinstance(date, str):
                 date = datetime.strptime(date, '%Y-%m-%d').date()
@@ -404,12 +404,12 @@ class InstructorAttendanceView(CustomResponseMixin, APIView):
             try:
                 student = enrolled_students.get(registration_id=student_id)
             except Student.DoesNotExist:
-                continue  
+                continue
 
 
             try:
                 attendance = Attendance.objects.get(student=student, course_id=course_id, date=date)
-                attendance.status = student_status 
+                attendance.status = student_status
                 attendance_updates.append(attendance)
             except Attendance.DoesNotExist:
                 return self.custom_response(
@@ -429,26 +429,26 @@ class AdminAttendanceView(CustomResponseMixin, APIView):
 
     def get(self, request, session_id, *args, **kwargs):
         date_filter = request.query_params.get('date', None)
-        
+
         try:
             # Filter students based on session ID
             students_in_session = Student.objects.filter(studentsession__session__id=session_id)
             print(students_in_session)
         except Student.DoesNotExist:
             return Response({"detail": "No students found for this session."}, status=status.HTTP_404_NOT_FOUND)
-        
+
         # Fetch attendance records for students in the session
         attendances = Attendance.objects.filter(student__in=students_in_session)
-        
+
         if date_filter:
             attendances = attendances.filter(date=date_filter)
-        
+
         serialized_attendance = AttendanceSerializer(attendances, many=True)
-        
+
         response_data = {
             "attendance": serialized_attendance.data
         }
-        
+
         return self.custom_response(
             status.HTTP_200_OK, "Attendance retrieved successfully for the session", response_data
         )

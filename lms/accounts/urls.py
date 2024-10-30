@@ -212,4 +212,5 @@ urlpatterns = [
         AdminAttendanceView.as_view(),
         name="admin-attendance",
     ),
+    path("stats", BatchStatsView.as_view())
 ]

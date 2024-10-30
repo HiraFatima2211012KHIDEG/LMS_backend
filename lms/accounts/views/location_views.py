@@ -36,11 +36,31 @@ class BatchViewSet(BaseLocationViewSet):
             with transaction.atomic():
                 # Get all students related to this batch and update their users' is_active field
                 students_in_batch = Student.objects.filter(
-                    registration_id__startswith=batch
+                    registration_id__startswith=batch, status=1
                 )
-                print('here', students_in_batch)
+
                 # Update the is_active field in the related User records
-                User.objects.filter(id__in=students_in_batch.values("user_id")).update(is_active=False)
+                User.objects.filter(id__in=students_in_batch.values("user_id")).update(
+                    is_active=False
+                )
+                students_in_batch.update(status=2)
+
+                student_sessions = StudentSession.objects.filter(
+                    student__in=students_in_batch
+                )
+                student_sessions.update(status=2)
+                sessions = Sessions.objects.filter(batch=batch, status=1)
+
+                sessions.update(status=2)
+                student_sessions = StudentSession.objects.filter(
+                    session_id__in=sessions
+                )
+                student_sessions.update(status=2)
+                instructor_sessions = InstructorSession.objects.filter(
+                    session_id__in=sessions
+                )
+                instructor_sessions.update(status=2)
+
 
         return self.custom_response(
             status.HTTP_200_OK, "updated successfully", response.data
@@ -58,7 +78,6 @@ class SessionsAPIView(APIView):
             # Fetch a single session by id
             session = get_object_or_404(Sessions, id=session_id)
             serializer = SessionsSerializer(session)
-            print(serializer.data["location"])
             return Response(
                 {
                     "status_code": status.HTTP_200_OK,
@@ -239,131 +258,226 @@ class FilterBatchByCityView(views.APIView):
         return Response({"batches": batch_serializer.data})
 
 
+# class SessionCalendarAPIView(APIView, CustomResponseMixin):
+#     def get(self, request, user_id, *args, **kwargs):
+#         user = get_object_or_404(User, id=user_id, is_active=True)
+#         sessions = []
+#         print("users", user)
+#         try:
+#             student = Student.objects.get(user=user, status=1)
+#             student_sessions = StudentSession.objects.filter(student=student)
+#             sessions.extend([ss.session for ss in student_sessions])
+#             print("sessions", sessions)
+#         except Student.DoesNotExist:
+#             try:
+#                 instructor = Instructor.objects.get(id=user)
+#                 instructor_sessions = InstructorSession.objects.filter(
+#                     instructor=instructor
+#                 )
+#                 sessions.extend([is_.session for is_ in instructor_sessions])
+#             except Instructor.DoesNotExist:
+#                 return Response(
+#                     {"detail": "User is neither a student nor an instructor."},
+#                     status=status.HTTP_404_NOT_FOUND,
+#                 )
+
+#         if not sessions:
+#             return Response(
+#                 {"detail": "No sessions found for this user."},
+#                 status=status.HTTP_404_NOT_FOUND,
+#             )
+
+#         calendar_data = {}
+
+#         for session in sessions:
+#             start_date = session.start_date
+#             end_date = session.end_date
+#             session_days = session.days_of_week
+#             actual_dates = self.get_dates_from_days(start_date, end_date, session_days)
+#             session_data = SessionsCalendarSerializer(session).data
+
+#             # Try to get schedules for the session
+#             schedules = SessionSchedule.objects.filter(session=session)
+
+#             if schedules.exists():
+#                 # If schedules exist, process them
+#                 for schedule in schedules:
+#                     schedule_day = schedule.day_of_week
+#                     schedule_start_time = schedule.start_time
+#                     schedule_end_time = schedule.end_time
+
+#                     for date in actual_dates:
+#                         date_obj = datetime.strptime(date, "%Y-%m-%d")
+#                         if WEEKDAYS[date_obj.weekday()][0] == schedule_day:
+#                             if date not in calendar_data:
+#                                 calendar_data[date] = []
+
+#                             calendar_data[date].append(
+#                                 {
+#                                     "start_time": schedule_start_time.strftime("%H:%M"),
+#                                     "end_time": schedule_end_time.strftime("%H:%M"),
+#                                     "course_id": session_data.get("course_id", None),
+#                                     "course_name": session_data.get(
+#                                         "course_name", "Unknown Course"
+#                                     ),
+#                                     "location": session_data.get(
+#                                         "location_name", "Unknown Location"
+#                                     ),
+#                                 }
+#                             )
+#                         print(calendar_data)
+#             else:
+#                 # Log the missing schedules but proceed with assessments
+#                 print(f"No schedules found for session {session.id}")
+
+#             # Add assessments even if there are no schedules
+#             for assessment_type in ["assignments", "quizzes", "projects", "exams"]:
+#                 assessments = session_data.get(assessment_type, [])
+#                 if assessments and isinstance(assessments, list):
+#                     for assessment in assessments:
+#                         due_date = assessment.get("due_date")
+#                         if due_date:
+#                             if due_date not in calendar_data:
+#                                 calendar_data[due_date] = []
+#                             calendar_data[due_date].append(
+#                                 {
+#                                     "assessment_name": assessment.get(
+#                                         "name", "Unknown Assessment"
+#                                     ),
+#                                     "due_time": assessment.get(
+#                                         "due_time", "Unknown Time"
+#                                     ),
+#                                     "course_id": session_data.get("course_id", None),
+#                                     "course_name": session_data.get(
+#                                         "course_name", "Unknown Course"
+#                                     ),
+#                                     "type": assessment_type.capitalize()[:-1],
+#                                 }
+#                             )
+
+#         # if not calendar_data:
+#         #     return self.custom_response(
+#         #         status.HTTP_200_OK, "No calendar data available.", []
+#         #     )
+
+#         formatted_data = [
+#             {
+#                 "date": date,
+#                 "day_name": WEEKDAYS[datetime.strptime(date, "%Y-%m-%d").weekday()][0],
+#                 "sessions": session_list,
+#             }
+#             for date, session_list in calendar_data.items()
+#         ]
+#         formatted_data.sort(key=lambda x: x["date"])
+
+#         return self.custom_response(
+#             status.HTTP_200_OK, "Calendar data fetched successfully.", formatted_data
+#         )
+
+#     def get_dates_from_days(self, start_date, end_date, days_of_week):
+#         """Generate a list of dates based on start and end dates and specified days of the week."""
+#         current_date = start_date
+#         actual_dates = []
+
+#         while current_date <= end_date:
+#             if current_date.weekday() in days_of_week:
+#                 actual_dates.append(current_date.strftime("%Y-%m-%d"))
+#             current_date += timedelta(days=1)
+
+#         return actual_dates
+
+
 class SessionCalendarAPIView(APIView, CustomResponseMixin):
     def get(self, request, user_id, *args, **kwargs):
-        user = get_object_or_404(User, id=user_id, is_active=True)
+        user = get_object_or_404(User, id=user_id)
+        print('user', user)
         sessions = []
 
         try:
             student = Student.objects.get(user=user)
-            student_sessions = StudentSession.objects.filter(student=student)
+            student_sessions = StudentSession.objects.filter(student=student, status=1)
             sessions.extend([ss.session for ss in student_sessions])
+            print(sessions), sessions
         except Student.DoesNotExist:
             try:
                 instructor = Instructor.objects.get(id=user)
-                instructor_sessions = InstructorSession.objects.filter(
-                    instructor=instructor
-                )
+                instructor_sessions = InstructorSession.objects.filter(instructor=instructor)
                 sessions.extend([is_.session for is_ in instructor_sessions])
             except Instructor.DoesNotExist:
-                return Response(
-                    {"detail": "User is neither a student nor an instructor."},
-                    status=status.HTTP_404_NOT_FOUND,
-                )
+                return Response({"detail": "User is neither a student nor an instructor."}, status=status.HTTP_404_NOT_FOUND)
 
-        if not sessions:
-            return Response(
-                {"detail": "No sessions found for this user."},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+        # if not sessions:
+        #     return Response({"detail": "No sessions found for this user."}, status=status.HTTP_404_NOT_FOUND)
 
         calendar_data = {}
 
+        # Iterate over sessions and process each one
         for session in sessions:
+            # Directly use session's start and end date
             start_date = session.start_date
             end_date = session.end_date
+
+            # Generate the actual dates based on days of the week
             session_days = session.days_of_week
-            actual_dates = self.get_dates_from_days(start_date, end_date, session_days)
+            days_of_week_int = [
+                day_num for day_num, names in WEEKDAYS.items() if any(day in names for day in session_days)
+            ]
+            actual_dates = self.get_dates_from_days(start_date, end_date, days_of_week_int)
+            print(actual_dates)
             session_data = SessionsCalendarSerializer(session).data
+            print('sessions data',session_data)
+            for date in actual_dates:
+                print('date here', date)
+                if date not in calendar_data:
+                    calendar_data[date] = []
+                print(session_data['session_times'][0].get('start_time'))
+                # Add the session data to the list for the given date
+                calendar_data[date].append({
+                    "start_time": session_data['session_times'][0].get('start_time'),
+                    "end_time": session_data['session_times'][0].get('end_time'),
+                    "course_id": session_data['course_id'],
+                    "course_name": session_data['course_name'],
+                    "location": session_data['location'],
+                    # "day_name": day_name  # If needed, you can still add the day name here
+                })
+                print(calendar_data)
 
-            # Try to get schedules for the session
-            schedules = SessionSchedule.objects.filter(session=session)
-
-            if schedules.exists():
-                # If schedules exist, process them
-                for schedule in schedules:
-                    schedule_day = schedule.day_of_week
-                    schedule_start_time = schedule.start_time
-                    schedule_end_time = schedule.end_time
-
-                    for date in actual_dates:
-                        date_obj = datetime.strptime(date, "%Y-%m-%d")
-                        if WEEKDAYS[date_obj.weekday()][0] == schedule_day:
-                            if date not in calendar_data:
-                                calendar_data[date] = []
-
-                            calendar_data[date].append(
-                                {
-                                    "start_time": schedule_start_time.strftime("%H:%M"),
-                                    "end_time": schedule_end_time.strftime("%H:%M"),
-                                    "course_id": session_data.get("course_id", None),
-                                    "course_name": session_data.get(
-                                        "course_name", "Unknown Course"
-                                    ),
-                                    "location": session_data.get(
-                                        "location_name", "Unknown Location"
-                                    ),
-                                }
-                            )
-            else:
-                # Log the missing schedules but proceed with assessments
-                print(f"No schedules found for session {session.id}")
-
-            # Add assessments even if there are no schedules
-            for assessment_type in ["assignments", "quizzes", "projects", "exams"]:
-                assessments = session_data.get(assessment_type, [])
-                if assessments and isinstance(assessments, list):
-                    for assessment in assessments:
-                        due_date = assessment.get("due_date")
-                        if due_date:
-                            if due_date not in calendar_data:
-                                calendar_data[due_date] = []
-                            calendar_data[due_date].append(
-                                {
-                                    "assessment_name": assessment.get(
-                                        "name", "Unknown Assessment"
-                                    ),
-                                    "due_time": assessment.get(
-                                        "due_time", "Unknown Time"
-                                    ),
-                                    "course_id": session_data.get("course_id", None),
-                                    "course_name": session_data.get(
-                                        "course_name", "Unknown Course"
-                                    ),
-                                    "type": assessment_type.capitalize()[:-1],
-                                }
-                            )
-
-        if not calendar_data:
-            return self.custom_response(
-                status.HTTP_200_OK, "No calendar data available.", []
-            )
-
+        # Format the data into the required structure
         formatted_data = [
             {
                 "date": date,
-                "day_name": WEEKDAYS[datetime.strptime(date, "%Y-%m-%d").weekday()][0],
-                "sessions": session_list,
+                "day_name": WEEKDAYS[datetime.strptime(date, "%Y-%m-%d").weekday()][0],  # Get the day name
+                "sessions": session_list
             }
             for date, session_list in calendar_data.items()
         ]
-        formatted_data.sort(key=lambda x: x["date"])
+
+        # Sort the formatted data by date
+        formatted_data.sort(key=lambda x: x['date'])
 
         return self.custom_response(
-            status.HTTP_200_OK, "Calendar data fetched successfully.", formatted_data
+            status.HTTP_200_OK,
+            "Calendar data fetched successfully.",
+            formatted_data
         )
 
     def get_dates_from_days(self, start_date, end_date, days_of_week):
         """Generate a list of dates based on start and end dates and specified days of the week."""
         current_date = start_date
         actual_dates = []
-
+        print('here')
+        # Iterate through each day in the range
         while current_date <= end_date:
+            print('inside wile loop')
+            print('sndaksn', current_date.weekday(), days_of_week)
             if current_date.weekday() in days_of_week:
-                actual_dates.append(current_date.strftime("%Y-%m-%d"))
+                print('current date', current_date)
+                actual_dates.append(current_date.strftime("%Y-%m-%d"))  # Format as string or datetime as needed
             current_date += timedelta(days=1)
 
         return actual_dates
+
+
 
 
 class FilterUsersByBatchView(generics.ListAPIView):
@@ -376,7 +490,8 @@ class FilterUsersByBatchView(generics.ListAPIView):
 
             # Filter users based on created_at date falling within batch's date range
             return User.objects.filter(
-                created_at__range=[batch.application_start_date, batch.start_date], is_active=True
+                created_at__range=[batch.application_start_date, batch.start_date],
+                is_active=True,
             ).filter(city=batch.city)
         except Batch.DoesNotExist:
             return User.objects.none()
@@ -390,4 +505,87 @@ class FilterUsersByBatchView(generics.ListAPIView):
             return Response(
                 {"detail": "No users found for the given batch."},
                 status=status.HTTP_404_NOT_FOUND,
+            )
+
+
+class BatchStatsView(views.APIView, CustomResponseMixin):
+    """
+    API view to get count of student and instructor users, total capacity,
+    and detailed location-based stats for each batch.
+    """
+
+    def get(self, request):
+        try:
+            batches = Batch.objects.all()
+            data = []
+
+            for batch in batches:
+                batch_data = {
+                    "batch": batch.batch,  # Assuming 'batch' is the batch identifier
+                    "locations": [],
+                }
+                print(batch)
+
+                # Get all locations associated with sessions in the batch
+                locations_in_batch = (
+                    Sessions.objects.filter(batch=batch, status=1)
+                    .values_list("location", flat=True)
+                    .distinct()
+                )
+                print(locations_in_batch)
+                # Loop through each location and gather stats for that location within the batch
+                for location in locations_in_batch:
+                    # Count students associated with this batch and location
+                    student_count = Student.objects.filter(
+                        registration_id__startswith=batch,
+                        studentsession__session__location=location,
+                        status=1,
+                    ).count()
+                    print(student_count)
+
+                    # Count instructors associated with this batch and location
+                    # instructor_ids = (
+                    #     StudentSession.objects.filter(
+                    #         session__batch=batch,
+                    #         session__location__name=location_name
+                    #     )
+                    #     .values_list("instructor__id", flat=True)
+                    #     .distinct()
+                    # )
+                    # instructor_count = len(instructor_ids)
+
+                    # Calculate total capacity for this location within the batch
+                    total_capacity = (
+                        Sessions.objects.filter(
+                            batch=batch, location=location, status=1
+                        ).aggregate(total_capacity=Sum("no_of_students"))[
+                            "total_capacity"
+                        ]
+                        or 0
+                    )
+                    print(total_capacity)
+
+                    # Add location-specific data to batch data
+                    batch_data["locations"].append(
+                        {
+                            "location_name": location,
+                            "student_count": student_count,
+                            # "instructor_count": instructor_count,
+                            "total_capacity": total_capacity,
+                        }
+                    )
+
+                # Append batch data to main data list
+                data.append(batch_data)
+
+            return self.custom_response(
+                status.HTTP_200_OK, "Data fetched successfully.", data
+            )
+
+        except Exception as e:
+            # Handle unexpected errors
+            return self.custom_response(
+                status.HTTP_500_INTERNAL_SERVER_ERROR,
+                f"An error occurred: {str(e)}",
+                None,
             )
