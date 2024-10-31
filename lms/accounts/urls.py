@@ -250,8 +250,4 @@ urlpatterns = [
     path('admin/attendance/<int:session_id>/', AdminAttendanceView.as_view(), name='admin-attendance'),
 
 
-
-
-
-
 ]

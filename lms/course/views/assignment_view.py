@@ -277,12 +277,32 @@ class AssignmentGradingListCreateAPIView(CustomResponseMixin, APIView):
     #         status.HTTP_400_BAD_REQUEST, "Error creating grading", serializer.errors
     #     )
 
-    @custom_extend_schema(GradingSerializer)
     def post(self, request, format=None):
         data = {key: value for key, value in request.data.items()}
         data["graded_by"] = request.user.id
 
+        # Ensure that grading does not already exist for this submission
+        if Grading.objects.filter(submission=data['submission'], graded_by=request.user).exists():
+            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Grading already exists for this submission', None)
 
+        # Get the submission object to retrieve the associated assignment or quiz
+        try:
+            submission = AssignmentSubmission.objects.get(id=data['submission'])
+        except AssignmentSubmission.DoesNotExist:
+            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Submission not found', None)
+
+        # Retrieve the total grade for the assignment associated with the submission
+        total_grade = submission.assignment.total_grade
+
+        # Check if the provided grade exceeds the total grade
+        if 'grade' in data and float(data['grade']) > float(total_grade):
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST, 
+                f"Grade cannot exceed the total grade of {total_grade}", 
+                None
+            )
+
+        # Proceed with the grading if validation passes
         serializer = GradingSerializer(data=data)
         if serializer.is_valid():
             serializer.save()
@@ -327,16 +347,33 @@ class AssignmentGradingDetailAPIView(CustomResponseMixin, APIView):
     #         serializer.errors,
     #     )
 
-
     @custom_extend_schema(GradingSerializer)
     def put(self, request, pk, format=None):
+        # Fetch the grading object using the primary key
+        grading = get_object_or_404(Grading, pk=pk)
+
+        # Prepare data for the serializer
         data = {key: value for key, value in request.data.items()}
         data["graded_by"] = request.user.id
 
-        grading = get_object_or_404(Grading, pk=pk)
+        # Get the submission associated with the grading
+        submission = grading.submission
+
+        # Retrieve the total grade for the assignment associated with the submission
+        total_grade = submission.assignment.total_grade
+
+        # Validate if the new grade exceeds the total grade
+        if 'grade' in data and float(data['grade']) > float(total_grade):
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST,
+                f"Grade cannot exceed the total grade of {total_grade}",
+                None
+            )
+
+        # Update the grading object using the serializer
         serializer = GradingSerializer(grading, data=data, partial=True)
         if serializer.is_valid():
-            serializer.save(graded_by=request.user)
+            serializer.save()  # No need to pass graded_by again since it's in data
             return self.custom_response(
                 status.HTTP_200_OK,
                 "Assignment grading updated successfully",
@@ -348,6 +385,7 @@ class AssignmentGradingDetailAPIView(CustomResponseMixin, APIView):
             "Error updating assignment grading",
             serializer.errors,
         )
+
 
 
     def delete(self, request, pk, format=None):
@@ -881,6 +919,8 @@ class QuizProgressAPIView(CustomResponseMixin, APIView):
         )
 
 
+
+
 class CourseProgressAPIView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
@@ -897,17 +937,14 @@ class CourseProgressAPIView(CustomResponseMixin, APIView):
                 status.HTTP_400_BAD_REQUEST, "Student not found for user", {}
             )
 
-        total_modules = Module.objects.filter(course=course).exclude(Q(status=2) | Q(status=0)).count()
+        # Fetch all attendance records for the student in the course
+        attendance_records = Attendance.objects.filter(course=course, student=registration_id)
 
-        
-        attendance_records = Attendance.objects.filter(
-            course=course, student=registration_id, status=0  
-        )
         total_attendance = attendance_records.count()
+        present_attendance = attendance_records.filter(status=0).count()
 
-        if total_modules > 0:
-            # progress_percentage = (total_attendance / total_modules) * 100
-            progress_percentage =  min((total_attendance / total_modules) * 100, 100)
+        if total_attendance > 0:
+            progress_percentage = min((present_attendance / total_attendance) * 100, 100)
         else:
             progress_percentage = 0
 
@@ -915,8 +952,8 @@ class CourseProgressAPIView(CustomResponseMixin, APIView):
             "course_id": course_id,
             "user_id": user.id,
             "student_id": registration_id,
-            "total_modules": total_modules,
-            "total_attendance": total_attendance,
+            "total_modules": total_attendance,
+            "total_attendance": present_attendance,
             "progress_percentage": progress_percentage,
         }
 
@@ -926,6 +963,8 @@ class CourseProgressAPIView(CustomResponseMixin, APIView):
             "Course progress retrieved successfully",
             serializer.data,
         )
+
+
 
 def get_pending_assignments_for_student(program_id, registration_id):
     courses = Course.objects.filter(program__id=program_id)

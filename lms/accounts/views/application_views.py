@@ -503,6 +503,7 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
         # Encode the data with base64
         encoded_data = base64.urlsafe_b64encode(data.encode()).decode()
         # Sign the encoded data
+        
         signed_token = signer.sign(encoded_data)
         return signed_token
 
@@ -619,7 +620,7 @@ class VerifyEmailandSetPasswordView(views.APIView, CustomResponseMixin):
                         )
                     registration_id = f"{batch_instance.batch}-{program_name}-{user.id}"
                     Student.objects.create(user=user, registration_id=registration_id)
-                    
+
                 elif application.group_name == "instructor":
                     # Handle instructor logic if needed
                     Instructor.objects.create(id=user)
