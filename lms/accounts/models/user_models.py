@@ -8,29 +8,31 @@ from django.contrib.auth.models import (
 from course.models.program_model import Program
 import datetime
 from django.conf import settings
-from .location_models import (
-    Sessions,
-    Location
-)
+from .location_models import Sessions, Location
 from utils.custom import STATUS_CHOICES
 from course.models.models import Course
 
 
 class TechSkill(models.Model):
     name = models.CharField(max_length=100)
+
     def __str__(self):
         return f"{self.name}"
-    
+
+
 class Applications(models.Model):
     """Users of Registration Request"""
+
     email = models.EmailField(unique=True)
     first_name = models.CharField(max_length=50)
     last_name = models.CharField(max_length=50)
     contact = models.CharField(max_length=12, null=True, blank=True)
-    city = models.CharField(max_length=50)
+    city = models.CharField(max_length=50, null=True)
     location = models.ManyToManyField(Location)
     city_abb = models.CharField(max_length=10, null=True)
-    program = models.ManyToManyField('course.Program', blank=True)  # Make blank=True to accommodate instructors
+    program = models.ManyToManyField(
+        "course.Program", blank=True
+    )
     group_name = models.CharField(max_length=20)
     created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
@@ -38,35 +40,40 @@ class Applications(models.Model):
     application_status = models.CharField(
         max_length=15,
         choices=[
-            ('approved', 'Approved'),
-            ('short_listed', 'Short_Listed'),
-            ('pending', 'Pending'),
-            ('removed', 'Removed')
+            ("approved", "Approved"),
+            ("short_listed", "Short_Listed"),
+            ("pending", "Pending"),
+            ("removed", "Removed"),
         ],
-        default='pending'
+        default="pending",
     )
     date_of_birth = models.DateField(null=True, blank=True)
     years_of_experience = models.IntegerField(null=True, blank=True)
     required_skills = models.ManyToManyField(TechSkill, blank=True)
-    resume = models.TextField(null=True,blank=True)
-    # program_order = ArrayField(models.IntegerField(), blank=True, null=True)
+    resume = models.TextField(null=True, blank=True)
+
     def __str__(self):
         return f"{self.email} - {self.city} - {self.program}"
 
 
 class StudentApplicationSelection(models.Model):
     application = models.OneToOneField(Applications, on_delete=models.CASCADE)
-    selected_program = models.ForeignKey('course.Program', on_delete=models.CASCADE,)
-    status = models.CharField(max_length=15, default='selected')
+    selected_program = models.ForeignKey(
+        "course.Program",
+        on_delete=models.CASCADE,
+    )
+    status = models.CharField(max_length=15, default="selected")
     selected_at = models.DateTimeField(auto_now_add=True)
     selected_location = models.ForeignKey(Location, on_delete=models.CASCADE)
+
 
 class InstructorApplicationSelection(models.Model):
     application = models.OneToOneField(Applications, on_delete=models.CASCADE)
     selected_skills = models.ManyToManyField(TechSkill)
-    status = models.CharField(max_length=15, default='selected')
+    status = models.CharField(max_length=15, default="selected")
     selected_at = models.DateTimeField(auto_now_add=True)
     selected_locations = models.ManyToManyField(Location, blank=True)
+
 
 class UserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
@@ -96,6 +103,7 @@ class UserManager(BaseUserManager):
         user.groups.add(admin_group)
 
         return user
+
 
 class User(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(unique=True)
@@ -155,7 +163,6 @@ class User(AbstractBaseUser, PermissionsMixin):
         super(User, self).save(*args, **kwargs)
 
 
-
 class AccessControl(models.Model):
     """access privileges of user groups in the system."""
 
@@ -175,13 +182,11 @@ class Student(models.Model):
     registration_id = models.CharField(max_length=50, primary_key=True)
 
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    # session = models.ForeignKey(
-    #     Sessions, on_delete=models.CASCADE, null=True, blank=True
-    # )
     program = models.ForeignKey(Program, on_delete=models.CASCADE, null=True)
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=1)
     created_at = models.DateTimeField(auto_now=True, null=True, blank=True)
     updated_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+
     def save(self, *args, **kwargs):
         if not self.registration_id:
             batch = self.batch.batch
@@ -195,11 +200,7 @@ class Student(models.Model):
 
     def __str__(self):
         return f"{self.user} - {self.registration_id}"
-    # class Meta:
-    #     unique_together = ('batch', 'user')
 
-    # class Meta:
-    #     unique_together = ("session", "user")
 
 class StudentSession(models.Model):
     student = models.ForeignKey(
@@ -211,32 +212,26 @@ class StudentSession(models.Model):
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=1)
     created_at = models.DateTimeField(auto_now=True, null=True, blank=True)
     updated_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
-    # start_date = models.DateField()
-    # end_date = models.DateField()
+
     class Meta:
         unique_together = ("session", "student")
+
     def __str__(self):
         return f"{self.student} - {self.session}"
+
 
 class Instructor(models.Model):
     """Extra details of Instructors in the System."""
 
     id = models.OneToOneField(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        primary_key=True)
-    # session = models.ManyToManyField(Sessions)
-    # courses = models.ManyToManyField(Course)
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, primary_key=True
+    )
     created_at = models.DateTimeField(auto_now=True, null=True, blank=True)
     updated_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
 
-    # def get_session_details(self):
-    #     sessions = self.session.all()
-    #     return ", ".join([str(session) for session in sessions])
-
-
     def __str__(self):
         return self.id.email
+
 
 class InstructorSession(models.Model):
     instructor = models.ForeignKey(
@@ -248,10 +243,9 @@ class InstructorSession(models.Model):
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=1)
     created_at = models.DateTimeField(auto_now=True, null=True, blank=True)
     updated_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
-    # start_date = models.DateField()
-    # end_date = models.DateField()
 
     class Meta:
         unique_together = ("session", "instructor")
+
     def __str__(self):
         return f"{self.instructor} - {self.session}"

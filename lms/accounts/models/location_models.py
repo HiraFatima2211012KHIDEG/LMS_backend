@@ -23,8 +23,8 @@ class Batch(models.Model):
     """Batches of cities."""
 
     batch = models.CharField(max_length=10, primary_key=True)
-    city = models.CharField(max_length=30)
-    city_abb = models.CharField(max_length=3)
+    city = models.CharField(max_length=30, null=True)
+    city_abb = models.CharField(max_length=3, null=True)
     year = models.IntegerField()
     no_of_students = models.IntegerField()
     application_start_date = models.DateField(null=True)
@@ -122,46 +122,31 @@ class Sessions(models.Model):
     def __str__(self):
         return f"{self.location}-{self.no_of_students}-{self.course}-{self.start_time}-{self.end_time}"
 
+class SessionSchedule(models.Model):
+    """Schedule for a session on a specific day."""
 
-# class Batch(models.Model):
-#     """Batches of cities."""
-#     batch = models.CharField(max_length=10, primary_key=True)
-#     city = models.ForeignKey(City, on_delete=models.CASCADE)
-#     year = models.IntegerField()
-#     no_of_students = models.IntegerField()
-#     start_date = models.DateField()
-#     end_date = models.DateField()
-#     is_active = models.BooleanField(default=True)
-#     created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    session = models.ForeignKey(
+        Sessions, on_delete=models.CASCADE, related_name="schedules"
+    )
+    day_of_week = models.CharField(
+        max_length=10,
+        choices=[
+            ("Monday", "Monday"),
+            ("Tuesday", "Tuesday"),
+            ("Wednesday", "Wednesday"),
+            ("Thursday", "Thursday"),
+            ("Friday", "Friday"),
+            ("Saturday", "Saturday"),
+            ("Sunday", "Sunday"),
+        ],
+    )
+    start_time = models.TimeField()
+    end_time = models.TimeField()
 
-#     # term_choices = [
-#     #     ('Fall', 'fall'),
-#     #     ('Winter', 'winter'),
-#     #     ('Spring', 'spring'),
-#     #     ('Summer', 'summer'),
-#     #     ('Annual', 'annual')
-#     # ]
-#     # term = models.CharField(max_length=10, choices=term_choices)
+    class Meta:
+        unique_together = ("session", "day_of_week")
 
-#     def save(self, *args, **kwargs):
-#         # Generate the batch code if not provided
-#         if not self.batch:
-#             self.batch = f"{self.city.shortname}-{str(self.year)[-2:]}"
-
-#         # # Assign the term based on the created_at month if term is not provided
-#         # if not self.term:
-#         #     if self.created_at and self.created_at.month in [9, 10, 11]:
-#         #         self.term = 'fall'
-#         #     elif self.created_at and self.created_at.month in [12, 1, 2]:
-#         #         self.term = 'winter'
-#         #     elif self.created_at and self.created_at.month in [3, 4, 5]:
-#         #         self.term = 'spring'
-#         #     elif self.created_at and self.created_at.month in [6, 7, 8]:
-#         #         self.term = 'summer'
-#         #     else:
-#         #         self.term = 'annual'  # Default if no match
-
-#         super(Batch, self).save(*args, **kwargs)
-
-#     class Meta:
-#         unique_together = ('city', 'year')
+    def __str__(self):
+        return (
+            f"{self.session} - {self.day_of_week}: {self.start_time} - {self.end_time}"
+        )
