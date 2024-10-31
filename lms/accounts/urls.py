@@ -5,21 +5,7 @@ Urls for the Accounts app
 from django.urls import path
 from .views.application_views import *
 from .views import user_views,UserSessionAPIView
-from .views.location_views import (
-    CityViewSet,
-    BatchViewSet,
-    LocationViewSet,
-    SessionsAPIView,
-    CreateBatchLocationSessionView,
-    AssignSessionsView,
-    FilterBatchByCityView,
-    FilterLocationByCityView,
-    # FilterSessionsByLocationView,
-    # FilterSessionsView,
-    CityStatsView,
-    SessionCalendarAPIView
-
-)
+from .views.location_views import *
 from .views.attendance_views import *
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
@@ -192,11 +178,6 @@ urlpatterns = [
     ),
 
     path(
-        "create-batch-location-session/",
-        CreateBatchLocationSessionView.as_view(),
-        name="create-batch-location-session",
-    ),
-    path(
         "techskills/",
         TechSkillViewSet.as_view({"get": "list", "post": "create"}),
         name="techskill-list-create",
@@ -239,19 +220,11 @@ urlpatterns = [
     path('instructor-sessions/', user_views.InstructorSessionsView.as_view(), name='instructor-sessions'),
     path('user-process/<int:filteration_id>/', user_views.ApplicationUserView.as_view(), name='application-user'),
     path('user-details/<int:user_id>/', user_views.UserDetailsView.as_view(), name='user-details'),
-    # path(
-    #     "student/<int:course_id>/<int:instructor_id>/",
-    #     user_views.ListStudentsByCourseAndInstructor.as_view(),
-    #     name="list_students_by_course_and_instructor"),
+
     path('sessions/<int:session_id>/students/', SessionsAPIViewAttendance.as_view(), name='session-students'),
     path('instructors/course/<int:course_id>/', InstructorsByCourseAPIView.as_view(), name='instructors-by-course'),
     path('attendance/student/<int:course_id>/', StudentAttendanceListView.as_view(), name='student-attendance'),
     path('attendance/instructor/<int:session_id>/<int:course_id>/', InstructorAttendanceView.as_view(), name='instructor-attendance'),
     path('admin/attendance/<int:session_id>/', AdminAttendanceView.as_view(), name='admin-attendance'),
-
-
-
-
-
 
 ]

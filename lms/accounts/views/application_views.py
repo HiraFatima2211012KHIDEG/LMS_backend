@@ -1,7 +1,7 @@
 """
 Views for the Accounts Applications API.
 """
-
+import os
 from rest_framework import viewsets
 from rest_framework import generics
 from ..serializers.application_serializers import (
@@ -25,6 +25,8 @@ from django.db.models import Q
 from utils.custom import custom_extend_schema
 from ..models.location_models import *
 
+FRONTEND_URL = os.getenv("FRONTEND_URL")
+
 
 class CreateApplicationView(generics.CreateAPIView):
     """Create a new user in the application."""
@@ -46,17 +48,6 @@ class CreateApplicationView(generics.CreateAPIView):
             last_name=last_name,
             group_name=group_name,
         )
-
-
-# class EmailVerificationToken(AccessToken):
-#     lifetime = timedelta(minutes=10)
-
-#     @classmethod
-#     def for_application(cls, application):
-#         token = cls()
-#         token['user_id'] = application.id  # Store application ID
-#         token['user_email'] = application.email  # Store application email
-#         return token
 
 
 class ApplicationProcessView(views.APIView, CustomResponseMixin):
@@ -284,21 +275,6 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
                     related_locations_objects, many=True
                 ).data
 
-        # # Handle location similarly to skills
-        # if related_locations and isinstance(related_locations[0], dict):
-        #     # related_locations is a list of dictionaries
-        #     related_locations_objects = Location.objects.filter(
-        #         id__in=[loc["id"] for loc in related_locations]
-        #     )
-        # else:
-        #     # related_locations is a list of integers
-        #     related_locations_objects = Location.objects.filter(
-        #         id__in=related_locations
-        #     )
-
-        # application["location"] = LocationSerializer(
-        #     related_locations_objects, many=True
-        # ).data
 
     @extend_schema(
         parameters=[
@@ -471,7 +447,7 @@ class ApplicationProcessView(views.APIView, CustomResponseMixin):
                         )
                         print("Token",token)
                         verification_link = (
-                            f"https://lms-xloopdigital.com/auth/account-verify/{str(token)}"
+                            f"{FRONTEND_URL}/auth/account-verify/{str(token)}"
                         )
                         body = f"{email_content}\n\nVerification Link:\n{verification_link}\n\nThis link will expire in 3 days."
 
@@ -557,13 +533,6 @@ class VerifyEmailandSetPasswordView(views.APIView, CustomResponseMixin):
         signer = TimestampSigner()
         try:
             with transaction.atomic():
-                # Verify the token
-                # token = EmailVerificationToken(token_str)
-                # print(token)
-                # user_id = token['user_id']
-                # user_email = token.get('user_email')
-                # print(user_email)
-                # Check if user already exists
                 unsigned_data = signer.unsign(token, max_age=259200)
                 decoded_data = base64.urlsafe_b64decode(unsigned_data).decode()
                 print(decoded_data)
@@ -619,7 +588,7 @@ class VerifyEmailandSetPasswordView(views.APIView, CustomResponseMixin):
                         )
                     registration_id = f"{batch_instance.batch}-{program_name}-{user.id}"
                     Student.objects.create(user=user, registration_id=registration_id)
-                    
+
                 elif application.group_name == "instructor":
                     # Handle instructor logic if needed
                     Instructor.objects.create(id=user)
@@ -692,7 +661,7 @@ class ResendVerificationEmail(views.APIView, CustomResponseMixin):
             token = self.create_signed_token(applicant.id, applicant.email)
             print("Resend",token)
             verification_link = (
-                f"https://lms-xloopdigital.com/auth/account-verify/{str(token)}"
+                f"{FRONTEND_URL}/auth/account-verify/{str(token)}"
             )
             print(token)
             body = (
@@ -730,95 +699,9 @@ class ResendVerificationEmail(views.APIView, CustomResponseMixin):
         return signed_token
 
 
-# from rest_framework import status
-# from rest_framework.response import Response
-# from rest_framework import views
-# from django.contrib.auth import get_user_model
-# from django.db import transaction
-
-# class UserRegistrationView(views.APIView):
-#     # permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
-
-#     def post(self, request):
-#         data = request.data
-#         user_id = data.get('user_id')
-#         session_id = data.get('session_id')
-
-#         if not user_id or not session_id:
-#             return Response({
-#                 'status_code': status.HTTP_400_BAD_REQUEST,
-#                 'message': 'User ID and Session ID are required.'
-#             }, status=status.HTTP_400_BAD_REQUEST)
-
-#         try:
-#             with transaction.atomic():
-#                 user = get_user_model().objects.get(id=user_id)
-#                 session = Sessions.objects.get(id=session_id)
-#                 serializer = SessionsSerializer(session)
-#                 session_data = serializer.data
-#                 user_location = session_data.get('location')
-#                 location_object = Location.objects.get(id = user_location)
-#                 user_location_name = location_object.name
-#                 user_batch = session_data.get('batch')
-#                 batch_object = Batch.objects.get(batch = user_batch)
-#                 user_batch_name = batch_object.batch
-#                 user_program = "Computer Science"
-#                 link = "{sample link : jab itna kr hi lia hay to link bhi kabhi na kabhi ajaega 🤲}"
-
-#                 student_instructor = StudentInstructor.objects.create(
-#                     user=user,
-#                     session=session,
-#                     batch=batch_object
-#                 )
-
-#                 student_instructor_serializer = StudentInstructorSerializer(student_instructor)
-
-#                 # body = (f"Congratulations {user.first_name} {user.last_name}!,\n"
-#                 #         f"Welcome to xloop lms.You have been enrolled in {user_program} program with batch no # {user_batch_name}."
-#                 #         f"You are requested to attend your classes in {user_location_name} center. "
-#                 #         f"Please click the following link to verify your account.\n{link}")
-
-#                 # email_data = {
-#                 #     "email_subject": "Verify your account",
-#                 #     "body": body,
-#                 #     "to_email": user.email,
-#                 # }
-#                 # send_email(email_data)
-#                 print(session, user_location_name, user_batch_name)
-
-#                 return Response({
-#                     'status_code': status.HTTP_200_OK,
-#                     'message': 'User registered successfully, and email sent.',
-#                     'response': {
-#                         'student_instructor_id': student_instructor_serializer.data
-#                     }
-#                 }, status=status.HTTP_200_OK)
-
-#         except get_user_model().DoesNotExist:
-#             return Response({
-#                 'status_code': status.HTTP_404_NOT_FOUND,
-#                 'message': 'User not found.'
-#             }, status=status.HTTP_404_NOT_FOUND)
-
-#         except Sessions.DoesNotExist:
-#             return Response({
-#                 'status_code': status.HTTP_404_NOT_FOUND,
-#                 'message': 'Session not found.'
-#             }, status=status.HTTP_404_NOT_FOUND)
-
-#         except Exception as e:
-#             return Response({
-#                 'status_code': status.HTTP_500_INTERNAL_SERVER_ERROR,
-#                 'message': f'An error occurred: {str(e)}'
-#             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-# views.py
-
-
 class TechSkillViewSet(viewsets.ModelViewSet):
     queryset = TechSkill.objects.all()
     serializer_class = TechSkillSerializer
-
 
 
 class ApplicationStatusCount(views.APIView, CustomResponseMixin):
@@ -1000,23 +883,3 @@ class ApplicationStatusCount(views.APIView, CustomResponseMixin):
                 None,
             )
 
-
-# class VerifiedUnverifiedAccountsCountView(views.APIView, CustomResponseMixin):
-
-#     permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
-
-#     def get(self, request, filteration_id=None):
-#         if filteration_id is None:
-#             return self.custom_response(
-#                 status.HTTP_400_BAD_REQUEST, "filteration_id is not provided.", None
-#             )
-
-#         status = request.query_params.get('status')
-#         if status != "approved":
-#             return self.custom_response(
-#                 status.HTTP_400_BAD_REQUEST,
-#                 "Invalid status",
-#                 None,
-#             )
-
-#         else:

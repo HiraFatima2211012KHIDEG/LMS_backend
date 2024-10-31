@@ -14,17 +14,6 @@ from django.db.models import Q
 logger = logging.getLogger(__name__)
 
 
-
-# class CourseModulesAPIView(CustomResponseMixin, APIView):
-#     permission_classes = (permissions.IsAuthenticated,)
-
-#     def get(self, request, course_id,session_id, format=None):
-#         course = get_object_or_404(Course, id=course_id)
-#         modules = Module.objects.filter(course=course,session_id=session_id).order_by('-created_at')
-#         serializer = ModuleSerializer(modules, many=True)
-#         return self.custom_response(status.HTTP_200_OK, 'Modules retrieved successfully', serializer.data)
-
-
 class CourseModulesAPIView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
@@ -146,7 +135,7 @@ class ModuleListCreateAPIView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
     parser_classes = (MultiPartParser, FormParser)
     def get(self, request, format=None):
-        modules = Module.objects.all().order_by('-created_at')
+        modules = Module.objects.all().order_by('created_at')
         serializer = ModuleSerializer(modules, many=True)
         return self.custom_response(status.HTTP_200_OK, 'Modules retrieved successfully', serializer.data)
 
@@ -156,7 +145,7 @@ class ModuleListCreateAPIView(CustomResponseMixin, APIView):
         data = {key: value for key, value in request.data.items()}
         data['created_by'] = request.user.id
 
-        # Validate the number of files
+        
         files = request.data.getlist('files')
         if len(files) > 5:
             return self.custom_response(status.HTTP_400_BAD_REQUEST, 'You can upload a maximum of 5 files per module.', {})
@@ -209,6 +198,8 @@ class ModuleDetailAPIView(CustomResponseMixin, APIView):
             return self.custom_response(status.HTTP_200_OK, 'Module updated successfully', serializer.data)
 
         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error updating module', serializer.errors)
+
+
 
 
 

@@ -1,6 +1,6 @@
 from django.db import models
 
-from utils.custom import STATUS_CHOICES
+from constants import STATUS_CHOICES
 from datetime import timedelta
 from django.utils import timezone
 

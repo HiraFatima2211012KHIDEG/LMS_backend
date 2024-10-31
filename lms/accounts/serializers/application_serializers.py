@@ -1,12 +1,12 @@
 from ..models.user_models import *
 from rest_framework import serializers
 
+
 class TechSkillSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = TechSkill
         fields = ['id', 'name']
-
 
 
 class ApplicationSerializer(serializers.ModelSerializer):
@@ -70,12 +70,5 @@ class ApplicationSerializer(serializers.ModelSerializer):
             application.required_skills.set(required_skills_data)
         if location_data:
             application.location.set(location_data)
-
-        # Create or set selection records based on group_name
-        # group_name = validated_data.get('group_name')
-        # if group_name == 'student':
-        #     StudentApplicationSelection.objects.create(application=application)
-        # elif group_name == 'instructor':
-        #     InstructorApplicationSelection.objects.create(application=application)
 
         return application

@@ -226,12 +226,29 @@ class ProjectGradingListCreateAPIView(CustomResponseMixin, APIView):
         data = {key: value for key, value in request.data.items()}
         data['graded_by'] = request.user.id
 
+        # Check if grading already exists
+        if ProjectGrading.objects.filter(project_submissions=data['project_submissions'], graded_by=request.user).exists():
+            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Project grading already exists for this submission', None)
+        
+        # Retrieve the project submission associated with the grading
+        project_submission = get_object_or_404(ProjectSubmission, pk=data['project_submissions'])
+        total_grade = project_submission.project.total_grade  # Get the total grade for the associated project
+
+        # Validate the grade
+        if 'grade' in data and float(data['grade']) > float(total_grade):
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST,
+                f"Grade cannot exceed the total grade of {total_grade}",
+                None
+            )
 
         serializer = ProjectGradingSerializer(data=data)
         if serializer.is_valid():
             serializer.save(graded_by=request.user)
             return self.custom_response(status.HTTP_201_CREATED, 'Project grading created successfully', serializer.data)
+        
         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error creating project grading', serializer.errors)
+
 
 class ProjectGradingDetailAPIView(CustomResponseMixin, APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -246,14 +263,27 @@ class ProjectGradingDetailAPIView(CustomResponseMixin, APIView):
         data = {key: value for key, value in request.data.items()}
         data['graded_by'] = request.user.id
 
-
         project_grading = get_object_or_404(ProjectGrading, pk=pk)
+
+        # Retrieve the associated project submission
+        project_submission = project_grading.project_submissions
+        total_grade = project_submission.project.total_grade  # Get the total grade for the associated project
+
+        # Validate the grade
+        if 'grade' in data and float(data['grade']) > float(total_grade):
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST,
+                f"Grade cannot exceed the total grade of {total_grade}",
+                None
+            )
+
         serializer = ProjectGradingSerializer(project_grading, data=data, partial=True)
         if serializer.is_valid():
             serializer.save(graded_by=request.user)
-            return self.custom_response(status.HTTP_200_OK
-                                        , 'Project grading updated successfully', serializer.data)
+            return self.custom_response(status.HTTP_200_OK, 'Project grading updated successfully', serializer.data)
+
         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error updating project grading', serializer.errors)
+
 
 
     def delete(self, request, pk, format=None):

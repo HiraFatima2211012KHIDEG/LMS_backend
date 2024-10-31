@@ -123,29 +123,7 @@ class CreateProgramView(APIView):
 
     permission_classes = [permissions.IsAuthenticated]
 
-    # @extend_schema(
-    #     request=inline_serializer(
-    #         name='ProgramCreateRequest',
-    #         fields={
-    #             'name': serializers.CharField(max_length=255),
-    #             'short_description': serializers.CharField(),
-    #             'about': serializers.CharField(),
-    #             'courses': serializers.ListField(
-    #                 child=serializers.IntegerField(),
-    #                 allow_empty=False,
-    #                 help_text="List of course IDs to be associated with the program"
-    #             ),
-    #             'status': serializers.ChoiceField(choices=[(0, 'Inactive'), (1, 'Active')]),
-    #             'picture': serializers.ImageField(required=False, allow_null=True)
-    #         }
-    #     ),
-    #     responses={
-    #         201: ProgramSerializer,
-    #         400: "Bad Request.",
-    #         401: "Unauthorized.",
-    #     },
-    #     description="Create a new Program by providing course IDs and other required details."
-    # )
+
     @custom_extend_schema(ProgramSerializer)
     def post(self, request, *args, **kwargs):
         course_ids = request.data.get('courses')

@@ -226,11 +226,27 @@ class QuizGradingListCreateAPIVieww(CustomResponseMixin, APIView):
         data = {key: value for key, value in request.data.items()}
         data['graded_by'] = request.user.id
 
+        # Check if grading already exists
+        if QuizGrading.objects.filter(quiz_submissions=data['quiz_submissions'], graded_by=request.user).exists():
+            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Quiz grading already exists for this submission', None)
+
+        # Retrieve the quiz associated with the submission
+        quiz_submission = get_object_or_404(QuizSubmission, pk=data['quiz_submissions'])
+        total_grade = quiz_submission.quiz.total_grade  # Get the total grade for the associated quiz
+
+        # Validate the grade
+        if 'grade' in data and float(data['grade']) > float(total_grade):
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST,
+                f"Grade cannot exceed the total grade of {total_grade}",
+                None
+            )
 
         serializer = QuizGradingSerializer(data=data)
         if serializer.is_valid():
             serializer.save()
             return self.custom_response(status.HTTP_201_CREATED, 'Quiz grading created successfully', serializer.data)
+
         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error creating quiz grading', serializer.errors)
 
 class QuizGradingDetailAPIView(CustomResponseMixin, APIView):
@@ -246,13 +262,27 @@ class QuizGradingDetailAPIView(CustomResponseMixin, APIView):
         data = {key: value for key, value in request.data.items()}
         data['graded_by'] = request.user.id
 
-
         quiz_grading = get_object_or_404(QuizGrading, pk=pk)
+
+        # Retrieve the associated quiz submission
+        quiz_submission = quiz_grading.quiz_submissions
+        total_grade = quiz_submission.quiz.total_grade  # Get the total grade for the associated quiz
+
+        # Validate the grade
+        if 'grade' in data and float(data['grade']) > float(total_grade):
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST,
+                f"Grade cannot exceed the total grade of {total_grade}",
+                None
+            )
+
         serializer = QuizGradingSerializer(quiz_grading, data=data, partial=True)
         if serializer.is_valid():
             serializer.save(graded_by=request.user)
             return self.custom_response(status.HTTP_200_OK, 'Quiz grading updated successfully', serializer.data)
+
         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error updating quiz grading', serializer.errors)
+
 
     def delete(self, request, pk, format=None):
         grading = get_object_or_404(QuizGrading, pk=pk)

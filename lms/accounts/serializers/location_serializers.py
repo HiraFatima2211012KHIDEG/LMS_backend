@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
 from ..models.user_models import Student, StudentSession, InstructorSession
-from ..models.location_models import City, Batch, Location, Sessions
+from ..models.location_models import City, Batch, Location, Sessions, SessionSchedule
 from course.serializers import CourseSerializer
 from datetime import datetime, timedelta
 from course.models.models import Course
@@ -33,7 +33,7 @@ class BatchSerializer(serializers.ModelSerializer):
 
 class LocationSerializer(serializers.ModelSerializer):
     remaining_spots_for_location = serializers.SerializerMethodField()
-    
+
     class Meta:
         model = Location
         fields = ["id", "name", "shortname", "capacity", "city", "status", "remaining_spots_for_location","created_at"]
@@ -55,15 +55,21 @@ class LocationSerializer(serializers.ModelSerializer):
 
             if remaining_spots <= 0:
                 raise serializers.ValidationError(f"No remaining spots in location {location.name}. Cannot assign more students.")
-        
+
         # For create requests, ensure the capacity is provided
         elif 'capacity' in data:
             # Perform any additional validation during creation if needed
             capacity = data['capacity']
             if capacity <= 0:
                 raise serializers.ValidationError("Capacity must be greater than 0.")
-        
+
         return data
+
+
+class SessionScheduleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SessionSchedule
+        fields = ["day_of_week", "start_time", "end_time"]
 
 
 class SessionsSerializer(serializers.ModelSerializer):
@@ -74,6 +80,7 @@ class SessionsSerializer(serializers.ModelSerializer):
     )
     remaining_spots = serializers.SerializerMethodField()
     session_name = serializers.SerializerMethodField()
+    schedules = SessionScheduleSerializer(many=True, write_only=False)
 
     class Meta:
         model = Sessions
@@ -85,33 +92,27 @@ class SessionsSerializer(serializers.ModelSerializer):
             "remaining_spots",
             "start_date",
             "end_date",
-            "start_time",
-            "end_time",
             "days_of_week",
             "status",
             "course",
             "course_id",
-            "session_name", 
-            "created_at"
+            "session_name",
+            "created_at",
+            "schedules",
         ]
 
     def get_session_name(self, obj):
-        # Build the custom session name
-        return f"{obj.location}-{obj.course}-{obj.no_of_students}-({obj.start_time}-{obj.end_time})"
-        
+        return f"{obj.location}-{obj.course}-{obj.no_of_students}-({obj.start_date}-{obj.end_date})"
+
     def get_remaining_spots(self, obj):
         assigned_students = StudentSession.objects.filter(session=obj).count()
         remaining_spots = obj.no_of_students - assigned_students
-
-        # Prevent negative remaining spots
         if remaining_spots < 0:
             remaining_spots = 0
-
         return remaining_spots
 
     def validate(self, data):
         session = self.instance
-
         if session:
             assigned_students = StudentSession.objects.filter(session=session).count()
             remaining_spots = session.no_of_students - assigned_students
@@ -120,11 +121,30 @@ class SessionsSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     "The session is already full. No more students can be assigned."
                 )
-
         return data
 
-    def update(self, instance, validated_data):
+    def create(self, validated_data):
+        schedules_data = validated_data.pop("schedules")
+        days_of_week = [schedule["day_of_week"] for schedule in schedules_data]
+        validated_data["days_of_week"] = days_of_week
+        session = super().create(validated_data)
+        for schedule_data in schedules_data:
+            SessionSchedule.objects.create(session=session, **schedule_data)
+        return session
 
+    def update(self, instance, validated_data):
+        schedules_data = validated_data.pop("schedules", None)
+        if schedules_data:
+            days_of_week = [schedule["day_of_week"] for schedule in schedules_data]
+            validated_data["days_of_week"] = days_of_week
+        instance = super().update(instance, validated_data)
+        if schedules_data:
+            instance.schedules.all().delete()
+            for schedule_data in schedules_data:
+                SessionSchedule.objects.create(session=instance, **schedule_data)
+        return instance
+
+    def update(self, instance, validated_data):
         assigned_students = StudentSession.objects.filter(session=instance).count()
         instance.no_of_students = instance.no_of_students - assigned_students
         for attr, value in validated_data.items():
@@ -166,7 +186,7 @@ class InstructorSessionSerializer(serializers.ModelSerializer):
 class InstructorSessionSerializer(serializers.ModelSerializer):
     instructor_name = serializers.SerializerMethodField()
     instructor_id = serializers.IntegerField(source='instructor.id.id')
-      
+
     session = SessionsSerializer()
 
     class Meta:
@@ -224,14 +244,14 @@ class SessionsCalendarSerializer(serializers.ModelSerializer):
 
     def get_dates_with_days(self, obj):
         """Get the dates corresponding to the days of the week within the program's date range."""
-     
+
         start_date = obj.start_date
         end_date = obj.end_date
         days_of_week = obj.days_of_week
-        
+
         # Generate the dates based on the start and end date and days of the week
         return self.get_dates_from_days(start_date, end_date, days_of_week)
-        
+
 
     def get_dates_from_days(self, start_date, end_date, days_of_week):
         """Generate a list of dates based on start and end dates and specified days of the week."""

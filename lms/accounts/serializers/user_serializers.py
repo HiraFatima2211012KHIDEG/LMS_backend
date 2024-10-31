@@ -1,7 +1,7 @@
 """
 Serializers for the User API View.
 """
-
+import os
 from django.contrib.auth import (
     get_user_model,
 )
@@ -19,7 +19,7 @@ from course.models.models import Course
 from django.contrib.auth.models import Group
 from course.serializers import CourseSerializer
 
-# from accounts.utils import send_email
+FRONTEND_URL = os.getenv("FRONTEND_URL")
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -94,24 +94,6 @@ class UserLoginSerializer(serializers.Serializer):
     password = serializers.CharField(style={"input_type": "password"}, write_only=True)
 
 
-# class UserLoginSerializer(serializers.ModelSerializer):
-#     """Serializer for user login"""
-
-#     class Meta:
-#         model = get_user_model()
-#         fields = ['email', 'password']
-#         extra_kwargs = {'password': {'write_only': True, 'min_length':  5}}
-
-# email = serializers.EmailField()
-# password = serializers.CharField(style = {'input_type' : 'password'}, write_only = True)
-
-
-# class UserProfileSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = User
-#         fields = ['id', 'first_name', 'last_name', 'contact', 'city']
-
-
 class UserProfileSerializer(serializers.ModelSerializer):
     registration_id = serializers.CharField(
         source="student.registration_id", read_only=True
@@ -143,10 +125,6 @@ class UserProfileSerializer(serializers.ModelSerializer):
             self.fields.pop("course")
         elif user and user.groups.filter(name="instructor").exists():
             self.fields.pop("program")
-
-
-
-
 
     def get_program(self, obj):
         try:
@@ -328,11 +306,9 @@ class ResetPasswordSerializer(serializers.Serializer):
         user = User.objects.get(email=value)
         uid = urlsafe_base64_encode(force_bytes(user.id))
         token = PasswordResetTokenGenerator().make_token(user)
-        link=f"https://lms-xloopdigital.com/auth/set-password/{uid}/{token}"
+        link=f"{FRONTEND_URL}/auth/set-password/{uid}/{token}"
         print("Password reset link:", link)
 
-        # Email sending logic can be included here or in a separate function/task
-        # Example:
         body = f"Hey {user.first_name} {user.last_name},\nPlease click the following link to reset your password. {link}\nThe link will expire in 10 minutes."
         data = {
              "email_subject": "Reset Password",
@@ -430,14 +406,11 @@ class UserpasswordResetSerializer(serializers.Serializer):
             raise serializers.ValidationError("Token is not valid or expired.")
 
 class StudentSerializer(serializers.ModelSerializer):
-    # session_details = serializers.SerializerMethodField()
 
     class Meta:
         model = Student
-        fields = ["registration_id", "user"]  # Removed 'session' field
+        fields = ["registration_id", "user"]
 
-    # def get_session_details(self, obj):
-    #     return obj.get_session_details()
 
 class StudentDetailSerializer(serializers.ModelSerializer):
     full_name = serializers.SerializerMethodField()
@@ -457,6 +430,7 @@ class InstructorSerializer(serializers.ModelSerializer):
     class Meta:
         model = Instructor
         fields = ["id", "email", "first_name", "last_name"]
+
 
 class InstructorCoursesSerializer(serializers.ModelSerializer):
     courses = serializers.SerializerMethodField()
@@ -480,6 +454,7 @@ class AssignCoursesSerializer(serializers.Serializer):
         if not Course.objects.filter(id__in=value).exists():
             raise serializers.ValidationError("Some course IDs are invalid.")
         return value
+
 
 class InstructorSessionSerializer(serializers.ModelSerializer):
     instructor_email = serializers.SerializerMethodField()

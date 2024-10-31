@@ -9,7 +9,7 @@ from course.models.program_model import Program
 import datetime
 from django.conf import settings
 from .location_models import Sessions, Location
-from utils.custom import STATUS_CHOICES
+from constants import STATUS_CHOICES
 from course.models.models import Course
 
 

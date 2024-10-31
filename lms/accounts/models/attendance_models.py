@@ -1,10 +1,6 @@
 from django.db import models
 from django.conf import settings
 import sys
-
-sys.path.append("...")
-from .location_models import Sessions
-from utils.custom import STATUS_CHOICES
 from course.models.models import Course
 from .user_models import Student, Instructor, User
 
