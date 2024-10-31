@@ -27,6 +27,78 @@ class BatchViewSet(BaseLocationViewSet):
     queryset = Batch.objects.all()
     serializer_class = BatchSerializer
 
+    def update(self, request, *args, **kwargs):
+        # Retrieve the current instance of Batch
+        batch = self.get_object()
+        print(batch)
+        original_status = batch.status
+        new_status = request.data.get("status", original_status)
+
+        response = super().update(request, *args, **kwargs)
+
+        # Check if the status is changing to 0
+        if original_status != 0 and new_status == 0:
+            with transaction.atomic():
+                # Get all students related to this batch and update their users' is_active field
+                students_in_batch = Student.objects.filter(
+                    registration_id__startswith=batch, status=1
+                )
+
+                # Update the is_active field in the related User records
+                User.objects.filter(id__in=students_in_batch.values("user_id")).update(
+                    is_active=False
+                )
+                students_in_batch.update(status=2)
+
+                student_sessions = StudentSession.objects.filter(
+                    student__in=students_in_batch
+                )
+                student_sessions.update(status=2)
+                sessions = Sessions.objects.filter(batch=batch, status=1)
+
+                sessions.update(status=2)
+                student_sessions = StudentSession.objects.filter(
+                    session_id__in=sessions
+                )
+                student_sessions.update(status=2)
+                instructor_sessions = InstructorSession.objects.filter(
+                    session_id__in=sessions
+                )
+                instructor_sessions.update(status=2)
+
+        elif original_status != 1 and new_status == 1:
+            with transaction.atomic():
+                # Get all students related to this batch and update their users' is_active field
+                students_in_batch = Student.objects.filter(
+                    registration_id__startswith=batch, status=2
+                )
+
+                # Update the is_active field in the related User records
+                User.objects.filter(id__in=students_in_batch.values("user_id")).update(
+                    is_active=True
+                )
+                students_in_batch.update(status=1)
+
+                student_sessions = StudentSession.objects.filter(
+                    student__in=students_in_batch
+                )
+                student_sessions.update(status=1)
+                sessions = Sessions.objects.filter(batch=batch, status=2)
+
+                sessions.update(status=1)
+                student_sessions = StudentSession.objects.filter(
+                    session_id__in=sessions
+                )
+                student_sessions.update(status=1)
+                instructor_sessions = InstructorSession.objects.filter(
+                    session_id__in=sessions
+                )
+                instructor_sessions.update(status=1)
+
+        return self.custom_response(
+            status.HTTP_200_OK, "updated successfully", response.data
+        )
+
 
 class LocationViewSet(BaseLocationViewSet):
     queryset = Location.objects.all()
