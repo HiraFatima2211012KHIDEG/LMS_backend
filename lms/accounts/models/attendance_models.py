@@ -9,7 +9,6 @@ class Attendance(models.Model):
     student = models.ForeignKey(
         Student, on_delete=models.CASCADE, related_name="student"
     )
-    # date = models.DateField(auto_now_add=True)
     date = models.DateField(default=timezone.now)
     course = models.ForeignKey(Course, on_delete=models.CASCADE, null=True)
     status = models.PositiveSmallIntegerField(

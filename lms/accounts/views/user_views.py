@@ -752,7 +752,7 @@ class PreferredInstructorSessionView(views.APIView, CustomResponseMixin):
 
 class PreferredSessionView(views.APIView, CustomResponseMixin):
     """
-    View to fetch sessions based on program and location filters.
+    View to fetch sessions based on program filters.
     """
 
     @extend_schema(
@@ -763,11 +763,18 @@ class PreferredSessionView(views.APIView, CustomResponseMixin):
                 required=False,
                 type=str,
             ),
+            OpenApiParameter(
+                name="user_id",
+                description="Filter by user id of student.",
+                required=False,
+                type=int,
+            ),
         ],
         responses={200: "application/json"},
     )
     def get(self, request):
         program_id = request.query_params.get("program_id")
+        user_id = request.query_params.get("user_id")
         try:
             program = Program.objects.prefetch_related("courses").get(id=program_id)
         except Program.DoesNotExist:
@@ -776,11 +783,22 @@ class PreferredSessionView(views.APIView, CustomResponseMixin):
                 "The specified program does not exist.",
                 None,
             )
+        try:
+            user = User.objects.get(id=user_id)
+            print(user)
+        except User.DoesNotExist:
+            return self.custom_response(
+                status.HTTP_404_NOT_FOUND,
+                "The specified User does not exist.",
+                None,
+            )
+        student = Student.objects.get(user=user)
+        reg = student.registration_id.split('-')[:2]  # Assuming format is "{batch}-{user_id}"
+        batch_id = '-'.join(reg)
+        print('Batch ID:', batch_id)
         courses = program.courses.all()
         print("a", courses)
-        sessions = Sessions.objects.filter(
-            course__in=courses, status=1
-        )
+        sessions = Sessions.objects.filter(course__in=courses, status=1, batch=batch_id)
         print("b", sessions)
         if not sessions.exists():
             return self.custom_response(
@@ -1238,7 +1256,7 @@ class InstructorSessionsView(views.APIView, CustomResponseMixin):
                     session__schedules__day_of_week=schedule.day_of_week,
                     session__schedules__start_time__lt=schedule.end_time,
                     session__schedules__end_time__gt=schedule.start_time,
-                    status=1
+                    status=1,
                 ).exclude(session=session)
 
                 if overlapping_sessions.exists():
