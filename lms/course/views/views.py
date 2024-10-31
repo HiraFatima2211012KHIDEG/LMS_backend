@@ -5,24 +5,61 @@ from django.shortcuts import get_object_or_404
 from ..models.models import *
 from ..serializers import *
 from accounts.models.user_models import *
-from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.parsers import MultiPartParser, FormParser,JSONParser
 import logging
 from django.apps import apps
 from drf_spectacular.utils import extend_schema
 from utils.custom import CustomResponseMixin, custom_extend_schema
-
+from django.db.models import Q
 logger = logging.getLogger(__name__)
 
+
+
+# class CourseModulesAPIView(CustomResponseMixin, APIView):
+#     permission_classes = (permissions.IsAuthenticated,)
+
+#     def get(self, request, course_id,session_id, format=None):
+#         course = get_object_or_404(Course, id=course_id)
+#         modules = Module.objects.filter(course=course,session_id=session_id).order_by('-created_at')
+#         serializer = ModuleSerializer(modules, many=True)
+#         return self.custom_response(status.HTTP_200_OK, 'Modules retrieved successfully', serializer.data)
 
 
 class CourseModulesAPIView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
-    def get(self, request, course_id, format=None):
-        course = get_object_or_404(Course, id=course_id)
-        modules = Module.objects.filter(course=course).order_by('-created_at')
+    def get(self, request, course_id, session_id, format=None):
+        user = request.user
+        course_exists = Course.objects.filter(id=course_id).exists()
+        if not course_exists:
+            return self.custom_response(
+                status.HTTP_404_NOT_FOUND, "Course not found.",{}
+            )
+
+        session_exists = Sessions.objects.filter(id=session_id).exists()
+        if not session_exists:
+            return self.custom_response(
+                status.HTTP_404_NOT_FOUND, "Session not found.",{}
+            )
+
+        is_student = Student.objects.filter(user=user).exists()
+        
+        if is_student:
+            modules = Module.objects.filter(course_id=course_id, session_id=session_id).exclude(Q(status=2) | Q(status=0)).order_by('-created_at')
+        else:
+            modules = Module.objects.filter(course_id=course_id, session_id=session_id).exclude(status=2).order_by('-created_at')
+
+        if not modules.exists():
+            return self.custom_response(
+                status.HTTP_200_OK, "No modules found for this course and session.",{}
+            )
+
         serializer = ModuleSerializer(modules, many=True)
-        return self.custom_response(status.HTTP_200_OK, 'Modules retrieved successfully', serializer.data)
+
+        return self.custom_response(
+            status.HTTP_200_OK, 'Modules retrieved successfully', serializer.data
+        )
+
 
 
 class CourseListCreateAPIView(CustomResponseMixin, APIView):
@@ -30,7 +67,7 @@ class CourseListCreateAPIView(CustomResponseMixin, APIView):
 
 
     def get(self, request, format=None):
-        courses = Course.objects.all().order_by('name')
+        courses = Course.objects.all().exclude(status=2).order_by('name')
         serializer = CourseSerializer(courses, many=True)
         logger.info("Retrieved all courses")
         return self.custom_response(status.HTTP_200_OK, 'Courses retrieved successfully', serializer.data)
@@ -78,17 +115,38 @@ class CourseDetailAPIView(CustomResponseMixin, APIView):
         logger.error(f"Error updating course with ID {pk}: {serializer.errors}")
         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error updating course', serializer.errors)
 
-    def delete(self, request, pk, format=None):
-        course = get_object_or_404(Course, pk=pk)
-        course.delete()
-        logger.info(f"Deleted course with ID: {pk}")
-        return self.custom_response(status.HTTP_204_NO_CONTENT, 'Course deleted successfully', {})
+    def patch(self, request, pk, format=None):
+        try:
+            course = Course.objects.get(pk=pk)
+        except Course.DoesNotExist:
+            return self.custom_response(
+                status.HTTP_404_NOT_FOUND, "Course not found.", {}
+            )
+        
+        status_data = request.data.get('status')
+        
+        if status_data is None:
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST, "Status field is required.", {}
+            )
+        
+        serializer = CourseSerializer(course, data={"status": status_data}, partial=True)
+        
+        if serializer.is_valid():
+            serializer.save()
+            return self.custom_response(
+                status.HTTP_200_OK, "Course status updated successfully", serializer.data
+            )
+        
+        return self.custom_response(
+            status.HTTP_400_BAD_REQUEST, "Error updating course status", serializer.errors
+        )
 
 class ModuleListCreateAPIView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
     parser_classes = (MultiPartParser, FormParser)
     def get(self, request, format=None):
-        modules = Module.objects.all().order_by('-created_at')
+        modules = Module.objects.all().order_by('created_at')
         serializer = ModuleSerializer(modules, many=True)
         return self.custom_response(status.HTTP_200_OK, 'Modules retrieved successfully', serializer.data)
 
@@ -98,8 +156,8 @@ class ModuleListCreateAPIView(CustomResponseMixin, APIView):
         data = {key: value for key, value in request.data.items()}
         data['created_by'] = request.user.id
 
-        # Validate the number of files
-        files = request.FILES.getlist('files')
+        
+        files = request.data.getlist('files')
         if len(files) > 5:
             return self.custom_response(status.HTTP_400_BAD_REQUEST, 'You can upload a maximum of 5 files per module.', {})
 
@@ -115,7 +173,7 @@ class ModuleListCreateAPIView(CustomResponseMixin, APIView):
 
 class ModuleDetailAPIView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
-    parser_classes = (MultiPartParser, FormParser)
+    parser_classes = (MultiPartParser, FormParser,JSONParser)
     def get(self, request, pk, format=None):
         module = get_object_or_404(Module, pk=pk)
         serializer = ModuleSerializer(module)
@@ -132,7 +190,7 @@ class ModuleDetailAPIView(CustomResponseMixin, APIView):
             module = serializer.save()
 
             # Validate the number of files
-            files = request.FILES.getlist('files')
+            files = request.data.getlist('files')
             if len(files) > 5:
                 return self.custom_response(status.HTTP_400_BAD_REQUEST, 'You can upload a maximum of 5 files per module.', {})
 
@@ -153,10 +211,34 @@ class ModuleDetailAPIView(CustomResponseMixin, APIView):
         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error updating module', serializer.errors)
 
 
-    def delete(self, request, pk, format=None):
-        module = get_object_or_404(Module, pk=pk)
-        module.delete()
-        return self.custom_response(status.HTTP_204_NO_CONTENT, 'Module deleted successfully', {})
+
+    def patch(self, request, pk, format=None):
+        try:
+            module = Module.objects.get(pk=pk)
+        except Module.DoesNotExist:
+            return self.custom_response(
+                status.HTTP_404_NOT_FOUND, "Module not found.",{}
+            )
+        
+        status_data = request.data.get('status')
+        
+        # Check if status is provided
+        if status_data is None:
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST, "Status field is required.",{}
+            )
+        
+        serializer = ModuleSerializer(module, data={"status": status_data}, partial=True)
+        
+        if serializer.is_valid():
+            serializer.save()
+            return self.custom_response(
+                status.HTTP_200_OK, "Module status updated successfully", serializer.data
+            )
+        
+        return self.custom_response(
+            status.HTTP_400_BAD_REQUEST, "Error updating module status", errors=serializer.errors
+        )
 
 class ToggleActiveStatusAPIView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)

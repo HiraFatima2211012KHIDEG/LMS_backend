@@ -328,18 +328,18 @@ class ResetPasswordSerializer(serializers.Serializer):
         user = User.objects.get(email=value)
         uid = urlsafe_base64_encode(force_bytes(user.id))
         token = PasswordResetTokenGenerator().make_token(user)
-        link = f"http://localhost:3000/auth/set-password/{uid}/{token}"
+        link=f"https://lms-phi-two.vercel.app/auth/set-password/{uid}/{token}"
         print("Password reset link:", link)
 
         # Email sending logic can be included here or in a separate function/task
         # Example:
-        # body = f"Hey {user.first_name} {user.last_name},\nPlease click the following link to reset your password. {link}\nThe link will expire in 10 minutes."
-        # data = {
-        #     "email_subject": "Reset Password",
-        #     "body": body,
-        #     "to_email": user.email,
-        # }
-        # send_email.apply_async(args=[data, "reset_password.html"], countdown=3)
+        body = f"Hey {user.first_name} {user.last_name},\nPlease click the following link to reset your password. {link}\nThe link will expire in 10 minutes."
+        data = {
+             "email_subject": "Reset Password",
+             "body": body,
+             "to_email": user.email,
+        }
+        send_email(data)
 
         return value
 

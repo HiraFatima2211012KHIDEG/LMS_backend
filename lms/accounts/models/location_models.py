@@ -12,8 +12,8 @@ class City(models.Model):
     shortname = models.CharField(max_length=3)
     is_active = models.BooleanField(default=True)
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=1)
-    created_at = models.DateTimeField(auto_now=True, null=True, blank=True)
-    updated_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
 
     def __str__(self):
         return f"{self.city}"
@@ -30,15 +30,15 @@ class Batch(models.Model):
     start_date = models.DateField()
     end_date = models.DateField()
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=1)
-    created_at = models.DateTimeField(auto_now=True, null=True, blank=True)
-    updated_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
 
     TERM_CHOICES = [
         ("Fall", "Fall"),
         ("Winter", "Winter"),
         ("Spring", "Spring"),
         ("Summer", "Summer"),
-        ("Annual", "Annual"),
+#        ("Annual", "Annual"),
     ]
     term = models.CharField(max_length=10, choices=TERM_CHOICES, null=True, blank=True)
 
@@ -56,13 +56,13 @@ class Batch(models.Model):
                 self.term = "Spring"
             elif current_month in [6, 7, 8]:
                 self.term = "Summer"
-            else:
-                self.term = "Annual"
+#            else:
+#                self.term = "Annual"
 
         # Generate the batch code if not provided
         if not self.batch:
             self.batch = (
-                f"{self.city_abb.upper()}-{self.term[:2]}-{str(self.year)[-2:]}"
+                f"{self.city_abb.upper()}-{self.term[:3].upper()}-{str(self.year)[-2:]}"
             )
 
         super().save(*args, **kwargs)
@@ -82,8 +82,8 @@ class Location(models.Model):
     city = models.CharField(max_length=30, null=True)
     capacity = models.IntegerField()
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=1)
-    created_at = models.DateTimeField(auto_now=True, null=True, blank=True)
-    updated_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
 
     def __str__(self):
         return f"{self.name} - {self.shortname} - {self.city}"
@@ -104,20 +104,21 @@ class Sessions(models.Model):
     """Location-based sessions."""
     location = models.ForeignKey(Location, on_delete=models.CASCADE)
     no_of_students = models.IntegerField()
-    batch = models.ForeignKey(Batch, on_delete=models.CASCADE)
+    start_date = models.DateField()
+    end_date = models.DateField()
     course = models.ForeignKey("course.Course", on_delete=models.CASCADE, null=True)
     start_time = models.TimeField(null=True, blank=True)
     end_time = models.TimeField(null=True, blank=True)
     days_of_week = models.JSONField(default=list, blank=True)
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=1)
-    created_at = models.DateTimeField(auto_now=True, null=True, blank=True)
-    updated_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
 
     class Meta:
-        unique_together = ("location", "course", "start_time", "end_time")
+        unique_together = ("location","course", "start_time", "end_time")
 
     def __str__(self):
-        return f"{self.batch}-{self.location}-{self.no_of_students}-{self.course}-{self.start_time}-{self.end_time}"
+        return f"{self.location}-{self.no_of_students}-{self.course}-{self.start_time}-{self.end_time}"
 
 
 # class Batch(models.Model):

@@ -71,20 +71,44 @@ class WeightageDetailAPIView(APIView, CustomResponseMixin):
             data=None
         )
 
+
 class WeightageListByCourseId(APIView, CustomResponseMixin):
     permission_classes = (permissions.IsAuthenticated,)
 
-    def get(self, request, course_id=None, format=None):
-        # Filter weightages based on the provided course_id
+    def get(self, request, course_id, session_id, format=None):
+        # Check if the course exists
+        if not Course.objects.filter(id=course_id).exists():
+            return self.custom_response(
+                status_code=status.HTTP_404_NOT_FOUND,
+                message='Course with the given ID not found',
+                data=None
+            )
+        
+        # Check if the session exists
+        if not Sessions.objects.filter(id=session_id).exists():
+            return self.custom_response(
+                status_code=status.HTTP_404_NOT_FOUND,
+                message='Session with the given ID not found',
+                data=None
+            )
 
-        weightages = Weightage.objects.filter(course_id=course_id)
+        # If both course and session exist, filter weightages
+        weightages = Weightage.objects.filter(course_id=course_id, session_id=session_id)
+
+        if not weightages.exists():
+            return self.custom_response(
+                status_code=status.HTTP_200_OK,
+                message='No weightages found for the given course and session',
+                data=None
+            )
 
         serializer = WeightageSerializer(weightages, many=True)
         return self.custom_response(
             status_code=status.HTTP_200_OK,
-            message='Courses Weightages retrieved successfully',
+            message='Courses weightages retrieved successfully',
             data=serializer.data
         )
+
 
 # Skill Views
 class SkillListCreateAPIView(APIView, CustomResponseMixin):

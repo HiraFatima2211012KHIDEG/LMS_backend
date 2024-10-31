@@ -1,6 +1,8 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status,permissions
+from django.db.models import Q
+
 from django.shortcuts import get_object_or_404
 from ..models.models import *
 from ..serializers import *
@@ -26,7 +28,7 @@ class QuizListCreateAPIView(CustomResponseMixin, APIView):
         data = {key: value for key, value in request.data.items()}
         data['created_by'] = request.user.id
 
-        file_content = request.FILES.get('content', None)
+        file_content = request.data.get('content', None)
         if file_content is not None:
             data['content'] = file_content
         else:
@@ -53,7 +55,7 @@ class QuizDetailAPIView(CustomResponseMixin, APIView):
 
 
         quiz = get_object_or_404(Quizzes, pk=pk)
-        file_content = request.FILES.get('content', None)
+        file_content = request.data.get('content', None)
         if file_content is not None:
             data['content'] = file_content
         else:
@@ -64,10 +66,32 @@ class QuizDetailAPIView(CustomResponseMixin, APIView):
             return self.custom_response(status.HTTP_200_OK, 'Quiz updated successfully', serializer.data)
         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error updating quiz', serializer.errors)
 
-    def delete(self, request, pk, format=None):
-        quiz = get_object_or_404(Quizzes, pk=pk)
-        quiz.delete()
-        return self.custom_response(status.HTTP_204_NO_CONTENT, 'Quiz deleted successfully', {})
+    def patch(self, request, pk, format=None):
+        try:
+            quiz = Quizzes.objects.get(pk=pk)
+        except Quizzes.DoesNotExist:
+            return self.custom_response(
+                status.HTTP_404_NOT_FOUND, "Quiz not found.",{}
+            )
+        
+        status_data = request.data.get('status')
+        
+        if status_data is None:
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST, "Status field is required.",{}
+            )
+        
+        serializer = QuizzesSerializer(quiz, data={"status": status_data}, partial=True)
+        
+        if serializer.is_valid():
+            serializer.save()
+            return self.custom_response(
+                status.HTTP_200_OK, "Quiz status updated successfully", serializer.data
+            )
+        
+        return self.custom_response(
+            status.HTTP_400_BAD_REQUEST, "Error updating quiz status", errors=serializer.errors
+        )
 
 class QuizSubmissionCreateAPIView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
@@ -89,6 +113,7 @@ class QuizSubmissionCreateAPIView(CustomResponseMixin, APIView):
             return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Student not found for user', {})
         data['status'] = 1
         print(data)
+        
         serializer = QuizSubmissionSerializer(data=data)
         if serializer.is_valid():
             serializer.save()
@@ -201,12 +226,29 @@ class QuizGradingListCreateAPIVieww(CustomResponseMixin, APIView):
         data = {key: value for key, value in request.data.items()}
         data['graded_by'] = request.user.id
 
+        # Check if grading already exists
+        if QuizGrading.objects.filter(quiz_submissions=data['quiz_submissions'], graded_by=request.user).exists():
+            return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Quiz grading already exists for this submission', None)
+
+        # Retrieve the quiz associated with the submission
+        quiz_submission = get_object_or_404(QuizSubmission, pk=data['quiz_submissions'])
+        total_grade = quiz_submission.quiz.total_grade  # Get the total grade for the associated quiz
+
+        # Validate the grade
+        if 'grade' in data and float(data['grade']) > float(total_grade):
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST,
+                f"Grade cannot exceed the total grade of {total_grade}",
+                None
+            )
 
         serializer = QuizGradingSerializer(data=data)
         if serializer.is_valid():
             serializer.save()
             return self.custom_response(status.HTTP_201_CREATED, 'Quiz grading created successfully', serializer.data)
+
         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error creating quiz grading', serializer.errors)
+
 
 class QuizGradingDetailAPIView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
@@ -221,26 +263,46 @@ class QuizGradingDetailAPIView(CustomResponseMixin, APIView):
         data = {key: value for key, value in request.data.items()}
         data['graded_by'] = request.user.id
 
-
         quiz_grading = get_object_or_404(QuizGrading, pk=pk)
+
+        # Retrieve the associated quiz submission
+        quiz_submission = quiz_grading.quiz_submissions
+        total_grade = quiz_submission.quiz.total_grade  # Get the total grade for the associated quiz
+
+        # Validate the grade
+        if 'grade' in data and float(data['grade']) > float(total_grade):
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST,
+                f"Grade cannot exceed the total grade of {total_grade}",
+                None
+            )
+
         serializer = QuizGradingSerializer(quiz_grading, data=data, partial=True)
         if serializer.is_valid():
             serializer.save(graded_by=request.user)
             return self.custom_response(status.HTTP_200_OK, 'Quiz grading updated successfully', serializer.data)
+
         return self.custom_response(status.HTTP_400_BAD_REQUEST, 'Error updating quiz grading', serializer.errors)
+
 
     def delete(self, request, pk, format=None):
         grading = get_object_or_404(QuizGrading, pk=pk)
         grading.delete()
         return self.custom_response(status.HTTP_204_NO_CONTENT, 'Quiz grading deleted successfully', {})
 
+
 class QuizzesByCourseIDAPIView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
-    def get(self, request, course_id, format=None):
+    def get(self, request, course_id,session_id, format=None):
         user = request.user
-        quizzes = Quizzes.objects.filter(course_id=course_id).order_by('-created_at')
-
+        is_student = Student.objects.filter(user=user).exists()
+        
+        if is_student:
+            quizzes = Quizzes.objects.filter(course_id=course_id,session_id=session_id).exclude(Q(status=2) | Q(status=0)).order_by('-created_at')
+        else:
+            quizzes = Quizzes.objects.filter(course_id=course_id, session_id=session_id).exclude(status=2).order_by('-created_at')
+        
         if not quizzes.exists():
             return self.custom_response(status.HTTP_200_OK, 'No quizzes found', {})
 
@@ -250,28 +312,42 @@ class QuizzesByCourseIDAPIView(CustomResponseMixin, APIView):
 
 
             if submission:
-                if submission.status == 1:
-                    submission_status = 'Submitted'
+                if submission.status == 1:  # Submitted
+                    # if submission.quiz_submitted_at > quiz.due_date:
+                    #     submission_status = "Late Submission"
+                    # else:
+                    submission_status = "Submitted"
                 else:
-                    submission_status = 'Pending'
+                    submission_status = "Pending"  # Status is pending if not yet graded
             else:
                 if timezone.now() > quiz.due_date:
-                    submission_status = 'Not Submitted'
+                    submission_status = (
+                        "Not Submitted"  # Due date has passed without submission
+                    )
                 else:
-                    submission_status = 'Pending'
+                    submission_status = (
+                        "Pending"  # Due date has not passed, and not yet submitted
+                    )
 
+            session_data = {
+                "id": quiz.session.id,
+            } if quiz.session else None
             quiz_data = {
                 'id': quiz.id,
                 'total_grade':quiz.total_grade,
-                'content_url': quiz.content.url if quiz.content else None, 
+                # 'content_url': quiz.content.url if quiz.content else None, 
+                "content": quiz.content if quiz.content else None,
                 'question': quiz.question,
                 'description': quiz.description,
+                'late_submission':quiz.late_submission,
+                'session': session_data,
                 'status':quiz.status,
                 'due_date': quiz.due_date,
                 'created_at': quiz.created_at,
+                'submission_id':  submission.id if submission else None,
                 'submission_status': submission_status,
                 'submitted_at': submission.quiz_submitted_at if submission else None,
-                'submitted_file': submission.quiz_submitted_file.url if submission and submission.quiz_submitted_file else None,
+                'submitted_file': submission.submitted_file if submission and submission.submitted_file else None,
                 "no_of_resubmissions_allowed":quiz.no_of_resubmissions_allowed,
                 'remaining_resubmissions': submission.remaining_resubmissions if submission else 0,
             }
@@ -280,11 +356,12 @@ class QuizzesByCourseIDAPIView(CustomResponseMixin, APIView):
         return self.custom_response(status.HTTP_200_OK, 'Quizzes retrieved successfully', quizzes_data)
 
 
+
 class QuizDetailView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
-    def get(self, request, course_id, registration_id):
-        quizzes = Quizzes.objects.filter(course_id=course_id)
+    def get(self, request, course_id, registration_id, session_id):
+        quizzes = Quizzes.objects.filter(course_id=course_id,session_id=session_id).exclude(Q(status=2) | Q(status=0))
         submissions = QuizSubmission.objects.filter(quiz__in=quizzes, registration_id=registration_id)
         quizzes_data = []
         total_marks_obtained = Decimal('0.0')
@@ -295,9 +372,23 @@ class QuizDetailView(APIView):
             grading = QuizGrading.objects.filter(quiz_submissions=submission).first() if submission else None
 
             if submission:
-                submission_status = 'Submitted' if submission.status == 1 else 'Pending'
+                if submission.status == 1:  # Submitted
+                    # if submission.quiz_submitted_at > quiz.due_date:
+                    #     submission_status = "Late Submission"
+                    # else:
+                    submission_status = "Submitted"
+                else:
+                    submission_status = "Pending"  # Status is pending if not yet graded
             else:
-                submission_status = 'Not Submitted' if timezone.now() > quiz.due_date else 'Pending'
+                if timezone.now() > quiz.due_date:
+                    submission_status = (
+                        "Not Submitted"  # Due date has passed without submission
+                    )
+                else:
+                    submission_status = (
+                        "Pending"  # Due date has not passed, and not yet submitted
+                    )
+
 
             marks_obtain = grading.grade if grading else Decimal('0.0')
             total_marks = quiz.total_grade if quiz.total_grade is not None else Decimal('0.0')
@@ -325,10 +416,87 @@ class QuizDetailView(APIView):
 
 
 
+
+
+# class QuizStudentListView(CustomResponseMixin, APIView):
+#     permission_classes = (permissions.IsAuthenticated,)
+
+#     def get(self, request, quiz_id, course_id, *args, **kwargs):
+#         try:
+#             # Retrieve the quiz based on quiz ID and course ID
+#             quiz = Quizzes.objects.get(id=quiz_id, course__id=course_id)
+#         except Quizzes.DoesNotExist:
+#             return Response(
+#                 {"detail": "Quiz not found for the course."}, 
+#                 status=status.HTTP_404_NOT_FOUND
+#             )
+
+#         # Retrieve the session associated with the course
+#         sessions = Sessions.objects.filter(course__id=course_id)
+#         print(sessions)
+   
+#         session = sessions.first()
+#         print(session)  
+#         # Filter students who are enrolled in this session
+#         enrolled_students = Student.objects.filter(
+#             studentsession__session=session
+#         )
+#         print(enrolled_students)  
+#         student_list = []
+#         total_grade = quiz.total_grade 
+
+#         # Process each student's quiz submission
+#         for student in enrolled_students:
+#             user = student.user
+#             try:
+#                 submission = QuizSubmission.objects.get(quiz=quiz, user=user)
+#             except QuizSubmission.DoesNotExist:
+#                 submission = None
+
+#             if submission:
+#                 submission_status = "Submitted" if submission.status == 1 else "Pending"
+#             else:
+#                 submission_status = (
+#                     "Not Submitted" if timezone.now() > quiz.due_date else "Pending"
+#                 )
+
+#             # Collect student data
+#             student_data = {
+#                 'quiz':quiz.id,
+#                 'student_name': f"{user.first_name} {user.last_name}",
+#                 'registration_id': student.registration_id,
+#                 'submission_id': submission.id if submission else None,
+#                 'submitted_file': submission.quiz_submitted_file.url if submission and submission.quiz_submitted_file else None,
+#                 'submitted_at': submission.quiz_submitted_at if submission else None,
+#                 'status': submission_status,
+#                 'grade': 0,
+#                 'remarks': None
+#             }
+
+#             if submission:
+#                 grading = QuizGrading.objects.filter(quiz_submissions=submission).first()
+#                 if grading:
+#                     student_data['grade'] = grading.grade
+#                     student_data['remarks'] = grading.feedback
+                   
+
+#             student_list.append(student_data)
+
+#         response_data = {
+#             'due_date': quiz.due_date,
+#             'total_grade': total_grade,
+#             'students': student_list
+#         }
+
+#         return self.custom_response(
+#             status.HTTP_200_OK, "Students retrieved successfully", response_data
+#         )
+
+
 class QuizStudentListView(CustomResponseMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
-    def get(self, request, quiz_id, course_id, *args, **kwargs):
+    def get(self, request, quiz_id, course_id, session_id, *args, **kwargs):
         try:
             # Retrieve the quiz based on quiz ID and course ID
             quiz = Quizzes.objects.get(id=quiz_id, course__id=course_id)
@@ -338,12 +506,15 @@ class QuizStudentListView(CustomResponseMixin, APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        # Retrieve the session associated with the course
-        sessions = Sessions.objects.filter(course__id=course_id)
-   
-   
-        session = sessions.first()
-                
+        # Retrieve the specific session using the session_id
+        try:
+            session = Sessions.objects.get(id=session_id, course__id=course_id)
+        except Sessions.DoesNotExist:
+            return Response(
+                {"detail": "Session not found for the course."}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+
         # Filter students who are enrolled in this session
         enrolled_students = Student.objects.filter(
             studentsession__session=session
@@ -361,23 +532,36 @@ class QuizStudentListView(CustomResponseMixin, APIView):
                 submission = None
 
             if submission:
-                submission_status = "Submitted" if submission.status == 1 else "Pending"
+                if submission.status == 1:  # Submitted
+                    # if submission.quiz_submitted_at > quiz.due_date:
+                    #     submission_status = "Late Submission"
+                    # else:
+                    submission_status = "Submitted"
+                else:
+                    submission_status = "Pending"  # Status is pending if not yet graded
             else:
-                submission_status = (
-                    "Not Submitted" if timezone.now() > quiz.due_date else "Pending"
-                )
+                if timezone.now() > quiz.due_date:
+                    submission_status = (
+                        "Not Submitted"  # Due date has passed without submission
+                    )
+                else:
+                    submission_status = (
+                        "Pending"  # Due date has not passed, and not yet submitted
+                    )
 
             # Collect student data
             student_data = {
-                'quiz':quiz.id,
+                'quiz': quiz.id,
                 'student_name': f"{user.first_name} {user.last_name}",
                 'registration_id': student.registration_id,
                 'submission_id': submission.id if submission else None,
-                'submitted_file': submission.quiz_submitted_file.url if submission and submission.quiz_submitted_file else None,
+                'submitted_file': submission.submitted_file if submission and submission.submitted_file else None,
                 'submitted_at': submission.quiz_submitted_at if submission else None,
+                'comments':submission.comments if submission else None,
                 'status': submission_status,
                 'grade': 0,
-                'remarks': None
+                'remarks': None,
+                'grading_id': None, 
             }
 
             if submission:
@@ -385,7 +569,7 @@ class QuizStudentListView(CustomResponseMixin, APIView):
                 if grading:
                     student_data['grade'] = grading.grade
                     student_data['remarks'] = grading.feedback
-                   
+                    student_data['grading_id'] = grading.id 
 
             student_list.append(student_data)
 

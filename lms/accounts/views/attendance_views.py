@@ -1,4 +1,4 @@
-from rest_framework import generics, filters, viewsets
+from rest_framework import generics, filters, viewsets,permissions
 from rest_framework.response import Response
 from rest_framework import status
 from ..models.attendance_models import Attendance
@@ -7,6 +7,14 @@ from .location_views import BaseLocationViewSet
 from django_filters.rest_framework import DjangoFilterBackend
 from utils.custom import CustomResponseMixin
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
+from ..models.location_models import Sessions
+from ..models.user_models import StudentSession, Student, InstructorSession, Instructor
+from rest_framework.views import APIView
+from ..serializers.attendance_serializers import AttendanceSerializer,StudentDetailAttendanceSerializer
+from django.utils import timezone
+from ..serializers.location_serializers import InstructorSessionSerializer
+from datetime import datetime
+from django.db.models import Q
 
 class AttendanceListCreateView(BaseLocationViewSet):
     queryset = Attendance.objects.all()
@@ -144,3 +152,308 @@ class AttendanceFilterViewSet(CustomResponseMixin, viewsets.ModelViewSet):
         return self.custom_response(
             status.HTTP_200_OK, "Filtered attendance records fetched successfully", response.data
         )
+
+
+# class SessionsAPIViewAttendance(APIView):
+#     def get(self, request, session_id):
+#         try:
+#             # Fetch the session to ensure it exists
+#             session = Sessions.objects.get(id=session_id)
+
+#             # Get all students linked to this session via StudentSession
+#             student_sessions = StudentSession.objects.filter(session=session)
+
+#             # Serialize the student session data
+#             student_serializer = StudentDetailAttendanceSerializer(student_sessions, many=True)
+
+#             # Get the instructor associated with this session from InstructorSession
+#             try:
+#                 instructor_session = InstructorSession.objects.get(session=session).exclude(Q(status=2) | Q(status=0))
+
+#                 instructor = instructor_session.instructor
+
+#                 # Get the instructor's user details and construct full name
+#                 if instructor and instructor.id:
+#                     full_name = f"{instructor.id.first_name} {instructor.id.last_name}".strip()
+#                 else:
+#                     full_name = None
+#             except InstructorSession.DoesNotExist:
+#                 full_name = None
+#             # except User.DoesNotExist:
+#             #     full_name = None
+
+#             # Return the response with student and instructor data
+#             return Response({
+#                 "status_code": status.HTTP_200_OK,
+#                 "message": "Students and instructor fetched successfully.",
+#                 "data": {
+#                     "students": student_serializer.data,
+#                     "instructor": full_name
+#                 }
+#             }, status=status.HTTP_200_OK)
+
+#         except Sessions.DoesNotExist:
+#             return Response({
+#                 "status_code": status.HTTP_404_NOT_FOUND,
+#                 "message": f"Session with ID {session_id} not found.",
+#                 "data": None
+#             }, status=status.HTTP_404_NOT_FOUND)
+
+class SessionsAPIViewAttendance(APIView):
+    def get(self, request, session_id):
+        try:
+            # Get the session by ID
+            session = Sessions.objects.get(id=session_id)
+
+            student_sessions = StudentSession.objects.filter(session=session)
+            student_serializer = StudentDetailAttendanceSerializer(student_sessions, many=True)
+
+            instructor_sessions = InstructorSession.objects.filter(session=session).exclude(Q(status=2) | Q(status=0))
+
+            if instructor_sessions.exists():
+                instructor = instructor_sessions.first().instructor
+
+                if instructor and instructor.id:
+                    full_name = f"{instructor.id.first_name} {instructor.id.last_name}".strip()
+                else:
+                    full_name = None
+            else:
+                full_name = None
+
+            return Response({
+                "status_code": status.HTTP_200_OK,
+                "message": "Students and instructor fetched successfully.",
+                "data": {
+                    "students": student_serializer.data,
+                    "instructor": full_name
+                }
+            }, status=status.HTTP_200_OK)
+
+        except Sessions.DoesNotExist:
+            return Response({
+                "status_code": status.HTTP_404_NOT_FOUND,
+                "message": f"Session with ID {session_id} not found.",
+                "data": None
+            }, status=status.HTTP_404_NOT_FOUND)
+
+
+
+
+class StudentAttendanceListView(CustomResponseMixin, APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, course_id,*args, **kwargs):
+        student = request.user.student
+        print(student)
+        attendances = Attendance.objects.filter(student=student,course_id=course_id)
+        print(attendances)
+        serialized_attendance = AttendanceSerializer(attendances, many=True)
+        
+        response_data = {
+            "attendance": serialized_attendance.data
+        }
+        
+        return self.custom_response(
+            status.HTTP_200_OK, "Student attendance retrieved successfully", response_data
+        )
+
+
+class InstructorAttendanceView(CustomResponseMixin, APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, session_id, course_id=None, *args, **kwargs):
+        date_filter = request.query_params.get('date', None)
+        
+        students = Student.objects.filter(
+            studentsession__session=session_id,
+        )
+    
+        attendances = Attendance.objects.filter(student__in=students, course_id=course_id)
+
+        if date_filter:
+            attendances = attendances.filter(date=date_filter)
+
+        serialized_attendance = AttendanceSerializer(attendances, many=True)
+
+        response_data = {
+            "attendance": serialized_attendance.data
+        }
+
+        return self.custom_response(
+            status.HTTP_200_OK, "Students' attendance retrieved successfully", response_data
+        )
+
+
+    def post(self, request, session_id, course_id, *args, **kwargs):
+        try:
+            # Ensure the session belongs to the correct course
+            session = Sessions.objects.get(id=session_id, course__id=course_id)
+        except Sessions.DoesNotExist:
+            return self.custom_response(
+                status.HTTP_404_NOT_FOUND, "Session not found for the given course", {}
+            )
+
+        enrolled_students = Student.objects.filter(
+            studentsession__session=session_id,
+        )
+
+        if not enrolled_students.exists():
+            return self.custom_response(
+                status.HTTP_404_NOT_FOUND, "No students found for this session and course", {}
+            )
+
+        attendance_data = []
+        marked_by_name = f"{request.user.first_name} {request.user.last_name}".strip()
+
+        for attendance_entry in request.data:
+            student_id = attendance_entry.get("student")
+            student_status = attendance_entry.get("status", 0)  # Default to "Present"
+            marked_by = attendance_entry.get("marked_by", marked_by_name)
+            date = attendance_entry.get("date", timezone.now().date())  # Allow custom date or default to today
+
+            # Restrict marking attendance for future dates
+            if isinstance(date, str):  # Convert date if it's coming in as a string
+                date = datetime.strptime(date, '%Y-%m-%d').date()
+            if date > timezone.now().date():
+                return self.custom_response(
+                    status.HTTP_400_BAD_REQUEST, f"Cannot mark attendance for future dates: {date}", {}
+                )
+
+            # Ensure the student exists in the session and course
+            try:
+                student = enrolled_students.get(registration_id=student_id)
+            except Student.DoesNotExist:
+                continue  # Skip if the student is not enrolled in this session and course
+
+            # Create attendance record
+            attendance_data.append(
+                Attendance(
+                    student=student,
+                    course_id=course_id,
+                    status=student_status,
+                    marked_by=marked_by,
+                    date=date
+                )
+            )
+
+        # Bulk create attendance records
+        created_attendance = Attendance.objects.bulk_create(attendance_data)
+
+        if not created_attendance:
+            return self.custom_response(
+                status.HTTP_400_BAD_REQUEST, "No attendance records were created", {}
+            )
+
+        # Serialize the created attendance records
+        serialized_data = AttendanceSerializer(created_attendance, many=True).data
+
+        return self.custom_response(
+            status.HTTP_201_CREATED, "Attendance marked successfully", serialized_data
+        )
+
+
+
+    def patch(self, request, session_id, course_id, *args, **kwargs):
+        try:
+            session = Sessions.objects.get(id=session_id, course__id=course_id)
+        except Sessions.DoesNotExist:
+            return self.custom_response(
+                status.HTTP_404_NOT_FOUND, "Session not found for the given course", {}
+            )
+
+        enrolled_students = Student.objects.filter(studentsession__session=session_id)
+
+        if not enrolled_students.exists():
+            return self.custom_response(
+                status.HTTP_404_NOT_FOUND, "No students found for this session and course", {}
+            )
+
+        attendance_updates = []
+
+        for attendance_entry in request.data:
+            student_id = attendance_entry.get("student")
+            student_status = attendance_entry.get("status") 
+            date = attendance_entry.get("date", timezone.now().date())  
+
+            if isinstance(date, str):
+                date = datetime.strptime(date, '%Y-%m-%d').date()
+            if date > timezone.now().date():
+                return self.custom_response(
+                    status.HTTP_400_BAD_REQUEST, f"Cannot mark attendance for future dates: {date}", {}
+                )
+
+            try:
+                student = enrolled_students.get(registration_id=student_id)
+            except Student.DoesNotExist:
+                continue  
+
+
+            try:
+                attendance = Attendance.objects.get(student=student, course_id=course_id, date=date)
+                attendance.status = student_status 
+                attendance_updates.append(attendance)
+            except Attendance.DoesNotExist:
+                return self.custom_response(
+                    status.HTTP_404_NOT_FOUND, f"Attendance record not found for student {student_id} on {date}", {}
+                )
+
+        Attendance.objects.bulk_update(attendance_updates, ['status'])
+
+        serialized_data = AttendanceSerializer(attendance_updates, many=True).data
+
+        return self.custom_response(
+            status.HTTP_200_OK, "Attendance status updated successfully", serialized_data
+        )
+
+
+
+class AdminAttendanceView(CustomResponseMixin, APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, session_id, *args, **kwargs):
+        date_filter = request.query_params.get('date', None)
+        
+        try:
+            # Filter students based on session ID
+            students_in_session = Student.objects.filter(studentsession__session__id=session_id)
+            print(students_in_session)
+        except Student.DoesNotExist:
+            return Response({"detail": "No students found for this session."}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Fetch attendance records for students in the session
+        attendances = Attendance.objects.filter(student__in=students_in_session)
+        
+        if date_filter:
+            attendances = attendances.filter(date=date_filter)
+        
+        serialized_attendance = AttendanceSerializer(attendances, many=True)
+        
+        response_data = {
+            "attendance": serialized_attendance.data
+        }
+        
+        return self.custom_response(
+            status.HTTP_200_OK, "Attendance retrieved successfully for the session", response_data
+        )
+
+
+
+class InstructorsByCourseAPIView(APIView):
+    def get(self, request, course_id, *args, **kwargs):
+        # Retrieve instructor sessions for the specified course_id
+        instructor_sessions = InstructorSession.objects.filter(session__course_id=course_id)
+
+        if not instructor_sessions.exists():
+            return Response({
+                "status_code": status.HTTP_404_NOT_FOUND,
+                "message": "No instructors found for this course.",
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        # Serialize the instructor session data
+        serializer = InstructorSessionSerializer(instructor_sessions, many=True)
+
+        return Response({
+            "status_code": status.HTTP_200_OK,
+            "message": "Instructors fetched successfully.",
+            "data": serializer.data
+        }, status=status.HTTP_200_OK)

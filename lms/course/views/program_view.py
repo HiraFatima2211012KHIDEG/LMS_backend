@@ -16,7 +16,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 class ProgramListCreateAPIView(CustomResponseMixin, APIView):
-    permission_classes = (permissions.IsAuthenticated,)
+#    permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request, format=None):
         programs = Program.objects.all().order_by('name')
@@ -91,7 +91,7 @@ class ProgramCoursesAPIView(CustomResponseMixin, APIView):
 
     def get(self, request, program_id, format=None):
         program = get_object_or_404(Program, id=program_id)
-        courses = program.courses.filter(status=1).order_by('name')
+        courses = program.courses.filter().exclude(status=2).order_by('name')
         # courses = program.courses.all().order_by('name')
         serializer = CourseSerializer(courses, many=True)
         return self.custom_response(status.HTTP_200_OK, 'Courses retrieved successfully', serializer.data)
